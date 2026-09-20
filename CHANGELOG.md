@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.3.4 — compact context shortcut
+
+- Edit context from the collapsed card opens that displayed chat's inline project editor.
+- Show a percentage example and live compact/window ratio in both editors.
+- Keep numeric input explicit: enter tokens; percentages are guidance.
+
 ## 6.3.3 — visual audit fixes
 
 - Separate CTC letter shapes and use the high-resolution icon frame in the header.

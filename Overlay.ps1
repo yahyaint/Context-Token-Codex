@@ -96,8 +96,7 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
    <StackPanel><TextBlock Text="CACHED INPUT" FontSize="9" Foreground="#E0E1DD"/><TextBlock x:Name="MiniCached" Text="--" FontSize="15" Margin="0,3,0,0"/></StackPanel>
   </UniformGrid>
   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="MiniUpdated" Text="Waiting for data" FontSize="10" Foreground="#E0E1DD" VerticalAlignment="Center"/><StackPanel Orientation="Horizontal" Grid.Column="1"><Button x:Name="PreviousTask" Content="&#x2039;" Padding="8,2" ToolTip="Previous active chat"/><TextBlock x:Name="TaskPosition" Text="0 / 0" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0"/><Button x:Name="NextTask" Content="&#x203A;" Padding="8,2" Margin="0" ToolTip="Next active chat"/></StackPanel></Grid>
- </StackPanel>
- <ScrollViewer x:Name="TokensPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed"><StackPanel Margin="0,0,8,0"><TextBlock x:Name="ActiveTokenHeading" Text="ACTIVE chats" FontSize="10" Foreground="#778DA9" Margin="0,0,0,6"/><StackPanel x:Name="ActiveTokenTasks"/><Expander x:Name="TokenSummary" Header="All loaded chats" Foreground="#E0E1DD" IsExpanded="True" Margin="0,0,0,8"><StackPanel>
+  <Button x:Name="MiniEditContext" Content="Edit context" FontSize="11" Padding="10,3" HorizontalAlignment="Left" Margin="0,8,0,0" IsEnabled="False" ToolTip="Open the displayed chat project context editor. Applies to all models in that project."/><!-- mini shortcut --></StackPanel><ScrollViewer x:Name="TokensPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed"><StackPanel Margin="0,0,8,0"><TextBlock x:Name="ActiveTokenHeading" Text="ACTIVE chats" FontSize="10" Foreground="#778DA9" Margin="0,0,0,6"/><StackPanel x:Name="ActiveTokenTasks"/><Expander x:Name="TokenSummary" Header="All loaded chats" Foreground="#E0E1DD" IsExpanded="True" Margin="0,0,0,8"><StackPanel>
   <DockPanel><TextBlock Text="LOADED chat TOTALS" FontSize="10" Foreground="#778DA9"/><TextBlock x:Name="TokenLive" Text="Watching files" FontSize="10" HorizontalAlignment="Right"/></DockPanel>
   <TextBlock x:Name="TokenTotal" Text="Waiting for usage" FontSize="28" FontWeight="SemiBold" Margin="0,4,0,4"/>
   <TextBlock x:Name="TokenBreakdown" FontSize="10" Opacity="0.75" Margin="0,0,0,8"/>
@@ -165,7 +164,7 @@ function Apply-WidgetTheme($element) {
 }
 Apply-WidgetTheme $window
 $iconDecoder=[Windows.Media.Imaging.BitmapDecoder]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico')),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad); $window.Icon=$iconDecoder.Frames[$iconDecoder.Frames.Count-1]; $window.FindName('BrandIcon').Source=$window.Icon
-foreach ($name in @('SettingsButton','TrayButton','Pin','Health','Quota','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','QuickContext','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','QuotaCards','TokenSource','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
+foreach ($name in @('MiniEditContext','SettingsButton','TrayButton','Pin','Health','Quota','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','QuickContext','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','QuotaCards','TokenSource','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
 $window.Width=[Math]::Max(360,[double]$prefs.Width); $window.Height=[Math]::Max(300,[double]$prefs.Height)
 $area=[Windows.SystemParameters]::WorkArea
 $hasSavedPosition=($prefs.Left -ne -1 -or $prefs.Top -ne -1)
@@ -246,7 +245,7 @@ function Set-WidgetCompact([bool]$compact) {
     $TokenMode.Tag=if ($prefs.Mode -eq 'Tokens') {'Selected'} else {''}
     if ($compact) {
         $FullPanel.Visibility='Collapsed'; $MiniPanel.Visibility='Visible'; $ResizeGrip.Visibility='Collapsed'
-        $window.Width=370; $window.Height=400; $ToggleButton.Content='Expand'
+        $window.Width=370; $window.Height=440; $ToggleButton.Content='Expand'
     } else {
         $FullPanel.Visibility='Visible'; $MiniPanel.Visibility='Collapsed'; $ResizeGrip.Visibility='Visible'
         $workArea=Get-WidgetWorkArea
@@ -380,6 +379,14 @@ $ResizeGrip.Add_DragDelta({
 })
 $ResizeGrip.Add_DragCompleted({ Position-Widget; Save-Preferences })
 $ToggleButton.Add_Click({ Set-WidgetCompact (-not [bool]$prefs.Compact); Save-Preferences })
+$MiniEditContext.Add_Click({
+    $id=$script:displayedTask
+    if (-not $id -or -not $script:cardControls.ContainsKey($id)) { return }
+    $editor=$script:cardControls[$id].Editor
+    if (-not $editor) { return }
+    Set-WidgetMode 'Context'; Set-WidgetCompact $false
+    $editor.IsExpanded=$true; $window.UpdateLayout(); $editor.BringIntoView(); Save-Preferences
+})
 $MiniTitle.Add_MouseLeftButtonUp({ Set-WidgetCompact $false; Save-Preferences })
 $MinimizeButton.Add_Click({ $window.WindowState='Minimized' })
 $CloseButton.Add_Click({ $window.Close() })
@@ -394,7 +401,7 @@ function Update-Cards($snapshot) {
     if ($active.Count) {
         $lead=$active[0]
         if ($script:selectedTask) { $chosen=@($active | Where-Object Id -eq $script:selectedTask); if ($chosen.Count) { $lead=$chosen[0] } }
-        $script:displayedTask=$lead.Id
+        $script:displayedTask=$lead.Id; $MiniEditContext.IsEnabled=[bool]$lead.Cwd
         $MiniTitle.Text=$lead.Title; $MiniTitle.ToolTip=$lead.Title
         $MiniStatus.Text="$($active.Count) active | $($lead.Status) | $($lead.Model)"
         if ($lead.Percent -ge 95) { $MiniStatus.Text+=' | CRITICAL' } elseif ($lead.Percent -ge 80) { $MiniStatus.Text+=' | HIGH' }
@@ -409,7 +416,7 @@ function Update-Cards($snapshot) {
         $MiniBar.Foreground=if ($lead.Status -eq 'COMPACTING') { '#778DA9' } elseif ($lead.Percent -ge 95) { '#778DA9' } elseif ($lead.Percent -ge 80) { '#778DA9' } else { '#778DA9' }
         $MiniPercent.Foreground=$MiniBar.Foreground
     } else {
-        $MiniTitle.Text='No running chats'; $MiniTitle.ToolTip=$null
+        $MiniEditContext.IsEnabled=$false; $MiniTitle.Text='No running chats'; $MiniTitle.ToolTip=$null
         $MiniStatus.Text='Ready when you are'; $MiniBar.Value=0
         $MiniUsage.Text='Waiting for usage'; $MiniPercent.Text='--'
         $MiniRemaining.Text='--'; $MiniCompactions.Text='--'; $MiniCached.Text='--'
@@ -441,7 +448,7 @@ function Update-Cards($snapshot) {
             $controls.Bar=$bar; [void]$panel.Children.Add($bar)
             foreach ($item in @('Saved','Details')) { $label=New-Label ''; $label.FontSize=11; $controls[$item]=$label; [void]$panel.Children.Add($label) }
             if ($card.Cwd) {
-                $editor=New-InlineLimitsEditor $card.Cwd
+                $editor=New-InlineLimitsEditor $card.Cwd; $controls.Editor=$editor
                 [void]$panel.Children.Add($editor)
             }
             $script:cardControls[$card.Id]=$controls; [void]$Cards.Children.Add($border)
@@ -490,6 +497,23 @@ function Hide-Overlay([bool]$park=$false) {
     }
     $window.Hide()
 }
+function Update-CompactPercentageHint($form) {
+    $example='Example: 180k = 90% of a 200k window. Enter tokens, not %. Use default to reset.'
+    try {
+        $w=ConvertTo-TokenLimit $form.Window.Text $null; $c=ConvertTo-TokenLimit $form.Compact.Text $null
+        if ($w.Limit -gt 0 -and $null -ne $c.Limit) {
+            $form.Hint.Text=('{0:N1}% of the entered window. ' -f (100.0*$c.Limit/$w.Limit))+$example
+        } else { $form.Hint.Text=$example }
+    } catch { $form.Hint.Text=$example }
+}
+function Connect-CompactPercentageHint($windowField,$compactField,$hint) {
+    $form=@{Window=$windowField;Compact=$compactField;Hint=$hint}
+    foreach ($field in @($windowField,$compactField)) {
+        $field.Tag=$form
+        $field.Add_TextChanged({param($sender,$eventArgs) Update-CompactPercentageHint $sender.Tag})
+    }
+    Update-CompactPercentageHint $form
+}
 function New-InlineLimitsEditor([string]$project) {
     $expander=New-Object Windows.Controls.Expander; $expander.Header='Edit context limits'; $expander.Foreground='#E0E1DD'; $expander.Margin='0,8,0,0'
     $panel=New-Object Windows.Controls.StackPanel; $expander.Content=$panel
@@ -502,6 +526,7 @@ function New-InlineLimitsEditor([string]$project) {
         $current=if ($spec[0] -eq 'Window') {Get-TopLevelContextWindow $path} else {Get-TopLevelAutoCompactLimit $path}
         $input.Text=if ($null -eq $current) {'default'} else {[string]$current}; $fields[$spec[0]]=$input; [void]$panel.Children.Add($input)
     }
+    $hint=New-Label '' 10; [void]$panel.Children.Add($hint); Connect-CompactPercentageHint $fields.Window $fields.Compact $hint
     $result=New-Label 'Use default to remove the project override.' 10
     $save=New-Object Windows.Controls.Button; $save.Content='Save project limits'; $save.Margin='0,5,0,5'
     $save.Tag=@{Path=$path;Window=$fields.Window;Compact=$fields.Compact;Result=$result}
@@ -524,7 +549,7 @@ function Show-Settings([string]$pane='Context') {
   <TextBlock Text="Window &amp; startup" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,14"/>
   <TextBlock x:Name="OpacityLabel" Text="Background opacity"/>
   <Slider x:Name="OpacitySlider" Minimum="40" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,8,0,8"/>
-  <TextBlock Text="40% = more transparent; 100% = fully opaque. Applies to the whole widget. Changes save immediately." TextWrapping="Wrap" Foreground="#E0E1DD" Margin="0,0,0,12"/>
+  <TextBlock Text="40% = more transparent; 100% = fully opaque. Applies to the background; text stays opaque. Changes save immediately." TextWrapping="Wrap" Foreground="#E0E1DD" Margin="0,0,0,12"/>
   <TextBlock Text="Corner placement (current screen)"/>
   <ComboBox x:Name="Corner" Margin="0,4,0,10"><ComboBoxItem Content="Free position"/><ComboBoxItem Content="Top left"/><ComboBoxItem Content="Top right"/><ComboBoxItem Content="Bottom left"/><ComboBoxItem Content="Bottom right"/></ComboBox>
   <TextBlock Text="Drag the widget header to move; release near a corner to snap. Click the mini card to expand. Use Collapse to return. Resize the full view using its bottom-right grip." TextWrapping="Wrap" Foreground="#E0E1DD" Margin="0,0,0,16"/>
@@ -540,8 +565,8 @@ function Show-Settings([string]$pane='Context') {
    <StackPanel><TextBlock Text="Context window (all models)"/><TextBox x:Name="Context" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Raw token count. Use a number or default."/></StackPanel>
    <StackPanel Grid.Column="2"><TextBlock Text="Compact at"/><TextBox x:Name="Compact" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Auto-compaction threshold in tokens. Use a number or default."/></StackPanel>
   </Grid>
-  <TextBlock Text="Window: 258400 or 1000k. Compact: 180000 or 180k. Reset: default." FontSize="10" Opacity="0.8" Margin="0,6,0,10"/>
-  <TextBlock Text="Saved limits may need a chat reload." FontSize="11" Foreground="#778DA9" Margin="0,0,0,10"/>
+  <TextBlock Text="Window: 258400 or 1000k. Compact: 180000 or 180k." FontSize="10" Opacity="0.8" Margin="0,6,0,10"/>
+  <TextBlock x:Name="CompactHint" FontSize="10" Margin="0,0,0,10"/><TextBlock Text="Saved limits may need a chat reload." FontSize="11" Foreground="#778DA9" Margin="0,0,0,10"/>
   <Button x:Name="SaveLimits" Content="Save limits" HorizontalAlignment="Right" MinWidth="120" Padding="12,6" Margin="0,0,0,12"/>
   <Expander Header="How limits work" Foreground="#E0E1DD"><TextBlock Text="The window is a raw token count. Live chats report usable capacity. A saved value does not change a running chat or increase model capacity. Use default to remove this scope's override. Percent input is not supported. Hover over the saved values to see the file and inherited settings." FontSize="11" Margin="0,8,0,8" TextWrapping="Wrap"/></Expander>
   </StackPanel><TextBlock x:Name="Result" TextWrapping="Wrap" Foreground="#778DA9"/>
@@ -551,6 +576,7 @@ function Show-Settings([string]$pane='Context') {
     $script:settings.dialog=[Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($settingsXaml))
     $script:settings.auto=$script:settings.dialog.FindName('Auto'); $script:settings.target=$script:settings.dialog.FindName('Target'); $script:settings.scope=$script:settings.dialog.FindName('Scope')
     $script:settings.current=$script:settings.dialog.FindName('Current'); $script:settings.context=$script:settings.dialog.FindName('Context'); $script:settings.compact=$script:settings.dialog.FindName('Compact'); $script:settings.result=$script:settings.dialog.FindName('Result')
+    Connect-CompactPercentageHint $script:settings.context $script:settings.compact ($script:settings.dialog.FindName('CompactHint'))
     $script:settings.opacitySlider=$script:settings.dialog.FindName('OpacitySlider'); $script:settings.opacityLabel=$script:settings.dialog.FindName('OpacityLabel'); $script:settings.corner=$script:settings.dialog.FindName('Corner')
     $script:settings.opacitySlider.Value=$window.Content.Background.Opacity*100; $script:settings.opacityLabel.Text='Background opacity: {0:N0}%' -f $script:settings.opacitySlider.Value
     $script:settings.opacitySlider.Add_ValueChanged({
@@ -709,9 +735,14 @@ $timer.Add_Tick({
         if ($TestSeconds -gt 0 -and ([DateTime]::UtcNow-$started).TotalSeconds -ge $TestSeconds) {
             $timer.Stop()
             if ($TestSettings) {
+                Set-WidgetCompact $true
+                $MiniEditContext.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if ($prefs.Compact -or -not $script:cardControls[$script:displayedTask].Editor.IsExpanded -or $prefs.Mode -ne 'Context') { throw 'Mini context shortcut failed.' }
                 $inline=New-InlineLimitsEditor $CodexHome
                 $inlineSave=@($inline.Content.Children|Where-Object {$_ -is [Windows.Controls.Button]})[0]
-                $inlineSave.Tag.Window.Text='1000k'; $inlineSave.Tag.Compact.Text='180k'
+                $inlineSave.Tag.Window.Text='200k'; $inlineSave.Tag.Compact.Text='180k'
+                if ($inlineSave.Tag.Compact.Tag.Hint.Text -notlike (('{0:N1}%' -f 90.0)+'*')) { throw 'Compact percentage example did not update.' }
+                $inlineSave.Tag.Window.Text='1000k'
                 $inlineSave.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
                 if ((Get-TopLevelContextWindow $inlineSave.Tag.Path) -ne 1000000 -or (Get-TopLevelAutoCompactLimit $inlineSave.Tag.Path) -ne 180000) { throw 'Inline chat limit edit failed.' }
                 $LimitsMode.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
@@ -742,6 +773,8 @@ $timer.Add_Tick({
             $window.UpdateLayout()
             $LiveOpacity.Value=55
             $directOpacityPassed=($window.Opacity -eq 1 -and [Math]::Abs($window.Content.Background.Opacity-0.55) -lt 0.001 -and $LiveOpacityLabel.Text -eq '55%'); $window.UpdateLayout()
+            $buttonBottom=$MiniEditContext.TranslatePoint([Windows.Point]::new(0,$MiniEditContext.ActualHeight),$MiniPanel).Y
+            if ($buttonBottom -gt $MiniPanel.ActualHeight) { throw 'Mini context button is clipped.' }
             $compactPassed=($prefs.Compact -and $window.Width -eq 370 -and $FullPanel.Visibility -eq 'Collapsed' -and $window.WindowStyle -eq 'None' -and $window.AllowsTransparency -and $directOpacityPassed)
             if ($TestReport) {
                 $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)

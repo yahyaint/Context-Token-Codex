@@ -19,13 +19,13 @@ function Install-ContextWidget {
  $sameSource=([IO.Path]::GetFullPath($Source).TrimEnd('\') -eq $destinationPath)
  $backup=$null
  if (-not $sameSource -and (Test-Path -LiteralPath (Join-Path $destinationPath 'Overlay.ps1'))) {
-  $backup=Join-Path $destinationPath ('Versions\before-6.3.0-'+[guid]::NewGuid().ToString('N').Substring(0,8))
+  $backup=Join-Path $destinationPath ('Versions\before-6.3.1-'+[guid]::NewGuid().ToString('N').Substring(0,8))
   [void][IO.Directory]::CreateDirectory($backup)
   foreach ($file in $files) { $old=Join-Path $destinationPath $file; if (Test-Path -LiteralPath $old) { Copy-Item -LiteralPath $old -Destination $backup } }
  }
  [void][IO.Directory]::CreateDirectory($destinationPath)
  if (-not $sameSource) { foreach ($file in $files) { Copy-Item -LiteralPath (Join-Path $Source $file) -Destination (Join-Path $destinationPath $file) -Force } }
- $prefs=@{AutoOpen=$AutoOpen;Target='Codex';Compact=$true;Topmost=$true;Opacity=0.92;Width=460;Height=620;Left=-1;Top=-1;Corner='BottomRight'}
+ $prefs=@{AutoOpen=$AutoOpen;Target='Either';Compact=$true;Topmost=$true;Opacity=0.92;Width=460;Height=620;Left=-1;Top=-1;Corner='BottomRight'}
  if (Test-Path -LiteralPath $preferences) {
   $prior=Get-Content -LiteralPath $preferences -Raw | ConvertFrom-Json
   foreach ($property in $prior.PSObject.Properties) { $prefs[$property.Name]=$property.Value }
@@ -54,7 +54,7 @@ function Install-ContextWidget {
    }
   }
  } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
- $manifest=@{Version='6.3.0';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
+ $manifest=@{Version='6.3.1';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
  [IO.File]::WriteAllText((Join-Path $destinationPath 'installation.json'),($manifest|ConvertTo-Json -Depth 4))
  [pscustomobject]@{Destination=$destinationPath;Backup=$backup;Files=$files.Count;Preferences=$preferences;Bytes=($files|ForEach-Object {(Get-Item -LiteralPath (Join-Path $destinationPath $_)).Length}|Measure-Object -Sum).Sum}
 }

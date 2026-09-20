@@ -57,16 +57,27 @@ function Get-MonitorSnapshot {
         Discovery=$script:discoveryMode; Warning=$script:discoveryWarning; Compaction=$script:logStatus }
 }
 
-function Test-TargetApp([string]$target) {
-    foreach ($process in @(Get-Process -Name ChatGPT,Codex -ErrorAction SilentlyContinue)) {
-        try { $path = $process.Path } catch { $path = '' }
-        if (-not $path) { continue }
-        $isCodex = $path -match 'OpenAI[.\\]Codex|\\Codex\\|\\Codex\.exe$'
-        if ($target -eq 'Either' -or ($target -eq 'Codex' -and $isCodex) -or ($target -eq 'ChatGPT' -and -not $isCodex)) { return $true }
+function Get-TargetAppInstances([string]$target, $Processes=$null) {
+    if ($target -notin @('Codex','ChatGPT','Either')) {$target='Either'}
+    if ($null -eq $Processes) {$Processes=@(Get-Process -Name ChatGPT,Codex -ErrorAction SilentlyContinue)}
+    foreach ($process in $Processes) {
+        try {
+            $path=[string]$process.Path
+            if (-not $path -or ([long]$process.MainWindowHandle -eq 0)) {continue}
+            $isCodex=$path -match 'OpenAI[.\\]Codex|\\Codex\\|\\Codex\.exe$'
+            $isChatGPT=$path -match 'OpenAI[.\\]ChatGPT|\\ChatGPT\\|\\ChatGPT\.exe$'
+            if (-not $isCodex -and -not $isChatGPT) {continue}
+            $kind=if ($isCodex) {'Codex'} else {'ChatGPT'}
+            if ($target -ne 'Either' -and $target -ne $kind) {continue}
+            # No package version is cached: replacement processes/windows are new instances.
+            "$kind/$($process.Id)/$($process.StartTime.ToUniversalTime().Ticks)/$($process.MainWindowHandle)"
+        } catch {continue}
     }
-    return $false
 }
-
+function Test-TargetApp([string]$target) { return @(Get-TargetAppInstances $target).Count -gt 0 }
+function Get-NewAppInstances($Current,$Previous) {
+    @($Current|Where-Object {$_ -notin @($Previous)})
+}
 function Get-StartupShortcut { Join-Path ([Environment]::GetFolderPath('Startup')) 'Context-Token Codex.lnk' }
 function Set-OverlayStartup([bool]$enabled, [string]$folder) {
     $path = Get-StartupShortcut

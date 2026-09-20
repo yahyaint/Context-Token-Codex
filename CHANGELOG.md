@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.3.1 — app launch detection
+
+- Track separate visible app instances instead of one combined running flag.
+- Detect process/window replacement and package updates without version-pinned paths.
+- Ignore background renderer and CLI processes; retry transient launch failures.
+- Launch the branded executable directly; default new installs to ChatGPT or Codex.
+- Add PowerShell 5.1/7 regression tests for independent launches and update transitions.
+
 ## 6.3.0 — active chats and update resilience
 
 - Five-color user palette; chat terminology in the widget.

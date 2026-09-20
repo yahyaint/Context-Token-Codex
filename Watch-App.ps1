@@ -8,18 +8,24 @@ try { $owned=$mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $ow
 if (-not $owned) { $mutex.Dispose(); exit }
 $stop=New-Object Threading.EventWaitHandle($false,[Threading.EventResetMode]::ManualReset,('Local\CodexContextWatcherStop-'+[Environment]::UserName))
 $stop.Reset() | Out-Null
-$wasRunning=$false
+$previous=@()
 try {
     while ($true) {
         $path=Join-Path $env:LOCALAPPDATA 'CodexContextMonitor\overlay.json'
         if (-not (Test-Path -LiteralPath $path)) { break }
         try { $prefs=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json } catch { Start-Sleep -Seconds 5; continue }
         if (-not $prefs.AutoOpen) { break }
-        $running=Test-TargetApp $prefs.Target
-        if ($running -and -not $wasRunning) {
-            Start-Process -FilePath wscript.exe -WindowStyle Hidden -ArgumentList ('"'+(Join-Path $PSScriptRoot 'Open-Overlay.vbs')+'"')
+        try {
+            $current=@(Get-TargetAppInstances $prefs.Target)
+            if (@(Get-NewAppInstances $current $previous).Count -gt 0) {
+                Start-Process -FilePath (Join-Path $PSScriptRoot 'ContextWidget.exe') -WindowStyle Hidden -ErrorAction Stop
+            }
+            $previous=$current
+        } catch {
+            # Retry transient launch/detection failures. Do not lose the startup watcher.
+            $folder=Join-Path $env:LOCALAPPDATA 'CodexContextMonitor'
+            try { [IO.File]::WriteAllText((Join-Path $folder 'watcher-error.txt'),([DateTimeOffset]::Now.ToString('o')+" Launch/detection failed; retrying.")) } catch {}
         }
-        $wasRunning=$running
         if ($stop.WaitOne(5000)) { break }
     }
 } finally { $stop.Dispose(); if ($owned) { $mutex.ReleaseMutex() }; $mutex.Dispose() }

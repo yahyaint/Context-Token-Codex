@@ -8,7 +8,7 @@ Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public static cl
 $script:folder = $PSScriptRoot
 if (-not $PreferencesPath) { $PreferencesPath = Join-Path $env:LOCALAPPDATA 'CodexContextMonitor\overlay.json' }
 $script:preferencesPath = $PreferencesPath
-$script:prefs = @{ Topmost=$true; Target='Codex'; AutoOpen=$true; Width=460; Height=620; Left=-1; Top=-1; Compact=$true; Opacity=0.92; Corner='BottomRight';Mode='Context' }
+$script:prefs = @{ Topmost=$true; Target='Either'; AutoOpen=$true; Width=460; Height=620; Left=-1; Top=-1; Compact=$true; Opacity=0.92; Corner='BottomRight';Mode='Context' }
 if (Test-Path -LiteralPath $PreferencesPath) {
     try { $loaded = Get-Content -LiteralPath $PreferencesPath -Raw | ConvertFrom-Json
         foreach ($key in @($script:prefs.Keys)) { if ($null -ne $loaded.$key) { $script:prefs[$key]=$loaded.$key } }

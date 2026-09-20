@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT
+param([string]$OutputDirectory='')
+$ErrorActionPreference='Stop'
+$root=Split-Path $PSScriptRoot -Parent
+if (-not $OutputDirectory) { $OutputDirectory=Join-Path $root 'dist' }
+& (Join-Path $PSScriptRoot 'build.ps1')
+if ($LASTEXITCODE) { throw 'Build failed.' }
+$files=@('Install-FromGitHub.ps1','Setup.exe','ContextWidget.exe','Context.ico','Install.ps1','Install.Core.ps1','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Usage.Provider.ps1','USAGE-METHODS.md','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','ERROR-AUDIT.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','METHODS.md','BRANDING.md','AUDIT.md','CHANGELOG.md')
+$stage=Join-Path $env:TEMP ('context-release-'+[guid]::NewGuid().ToString('N'))
+$payload=Join-Path $stage 'ContextWidget'
+[void][IO.Directory]::CreateDirectory($payload)
+foreach ($name in $files) { Copy-Item -LiteralPath (Join-Path $root $name) -Destination $payload }
+# Include build source to keep the binary package auditable and reproducible.
+Copy-Item -LiteralPath (Join-Path $root 'Build') -Destination $payload -Recurse
+Copy-Item -LiteralPath (Join-Path $root 'Tests') -Destination $payload -Recurse
+Copy-Item -LiteralPath (Join-Path $root 'CONTRIBUTING.md') -Destination $payload
+Copy-Item -LiteralPath (Join-Path $root 'COMPATIBILITY.md') -Destination $payload
+[void][IO.Directory]::CreateDirectory($OutputDirectory)
+$zip=Join-Path $OutputDirectory 'Context-Token-Codex-Windows-v6.3.0.zip'
+Compress-Archive -LiteralPath $payload -DestinationPath $zip -Force
+$hash=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+[IO.File]::WriteAllText(($zip+'.sha256'),$hash+'  '+[IO.Path]::GetFileName($zip)+"`n",[Text.UTF8Encoding]::new($false))
+Write-Output "Package: $zip"
+Write-Output "SHA256: $hash"

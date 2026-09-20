@@ -1,0 +1,40 @@
+name: Windows build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+        shell: [powershell, pwsh]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build Windows launchers
+        run: .\Build\build.ps1
+      - name: Test configuration helpers
+        run: .\Tests\test_settings.ps1
+      - name: Test usage accounting and quota parsing
+        run: .\Tests\test_usage.ps1
+      - name: Verify source and isolated installation
+        run: .\Tests\test_repository.ps1
+      - name: Test compatibility and RPC failures
+        run: |
+          .\Tests\test_compatibility.ps1
+          .\Tests\test_transport.ps1
+      - name: Create release ZIP and checksum
+        run: .\Build\package.ps1
+      - name: Verify release installation helper
+        run: .\Tests\test_bootstrap.ps1

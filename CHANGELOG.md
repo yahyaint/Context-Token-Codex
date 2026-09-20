@@ -1,0 +1,57 @@
+# Changelog
+
+## 6.3.0 — active chats and update resilience
+
+- Five-color user palette; chat terminology in the widget.
+- Active-chat token details lead the view; missing first counters stay unknown.
+- Fixed 24-pixel wheel steps and retained scroll position on live refresh.
+- Inline project context editors on active chat cards; numeric examples and defaults apply to all models.
+- Limits discovers idle projects through saved projects and the local project/thread indexes.
+- Isolated quota-helper SQLite state, graceful helper shutdown and queued-follow-up audit.
+- GitHub installation helper, one-prompt instructions and repair guide.
+
+## 6.2.0 — Context-Token Codex
+
+- Rename the public product and shortcuts; original CTC logo in every application surface.
+- User-selected charcoal, ivory and amber palette.
+- Integrated Limits tab with aligned fields, saved/live summary and expandable help.
+- Centered button content, matched header controls and more room in compact mode.
+- Styled dropdowns and safe migration of shortcuts owned by the same installation.
+
+## 6.1.0 — detailed live token view
+
+- Input, output, cache, uncached input, reasoning and cache-hit metrics.
+- Expandable task details, exact localized counts and partial-data indicators.
+- Read active session changes every second; show record time and read status.
+- Test a live append through the running WPF background reader and visible metrics.
+- Replace explanatory paragraphs with short labels, tooltips and expandable help.
+- Add STE-inspired and Windows UI writing rules, acknowledgments and upstream MIT notices in both source and installed distributions.
+
+## 6.0.1 — compatibility hardening
+
+- Tolerate missing profiles, reordered JSON fields and invalid token counters.
+- Refresh renamed tasks in session-index fallback; retain cumulative counter timestamps across compaction.
+- Retry older subscription RPC parameters, bound helper lifetimes and preserve fractional quota percentages.
+- Report incompatible compaction log schemas as completion-only monitoring.
+- Add compatibility and CLI failure fixtures; run native UI and installer tests under both PowerShell versions.
+- Prepare a four-combination Windows CI matrix and document actual test coverage.
+
+## 6.0 — Context and Tokens modes
+
+- Persistent Context/Tokens switch in compact and expanded views.
+- Live read-only subscription usage via the Codex CLI, with local-record fallback, freshness labels, dynamic windows and reset times.
+- Recorded cumulative token totals with explicit coverage and cache semantics.
+- CodexBar method attribution and MIT project comparison in USAGE-METHODS.md.
+- Yahya Nabil author line and clickable yahyanabil.com link.
+
+## 5.0 — initial public source release
+
+- Native borderless Windows widget, compact/expanded views and live opacity.
+- Context limits and widget settings embedded in the overlay.
+- Current task titles, token usage, compaction status and active-task navigation.
+- Context-ring logo, three-color Nord-derived identity and branded Windows launchers.
+- Per-user setup wizard; optional auto-open defaults to enabled.
+- Persistent notification-area icon and optional visible edge restore tab.
+- MIT license, original-source build, fixture tests, documentation and resource audit.
+
+Earlier console and overlay iterations remain preserved locally by the original developer. They are not part of this repository's source history.

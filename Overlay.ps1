@@ -114,7 +114,7 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
    <TextBlock x:Name="Health" Text="Connecting to local Codex data..." Foreground="#E0E1DD" FontSize="11" Margin="0,12,0,8"/>
   </StackPanel>
   <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-   <TextBlock x:Name="Quota" FontSize="11" Foreground="#E0E1DD"/>
+   <UniformGrid x:Name="ContextQuotaBars" Columns="2"/>
    <TextBlock Text="Context = latest recorded request. Updates arrive after responses. Local Codex chats only." FontSize="11" Foreground="#E0E1DD" Margin="0,6,0,0"/>
   </StackPanel>
   <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="Cards"/></ScrollViewer>
@@ -164,7 +164,7 @@ function Apply-WidgetTheme($element) {
 }
 Apply-WidgetTheme $window
 $iconDecoder=[Windows.Media.Imaging.BitmapDecoder]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico')),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad); $window.Icon=$iconDecoder.Frames[$iconDecoder.Frames.Count-1]; $window.FindName('BrandIcon').Source=$window.Icon
-foreach ($name in @('MiniEditContext','SettingsButton','TrayButton','Pin','Health','Quota','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','QuickContext','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','QuotaCards','TokenSource','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
+foreach ($name in @('MiniEditContext','SettingsButton','TrayButton','Pin','Health','ContextQuotaBars','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','QuickContext','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','QuotaCards','TokenSource','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
 $window.Width=[Math]::Max(360,[double]$prefs.Width); $window.Height=[Math]::Max(300,[double]$prefs.Height)
 $area=[Windows.SystemParameters]::WorkArea
 $hasSavedPosition=($prefs.Left -ne -1 -or $prefs.Top -ne -1)
@@ -276,6 +276,32 @@ $UserWebsite.Add_RequestNavigate({ param($sender,$eventArgs)
     [void][Diagnostics.Process]::Start($launch); $eventArgs.Handled=$true
 })
 $script:quotaRows=@{}
+$script:contextQuotaRows=@{}
+function Update-ContextQuotaBars {
+    $quota=if ($shared.LiveQuota) {$shared.LiveQuota} elseif ($shared.Latest.Tokens) {$shared.Latest.Tokens.Quota} else {$null}
+    $entries=if ($quota) {@($quota.Windows)} else {@()}
+    $keys=@()
+    foreach ($entry in $entries) {
+        $key=$entry.Name; $keys+=$key
+        if (-not $script:contextQuotaRows.ContainsKey($key)) {
+            $panel=New-Object Windows.Controls.StackPanel; $panel.Margin='0,0,10,4'
+            $label=New-Label '' 10
+            $bar=New-Object Windows.Controls.ProgressBar; $bar.Height=5; $bar.Maximum=100; $bar.Margin='0,3,0,0'
+            [void]$panel.Children.Add($label); [void]$panel.Children.Add($bar)
+            Apply-WidgetTheme $panel; [void]$ContextQuotaBars.Children.Add($panel)
+            $script:contextQuotaRows[$key]=@{Panel=$panel;Label=$label;Bar=$bar}
+        }
+        $row=$script:contextQuotaRows[$key]
+        $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}
+        $stale=([DateTimeOffset]::Now-$quota.Observed).TotalMinutes -gt 2
+        $row.Label.Text=('{0} · {1:N0}% left{2}' -f $period,$entry.Remaining,$(if($stale){' *'}else{''}))
+        $row.Bar.Value=$entry.Remaining
+        $row.Panel.ToolTip="$($entry.Name)`n$(Format-QuotaReset $entry.Reset)`nObserved $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))$(if($stale){' (older reading)'})`n$($quota.Source)"
+    }
+    foreach ($key in @($script:contextQuotaRows.Keys)) {
+        if ($key -notin $keys) { [void]$ContextQuotaBars.Children.Remove($script:contextQuotaRows[$key].Panel); $script:contextQuotaRows.Remove($key) }
+    }
+}
 $script:tokenMetricRows=@{}; $script:tokenTaskRows=@{}
 function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
     $TokenLive.Text=if ($shared.Error) {'Read error'} else {'Watching files | 1 s'}
@@ -718,6 +744,7 @@ $timer.Add_Tick({
             Show-Overlay
         }
         if ($showEvent.WaitOne(0)) { Show-Overlay }
+        Update-ContextQuotaBars
         if ($prefs.Mode -eq 'Tokens') { Update-TokenPanel }
         if ($script:shared.Error) { $Health.Text='Data unavailable: '+$script:shared.Error; $MiniStatus.Text='Data unavailable - open for details' }
         $snapshot=$script:shared.Latest
@@ -725,7 +752,7 @@ $timer.Add_Tick({
             Update-Cards $snapshot
             $Health.Text="$($snapshot.Discovery) | Compaction: $($snapshot.Compaction)`nUpdated $($snapshot.Updated.ToLocalTime().ToString('HH:mm:ss'))"
             if ($snapshot.Warning) { $Health.Text+="`n$($snapshot.Warning)" }
-            $Quota.Text=[string]$snapshot.Quota; $script:lastSnapshot=$snapshot
+            $script:lastSnapshot=$snapshot
         }
         if ($TestSettings -and -not $script:liveTokenTestAppended -and $shared.Latest.Tokens.Tasks -gt 0) {
             $script:liveTokenTestAppended=$true
@@ -807,6 +834,8 @@ $timer.Add_Tick({
                 if ([Math]::Abs($TokensPanel.VerticalOffset-24) -gt 1) { throw 'Live refresh changed the scroll position.' }
                 Update-TokenPanel $originalSnapshot.Tokens; $TokensPanel.ScrollToVerticalOffset(0)
             }
+            Update-ContextQuotaBars
+            if ($script:contextQuotaRows.Count -ne 2 -or @($script:contextQuotaRows.Values | Where-Object {$_.Bar.Value -eq 65}).Count -ne 1) { throw 'Context quota bars failed.' }
             if ($TokensPanel.Visibility -ne 'Visible' -or $prefs.Mode -ne 'Tokens' -or $script:quotaRows.Count -ne 2) { throw 'Tokens mode switch or quota rendering failed.' }
             $window.UpdateLayout()
             if ($TestReport) {
@@ -817,6 +846,13 @@ $timer.Add_Tick({
             }
             $ContextMode.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
             if ($TokensPanel.Visibility -ne 'Collapsed' -or $prefs.Mode -ne 'Context') { throw 'Context mode did not restore.' }
+            $window.UpdateLayout()
+            if ($TestReport) {
+                $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
+                $bitmap.Render($window); $encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder
+                $encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap)); $stream=[IO.File]::Create($TestReport+'.quotabars.png')
+                try { $encoder.Save($stream) } finally { $stream.Dispose() }
+            }
             if ($UserWebsite.NavigateUri.AbsoluteUri -ne 'https://yahyanabil.com/' -or $AuthorLine.Text -ne 'By Yahya Nabil') { throw 'Attribution controls missing.' }
             $MinimizeButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent)); $minimized=($window.WindowState -eq 'Minimized')
             Show-Overlay; Hide-Overlay $true; $hidden=(-not $window.IsVisible -and $restoreTab.IsVisible -and $tray.Visible); Show-Overlay

@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.3.5 — compact quota bars
+
+- Replace Context quota text with small side-by-side remaining-usage bars.
+- Show reset times and observation timestamps in tooltips; mark older readings.
+
 ## 6.3.4 — compact context shortcut
 
 - Edit context from the collapsed card opens that displayed chat's inline project editor.

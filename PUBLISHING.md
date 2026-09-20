@@ -7,7 +7,7 @@ The repository is prepared for a public Git host, but no hosting account or remo
 3. Inspect `git diff --cached` and commit the initial source. Do not add generated executables, local Codex data, preferences, installation backups or secret values.
 4. Create an empty repository on your chosen host and add its actual URL as `origin`.
 5. Push `main`. The Windows build workflow will run on GitHub; it has not been run on hosted infrastructure during local preparation.
-6. Run Build/package.ps1. Attach the generated ZIP and checksum to a release named `v6.3.5`. The source-only ZIP from a Git hosting service does not contain the generated launchers; users need the release package or a local build.
+6. Run Build/package.ps1. Attach the generated ZIP and checksum to a release named `v6.3.6`. The source-only ZIP from a Git hosting service does not contain the generated launchers; users need the release package or a local build.
 
 The MIT license permits use, modification and redistribution subject to retaining its notice. Keep the third-party design attribution in METHODS.md and the palette credit in BRANDING.md. The application is independent of OpenAI.
 

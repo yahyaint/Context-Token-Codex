@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.3.6 — quieter layout
+
+- Shorten headings and status summaries; preserve diagnostic detail in tooltips.
+- Group secondary context and subscription details behind expanders.
+- Keep active token details visible; align subscription bars side by side.
+- Reduce repeated input guidance and improve footer button spacing.
+
 ## 6.3.5 — compact quota bars
 
 - Replace Context quota text with small side-by-side remaining-usage bars.

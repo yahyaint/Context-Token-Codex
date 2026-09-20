@@ -13,11 +13,12 @@ foreach ($size in $sizes) {
  $snow=New-Object Drawing.Pen([Drawing.ColorTranslator]::FromHtml('#E0E1DD'),6)
  $frost.StartCap='Round'; $frost.EndCap='Round'; $snow.StartCap='Round'; $snow.EndCap='Round'
  $g.FillEllipse($ink,0,0,64,64)
- # Nested C strokes share a center; the T bridges their upper openings.
- $g.DrawArc($frost,9,9,46,46,48,264)
- $g.DrawArc($snow,21,21,22,22,48,264)
- $g.DrawLine($snow,32,14,53,14)
- $g.DrawLine($snow,44,14,44,47)
+ # Three distinct letter stems; the T crossbar links the C openings.
+ $frost.Width=5; $snow.Width=5
+ $g.DrawArc($frost,6,18,17,28,48,264)
+ $g.DrawLine($snow,23,20,42,20)
+ $g.DrawLine($snow,32,20,32,45)
+ $g.DrawArc($frost,41,18,17,28,48,264)
  $memory=New-Object IO.MemoryStream; $bmp.Save($memory,[Drawing.Imaging.ImageFormat]::Png); $images+=,@($memory.ToArray())
  $memory.Dispose(); $g.Dispose(); $bmp.Dispose(); $ink.Dispose(); $frost.Dispose(); $snow.Dispose()
 }

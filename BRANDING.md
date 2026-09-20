@@ -12,9 +12,9 @@ Five base colors, selected by Yahya Nabil:
 | Accents and focus | Dusty Denim | #778DA9 |
 | Primary text | Alabaster Grey | #E0E1DD |
 
-These colors replace the earlier charcoal/ivory/amber palette and supersede the original three-color restriction. Historical Nord inspiration remains acknowledged; the current palette is user-selected. Transparency and antialiasing can produce blended colors.
+These colors replace the earlier charcoal/ivory/amber palette and supersede the original three-color restriction. Historical Nord inspiration remains acknowledged; the current palette is user-selected. Background transparency and antialiasing can produce blended colors. Text and controls remain opaque. Navigation uses selected fills instead of dimming usable tabs. Scrollbars, expanders and progress bars use the shared palette.
 
-Two nested C strokes and a shared T form a bold interlocking symbol. The original vector CTC mark is drawn by Build/build.ps1 and embedded at 16, 24, 32, 48, 64, 128 and 256 pixels. It appears in the widget, tray, taskbar, installer and shortcuts. No third-party logo is copied.
+Three distinct letter stems and a linking T crossbar keep CTC readable at small sizes. The original vector CTC mark is drawn by Build/build.ps1 and embedded at 16, 24, 32, 48, 64, 128 and 256 pixels. It appears in the widget, tray, taskbar, installer and shortcuts. No third-party logo is copied.
 
 Controls use a shared centered content template and a 28-pixel minimum target height. The Limits tab embeds the context editor in the widget. Combo boxes use the same palette, including their dropdown. Compact mode reserves enough vertical space for navigation and the footer.
 

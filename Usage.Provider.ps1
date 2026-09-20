@@ -35,7 +35,7 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
         $startedProcess=$true
         # Drain diagnostics but never display them: CLI output can contain local paths.
         $stderr=$process.StandardError.ReadToEndAsync()
-        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.3.2"}}}')
+        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.3.3"}}}')
         $process.StandardInput.Flush()
         $deadline=[DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         while ([DateTime]::UtcNow -lt $deadline) {

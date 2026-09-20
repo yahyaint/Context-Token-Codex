@@ -111,7 +111,7 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
  <ContentControl x:Name="SettingsHost" Visibility="Collapsed"/><DockPanel x:Name="FullPanel" Visibility="Collapsed">
   <StackPanel DockPanel.Dock="Top">
    <TextBlock Text="Context-Token Codex" FontSize="25" FontWeight="SemiBold" Margin="0,4,0,12"/>
-   <WrapPanel><Button x:Name="SettingsButton" Content="Context settings"/><Button x:Name="TrayButton" Content="Park at edge"/><CheckBox x:Name="Pin" Content="On top" Foreground="#E0E1DD" VerticalAlignment="Center"/></WrapPanel>
+   <WrapPanel Visibility="Collapsed"><Button x:Name="SettingsButton" Content="Context settings"/><Button x:Name="TrayButton" Content="Park at edge"/><CheckBox x:Name="Pin" Content="On top" Foreground="#E0E1DD" VerticalAlignment="Center"/></WrapPanel>
    <TextBlock x:Name="Health" Text="Connecting to local Codex data..." Foreground="#E0E1DD" FontSize="11" Margin="0,12,0,8"/>
   </StackPanel>
   <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
@@ -123,7 +123,7 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
  </Grid>
  <StackPanel Grid.Row="3" Margin="0,12,0,0"><TextBlock x:Name="AuthorLine" Text="By Yahya Nabil" FontSize="10" Opacity="0.75" HorizontalAlignment="Center" Margin="0,0,0,8"/>
   <Border Height="1" Background="#0D1B2A" Margin="0,0,0,10"/>
-  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Opacity" FontSize="11" Foreground="#E0E1DD" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider x:Name="LiveOpacity" Grid.Column="1" Minimum="40" Maximum="100" SmallChange="1" LargeChange="5" VerticalAlignment="Center" ToolTip="Drag to change whole-widget opacity live"/><TextBlock x:Name="LiveOpacityLabel" Grid.Column="2" Width="38" TextAlignment="Right" FontSize="11" VerticalAlignment="Center"/></Grid>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Background" FontSize="11" Foreground="#E0E1DD" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider x:Name="LiveOpacity" Grid.Column="1" Minimum="40" Maximum="100" SmallChange="1" LargeChange="5" VerticalAlignment="Center" ToolTip="Drag to change background opacity live"/><TextBlock x:Name="LiveOpacityLabel" Grid.Column="2" Width="38" TextAlignment="Right" FontSize="11" VerticalAlignment="Center"/></Grid>
   <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="1" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"><Hyperlink x:Name="UserWebsite" NavigateUri="https://yahyanabil.com" Foreground="#778DA9">yahyanabil.com</Hyperlink></TextBlock><StackPanel Orientation="Horizontal"><Button x:Name="QuickPin" Content="Pinned" FontSize="10" Padding="7,4" ToolTip="Toggle always on top"/><Button x:Name="QuickCorner" Content="Corner" FontSize="10" Padding="7,4" ToolTip="Choose a screen corner"/></StackPanel><StackPanel Grid.Column="2" Orientation="Horizontal"><Button x:Name="DirectTray" Content="Tray" FontSize="10" Padding="7,4" ToolTip="Hide here; restore with the CTC icon beside the Windows clock."/><Button x:Name="ParkButton" Content="Park" FontSize="10" Padding="8,4" Margin="0" ToolTip="Shrink to a visible restore tab. Click tab to return."/></StackPanel></Grid>
  </StackPanel>
  <Thumb x:Name="ResizeGrip" Grid.Row="2" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Visibility="Collapsed" ToolTip="Drag to resize">
@@ -164,7 +164,7 @@ function Apply-WidgetTheme($element) {
     }
 }
 Apply-WidgetTheme $window
-$window.Icon=[Windows.Media.Imaging.BitmapFrame]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico'))); $window.FindName('BrandIcon').Source=$window.Icon
+$iconDecoder=[Windows.Media.Imaging.BitmapDecoder]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico')),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad); $window.Icon=$iconDecoder.Frames[$iconDecoder.Frames.Count-1]; $window.FindName('BrandIcon').Source=$window.Icon
 foreach ($name in @('SettingsButton','TrayButton','Pin','Health','Quota','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','QuickContext','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','QuotaCards','TokenSource','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
 $window.Width=[Math]::Max(360,[double]$prefs.Width); $window.Height=[Math]::Max(300,[double]$prefs.Height)
 $area=[Windows.SystemParameters]::WorkArea
@@ -172,13 +172,13 @@ $hasSavedPosition=($prefs.Left -ne -1 -or $prefs.Top -ne -1)
 $window.Left=if ($hasSavedPosition) { [Math]::Max([Windows.SystemParameters]::VirtualScreenLeft,[Math]::Min([double]$prefs.Left,[Windows.SystemParameters]::VirtualScreenLeft+[Windows.SystemParameters]::VirtualScreenWidth-100)) } else { $area.Right-$window.Width-20 }
 $window.Top=if ($hasSavedPosition) { [Math]::Max([Windows.SystemParameters]::VirtualScreenTop,[Math]::Min([double]$prefs.Top,[Windows.SystemParameters]::VirtualScreenTop+[Windows.SystemParameters]::VirtualScreenHeight-80)) } else { $area.Top+50 }
 $window.Topmost=[bool]$prefs.Topmost; $Pin.IsChecked=[bool]$prefs.Topmost
-$window.Opacity=[Math]::Max(0.4,[Math]::Min(1,[double]$prefs.Opacity))
-$LiveOpacity.Value=$window.Opacity*100; $LiveOpacityLabel.Text=('{0:N0}%' -f $LiveOpacity.Value)
+$window.Content.Background.Opacity=[Math]::Max(0.4,[Math]::Min(1,[double]$prefs.Opacity))
+$LiveOpacity.Value=$window.Content.Background.Opacity*100; $LiveOpacityLabel.Text=('{0:N0}%' -f $LiveOpacity.Value)
 $opacitySaveTimer=New-Object Windows.Threading.DispatcherTimer
 $opacitySaveTimer.Interval=[TimeSpan]::FromMilliseconds(350)
 $opacitySaveTimer.Add_Tick({ $opacitySaveTimer.Stop(); Save-Preferences })
 $LiveOpacity.Add_ValueChanged({
-    $window.Opacity=$LiveOpacity.Value/100; $prefs.Opacity=$window.Opacity
+    $window.Content.Background.Opacity=$LiveOpacity.Value/100; $prefs.Opacity=$window.Content.Background.Opacity
     $LiveOpacityLabel.Text=('{0:N0}%' -f $LiveOpacity.Value)
     $opacitySaveTimer.Stop(); $opacitySaveTimer.Start()
 })
@@ -241,9 +241,9 @@ function Position-Widget([switch]$Snap) {
 }
 function Set-WidgetCompact([bool]$compact) {
     $SettingsHost.Visibility='Collapsed'
-    $LimitsMode.Opacity=0.55
-    $ContextMode.Opacity=if ($prefs.Mode -eq 'Context') {1} else {0.55}
-    $TokenMode.Opacity=if ($prefs.Mode -eq 'Tokens') {1} else {0.55}
+    $LimitsMode.Tag=''
+    $ContextMode.Tag=if ($prefs.Mode -eq 'Context') {'Selected'} else {''}
+    $TokenMode.Tag=if ($prefs.Mode -eq 'Tokens') {'Selected'} else {''}
     if ($compact) {
         $FullPanel.Visibility='Collapsed'; $MiniPanel.Visibility='Visible'; $ResizeGrip.Visibility='Collapsed'
         $window.Width=370; $window.Height=400; $ToggleButton.Content='Expand'
@@ -264,8 +264,8 @@ function Set-WidgetCompact([bool]$compact) {
 }
 function Set-WidgetMode([string]$mode) {
     $prefs.Mode=$mode; $shared.Mode=$mode
-    $ContextMode.Opacity=if ($mode -eq 'Context') {1} else {0.55}
-    $TokenMode.Opacity=if ($mode -eq 'Tokens') {1} else {0.55}
+    $ContextMode.Tag=if ($mode -eq 'Context') {'Selected'} else {''}
+    $TokenMode.Tag=if ($mode -eq 'Tokens') {'Selected'} else {''}
     Set-WidgetCompact ([bool]$prefs.Compact); Save-Preferences
 }
 $ContextMode.Add_Click({ Set-WidgetMode 'Context' })
@@ -522,7 +522,7 @@ function Show-Settings([string]$pane='Context') {
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <DockPanel><DockPanel DockPanel.Dock="Top" Margin="0,0,0,10"><Button x:Name="BackTasks" Content="Back" HorizontalAlignment="Left" Padding="12,4"/></DockPanel><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,10,0"><StackPanel x:Name="AppearanceSettings">
   <TextBlock Text="Window &amp; startup" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,14"/>
-  <TextBlock x:Name="OpacityLabel" Text="Widget opacity"/>
+  <TextBlock x:Name="OpacityLabel" Text="Background opacity"/>
   <Slider x:Name="OpacitySlider" Minimum="40" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,8,0,8"/>
   <TextBlock Text="40% = more transparent; 100% = fully opaque. Applies to the whole widget. Changes save immediately." TextWrapping="Wrap" Foreground="#E0E1DD" Margin="0,0,0,12"/>
   <TextBlock Text="Corner placement (current screen)"/>
@@ -552,10 +552,10 @@ function Show-Settings([string]$pane='Context') {
     $script:settings.auto=$script:settings.dialog.FindName('Auto'); $script:settings.target=$script:settings.dialog.FindName('Target'); $script:settings.scope=$script:settings.dialog.FindName('Scope')
     $script:settings.current=$script:settings.dialog.FindName('Current'); $script:settings.context=$script:settings.dialog.FindName('Context'); $script:settings.compact=$script:settings.dialog.FindName('Compact'); $script:settings.result=$script:settings.dialog.FindName('Result')
     $script:settings.opacitySlider=$script:settings.dialog.FindName('OpacitySlider'); $script:settings.opacityLabel=$script:settings.dialog.FindName('OpacityLabel'); $script:settings.corner=$script:settings.dialog.FindName('Corner')
-    $script:settings.opacitySlider.Value=$window.Opacity*100; $script:settings.opacityLabel.Text='Widget opacity: {0:N0}%' -f $script:settings.opacitySlider.Value
+    $script:settings.opacitySlider.Value=$window.Content.Background.Opacity*100; $script:settings.opacityLabel.Text='Background opacity: {0:N0}%' -f $script:settings.opacitySlider.Value
     $script:settings.opacitySlider.Add_ValueChanged({
         $LiveOpacity.Value=$script:settings.opacitySlider.Value
-        $script:settings.opacityLabel.Text='Widget opacity: {0:N0}%' -f $script:settings.opacitySlider.Value; Save-Preferences
+        $script:settings.opacityLabel.Text='Background opacity: {0:N0}%' -f $script:settings.opacitySlider.Value; Save-Preferences
     })
     $script:settings.corner.SelectedIndex=@('Free','TopLeft','TopRight','BottomLeft','BottomRight').IndexOf([string]$prefs.Corner)
     $script:settings.corner.Add_SelectionChanged({
@@ -634,7 +634,7 @@ function Show-Settings([string]$pane='Context') {
                 if ((Get-TopLevelContextWindow $script:settings.scope.SelectedItem.Path) -ne 500000 -or (Get-TopLevelAutoCompactLimit $script:settings.scope.SelectedItem.Path) -ne 180000) { throw 'Settings buttons failed to save.' }
                 $script:settingsTestPassed=$true
                 $script:settings.opacitySlider.Value=65
-                if ([Math]::Abs($window.Opacity-0.65) -gt 0.001) { throw 'Opacity slider failed.' }
+                if ([Math]::Abs($window.Content.Background.Opacity-0.65) -gt 0.001) { throw 'Opacity slider failed.' }
                 $script:settings.corner.SelectedIndex=1
                 $workArea=Get-WidgetWorkArea
                 if ([Math]::Abs($window.Left-($workArea.Left+12)) -gt 1 -or [Math]::Abs($window.Top-($workArea.Top+12)) -gt 1) { throw 'Corner selection failed.' }
@@ -647,7 +647,7 @@ function Show-Settings([string]$pane='Context') {
         Set-WidgetCompact $false
     $FullPanel.Visibility='Collapsed'; $TokensPanel.Visibility='Collapsed'
     $SettingsHost.Content=$script:settings.dialog; $SettingsHost.Visibility='Visible'
-    $LimitsMode.Opacity=if ($pane -eq 'Context') {1} else {0.55}; $ContextMode.Opacity=0.55; $TokenMode.Opacity=0.55
+    $LimitsMode.Tag=if ($pane -eq 'Context') {'Selected'} else {''}; $ContextMode.Tag=''; $TokenMode.Tag=''
     Apply-WidgetTheme $script:settings.dialog
     $script:settings.dialog.FindName('AppearanceSettings').Visibility=if ($pane -eq 'Widget') {'Visible'} else {'Collapsed'}
     $script:settings.dialog.FindName('ContextSettings').Visibility=if ($pane -eq 'Context') {'Visible'} else {'Collapsed'}
@@ -741,7 +741,7 @@ $timer.Add_Tick({
             $ToggleButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
             $window.UpdateLayout()
             $LiveOpacity.Value=55
-            $directOpacityPassed=([Math]::Abs($window.Opacity-0.55) -lt 0.001 -and $LiveOpacityLabel.Text -eq '55%'); $window.UpdateLayout()
+            $directOpacityPassed=($window.Opacity -eq 1 -and [Math]::Abs($window.Content.Background.Opacity-0.55) -lt 0.001 -and $LiveOpacityLabel.Text -eq '55%'); $window.UpdateLayout()
             $compactPassed=($prefs.Compact -and $window.Width -eq 370 -and $FullPanel.Visibility -eq 'Collapsed' -and $window.WindowStyle -eq 'None' -and $window.AllowsTransparency -and $directOpacityPassed)
             if ($TestReport) {
                 $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.3.3 — visual audit fixes
+
+- Separate CTC letter shapes and use the high-resolution icon frame in the header.
+- Remove the duplicate expanded toolbar from view; retain header and footer controls.
+- Apply opacity only to the background; retain saved slider values.
+- Theme scrollbars, expanders and progress bars; add keyboard-focus outlines.
+- Use selected fills instead of dimmed navigation labels.
+
 ## 6.3.2 — interlocking identity
 
 - Bold interlocking CTC icon in the widget, tray, launchers and setup.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.3.2 — interlocking identity
+
+- Bold interlocking CTC icon in the widget, tray, launchers and setup.
+- Keep active-chat context editors in Context; remove them from Tokens.
+
 ## 6.3.1 — app launch detection
 
 - Track separate visible app instances instead of one combined running flag.

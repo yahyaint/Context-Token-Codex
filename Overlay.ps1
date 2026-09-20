@@ -326,9 +326,6 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
             $script:tokenTaskRows[$key]=@{Panel=$panel;Title=$title;Total=$total;Detail=$detail}
         }
         $row=$script:tokenTaskRows[$key]
-        if ($chat.Active -and $chat.Cwd -and -not $row.Editor) {
-            $row.Editor=New-InlineLimitsEditor $chat.Cwd; [void]$row.Panel.Children.Add($row.Editor)
-        }
         $target=if ($chat.Active) {$ActiveTokenTasks} else {$TokenTasks}
         if ($row.Panel.Parent -ne $target) { [void]$row.Panel.Parent.Children.Remove($row.Panel); [void]$target.Children.Add($row.Panel) }
         $row.Total.Text="$(Format-TokenValue $chat.Total) tokens"
@@ -336,7 +333,7 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
         $status=if ($chat.Active) {'Running'} else {'Idle'}
         $row.Title.Text="$($chat.Title) | $status"
         $row.Detail.Text="Input $(Format-TokenValue $chat.Input) | Output $(Format-TokenValue $chat.Output)`nCache $(Format-TokenValue $chat.Cached) | Uncached $(Format-TokenValue $chat.Uncached) | Reasoning $(Format-TokenValue $chat.Reasoning)"
-        $row.Detail.Text+="`nTask total | $($chat.Model) | Updated $(if ($chat.Observed) {$chat.Observed.ToLocalTime().ToString('HH:mm:ss')} else {'waiting'})"
+        $row.Detail.Text+="`nChat total | $($chat.Model) | Updated $(if ($chat.Observed) {$chat.Observed.ToLocalTime().ToString('HH:mm:ss')} else {'waiting'})"
         $row.Panel.ToolTip="Last model: $($chat.Model). Counts cover the whole chat, including earlier models. Last record: $(if ($chat.Observed) {$chat.Observed.ToLocalTime().ToString('HH:mm:ss')} else {'waiting'})."
     }
     foreach ($key in @($script:tokenTaskRows.Keys)) { if ($key -notin $keys) { [void]$script:tokenTaskRows[$key].Panel.Parent.Children.Remove($script:tokenTaskRows[$key].Panel); $script:tokenTaskRows.Remove($key) } }

@@ -9,13 +9,15 @@ foreach ($size in $sizes) {
  $g=[Drawing.Graphics]::FromImage($bmp); $g.SmoothingMode='AntiAlias'; $g.Clear([Drawing.Color]::Transparent)
  $g.ScaleTransform($size/64.0,$size/64.0)
  $ink=New-Object Drawing.SolidBrush([Drawing.ColorTranslator]::FromHtml('#0D1B2A'))
- $frost=New-Object Drawing.Pen([Drawing.ColorTranslator]::FromHtml('#778DA9'),4)
- $snow=New-Object Drawing.Pen([Drawing.ColorTranslator]::FromHtml('#E0E1DD'),4)
+ $frost=New-Object Drawing.Pen([Drawing.ColorTranslator]::FromHtml('#778DA9'),7)
+ $snow=New-Object Drawing.Pen([Drawing.ColorTranslator]::FromHtml('#E0E1DD'),6)
  $frost.StartCap='Round'; $frost.EndCap='Round'; $snow.StartCap='Round'; $snow.EndCap='Round'
  $g.FillEllipse($ink,0,0,64,64)
- $g.DrawArc($frost,6,20,15,24,45,270)
- $g.DrawLine($snow,26,21,38,21); $g.DrawLine($snow,32,21,32,43)
- $g.DrawArc($frost,43,20,15,24,45,270)
+ # Nested C strokes share a center; the T bridges their upper openings.
+ $g.DrawArc($frost,9,9,46,46,48,264)
+ $g.DrawArc($snow,21,21,22,22,48,264)
+ $g.DrawLine($snow,32,14,53,14)
+ $g.DrawLine($snow,44,14,44,47)
  $memory=New-Object IO.MemoryStream; $bmp.Save($memory,[Drawing.Imaging.ImageFormat]::Png); $images+=,@($memory.ToArray())
  $memory.Dispose(); $g.Dispose(); $bmp.Dispose(); $ink.Dispose(); $frost.Dispose(); $snow.Dispose()
 }

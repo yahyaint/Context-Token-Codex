@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.3.7 — text encoding fix
+
+- Use plain separators in runtime labels so Windows PowerShell 5.1 reads them correctly.
+- Reject BOM-less non-ASCII runtime scripts in repository checks.
+- Preserve Unicode chat names and project paths from data sources.
+
 ## 6.3.6 — quieter layout
 
 - Shorten headings and status summaries; preserve diagnostic detail in tooltips.

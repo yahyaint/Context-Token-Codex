@@ -5,6 +5,13 @@ foreach ($file in @(Get-ChildItem -LiteralPath $root -Filter *.ps1 -Recurse | Wh
  $errors=$null; [void][Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$null,[ref]$errors)
  Assert ($errors.Count -eq 0) "PowerShell syntax error in $($file.Name)"
 }
+# Windows PowerShell 5.1 treats BOM-less source as ANSI, not UTF-8.
+foreach ($file in @(Get-ChildItem -LiteralPath $root -Filter *.ps1)) {
+ $bytes=[IO.File]::ReadAllBytes($file.FullName)
+ $hasBom=$bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191
+ $hasNonAscii=@($bytes | Where-Object {$_ -gt 127}).Count -gt 0
+ Assert (-not $hasNonAscii -or $hasBom) "PowerShell 5.1 requires a UTF-8 BOM for non-ASCII source: $($file.Name)"
+}
 Assert ((Get-Content (Join-Path $root 'LICENSE') -Raw) -match 'MIT License[\s\S]*Permission is hereby granted') 'MIT license missing.'
 foreach ($name in @('ContextWidget.exe','Setup.exe')) { Assert (Test-Path (Join-Path $root $name)) "Build first: $name missing." }
 . (Join-Path $root 'Install.Core.ps1')

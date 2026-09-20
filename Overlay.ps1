@@ -294,7 +294,7 @@ function Update-ContextQuotaBars {
         $row=$script:contextQuotaRows[$key]
         $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}
         $stale=([DateTimeOffset]::Now-$quota.Observed).TotalMinutes -gt 2
-        $row.Label.Text=('{0} · {1:N0}% left{2}' -f $period,$entry.Remaining,$(if($stale){' *'}else{''}))
+        $row.Label.Text=('{0} | {1:N0}% left{2}' -f $period,$entry.Remaining,$(if($stale){' *'}else{''}))
         $row.Bar.Value=$entry.Remaining
         $row.Panel.ToolTip="$($entry.Name)`n$(Format-QuotaReset $entry.Reset)`nObserved $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))$(if($stale){' (older reading)'})`n$($quota.Source)"
     }
@@ -374,7 +374,7 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
             [void]$panel.Children.Add($label); [void]$panel.Children.Add($bar); [void]$panel.Children.Add($reset)
             [void]$QuotaCards.Children.Add($panel); $script:quotaRows[$key]=@{Panel=$panel;Label=$label;Bar=$bar;Reset=$reset}
         }
-        $row=$script:quotaRows[$key]; $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}; $row.Label.Text=('{0} · {1:N0}% left' -f $period,$entry.Remaining); $row.Bar.Value=$entry.Remaining; $row.Reset.Text=Format-QuotaReset $entry.Reset; $row.Reset.Visibility='Collapsed'; $row.Panel.ToolTip=$entry.Name+"`n"+$row.Reset.Text
+        $row=$script:quotaRows[$key]; $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}; $row.Label.Text=('{0} | {1:N0}% left' -f $period,$entry.Remaining); $row.Bar.Value=$entry.Remaining; $row.Reset.Text=Format-QuotaReset $entry.Reset; $row.Reset.Visibility='Collapsed'; $row.Panel.ToolTip=$entry.Name+"`n"+$row.Reset.Text
     }
     foreach ($key in @($script:quotaRows.Keys)) { if ($key -notin $keys) { [void]$QuotaCards.Children.Remove($script:quotaRows[$key].Panel); $script:quotaRows.Remove($key) } }
     $TokenSource.Text=if ($quota) { "$($quota.Source) | $($quota.Plan) | checked $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))" } else { 'No quota reading yet. Codex subscription sign-in required.' }
@@ -546,9 +546,9 @@ function New-InlineLimitsEditor([string]$project) {
     $expander=New-Object Windows.Controls.Expander; $expander.Header='Edit context limits'; $expander.Foreground='#E0E1DD'; $expander.Margin='0,8,0,0'
     $panel=New-Object Windows.Controls.StackPanel; $expander.Content=$panel
     $path=Join-Path $project '.codex/config.toml'
-    [void]$panel.Children.Add((New-Label 'Project defaults · all models. Running chats may need a reload.' 10))
+    [void]$panel.Children.Add((New-Label 'Project defaults for all models. Running chats may need a reload.' 10))
     $fields=@{}
-    foreach ($spec in @(@('Window','Context window · e.g. 258400 or 1000k'),@('Compact','Compact at · e.g. 180000 or 180k'))) {
+    foreach ($spec in @(@('Window','Context window: e.g. 258400 or 1000k'),@('Compact','Compact at: e.g. 180000 or 180k'))) {
         [void]$panel.Children.Add((New-Label $spec[1] 10))
         $input=New-Object Windows.Controls.TextBox; $input.Padding='8,6'; $input.Margin='0,3,0,6'
         $current=if ($spec[0] -eq 'Window') {Get-TopLevelContextWindow $path} else {Get-TopLevelAutoCompactLimit $path}
@@ -593,7 +593,7 @@ function Show-Settings([string]$pane='Context') {
    <StackPanel><TextBlock Text="Context window (all models)"/><TextBox x:Name="Context" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Raw token count. Use a number or default."/></StackPanel>
    <StackPanel Grid.Column="2"><TextBlock Text="Compact at"/><TextBox x:Name="Compact" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Auto-compaction threshold in tokens. Use a number or default."/></StackPanel>
   </Grid>
-  <TextBlock Text="Tokens: 180000 = 180k · 1000000 = 1000k" FontSize="10" Opacity="0.8" Margin="0,6,0,10"/>
+  <TextBlock Text="Tokens: 180000 = 180k | 1000000 = 1000k" FontSize="10" Opacity="0.8" Margin="0,6,0,10"/>
   <TextBlock x:Name="CompactHint" FontSize="10" Margin="0,0,0,10"/><TextBlock Text="Saved limits may need a chat reload." FontSize="11" Foreground="#778DA9" Margin="0,0,0,10"/>
   <Button x:Name="SaveLimits" Content="Save limits" HorizontalAlignment="Right" MinWidth="120" Padding="12,6" Margin="0,0,0,12"/>
   <Expander Header="How limits work" Foreground="#E0E1DD"><TextBlock Text="The window is a raw token count. Live chats report usable capacity. A saved value does not change a running chat or increase model capacity. Use default to remove this scope's override. Percent input is not supported. Hover over the saved values to see the file and inherited settings." FontSize="11" Margin="0,8,0,8" TextWrapping="Wrap"/></Expander>
@@ -753,7 +753,7 @@ $timer.Add_Tick({
         if ($snapshot -and -not [object]::ReferenceEquals($snapshot,$script:lastSnapshot)) {
             Update-Cards $snapshot
             $Health.Text='Updated '+$snapshot.Updated.ToLocalTime().ToString('HH:mm:ss'); $Health.ToolTip="$($snapshot.Discovery) | Compaction: $($snapshot.Compaction)"
-            if ($snapshot.Warning) { $Health.Text+=' · Limited data'; $Health.ToolTip+="`n$($snapshot.Warning)" }
+            if ($snapshot.Warning) { $Health.Text+=' | Limited data'; $Health.ToolTip+="`n$($snapshot.Warning)" }
             $script:lastSnapshot=$snapshot
         }
         if ($TestSettings -and -not $script:liveTokenTestAppended -and $shared.Latest.Tokens.Tasks -gt 0) {

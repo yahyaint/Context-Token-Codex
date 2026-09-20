@@ -16,7 +16,7 @@ Copy-Item -LiteralPath (Join-Path $root 'Tests') -Destination $payload -Recurse
 Copy-Item -LiteralPath (Join-Path $root 'CONTRIBUTING.md') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $root 'COMPATIBILITY.md') -Destination $payload
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
-$zip=Join-Path $OutputDirectory 'Context-Token-Codex-Windows-v6.3.6.zip'
+$zip=Join-Path $OutputDirectory 'Context-Token-Codex-Windows-v6.3.7.zip'
 Compress-Archive -LiteralPath $payload -DestinationPath $zip -Force
 $hash=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText(($zip+'.sha256'),$hash+'  '+[IO.Path]::GetFileName($zip)+"`n",[Text.UTF8Encoding]::new($false))

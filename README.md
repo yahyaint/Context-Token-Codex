@@ -1,122 +1,101 @@
-# Context-Token Codex 6.3.7
+# Context-Token Codex 6.4.0
 
-## Install and recover
+A Windows widget for local Codex context, token counts and subscription usage.
 
-See [INSTALL.md](INSTALL.md) for the one-command GitHub CLI installer and a copy-paste Codex installation prompt. See [RECOVERY.md](RECOVERY.md) for update diagnosis and repair instructions. These GitHub instructions require a published repository and release.
+**Windows 10/11 | MIT | Independent community project**
 
-Active chats show token details first. Edit project context defaults directly in a chat card. Limits also lists idle saved projects. These are project-wide defaults for all models, not persistent per-model or per-chat overrides. Existing loaded chats may require a reload; changing a number does not increase supported model capacity.
+Created by **Yahya Nabil** — [yahyanabil.com](https://yahyanabil.com).
 
-A portable Windows overlay for local Codex tasks. Native WPF interface, live context bars, compaction status, editable project/global context settings, and a system-tray icon. No browser, service, account, administrator rights, or downloaded runtime required.
+## Install
 
-**Windows only · MIT licensed · independent community project**
+Download the Windows release ZIP, verify its SHA256, extract it and open **Setup.exe**. The installer creates CTC shortcuts, preserves settings and backs up the previous runtime. Auto-open with ChatGPT or Codex is enabled by default. Installation needs no administrator access or downloaded runtime.
 
-By **Yahya Nabil** · [yahyanabil.com](https://yahyanabil.com)
+See [INSTALL.md](INSTALL.md) for the GitHub CLI command and copy-paste Codex installation prompt. These require a published repository/release. Publication is pending the owner's explicit approval.
 
-## Context / Tokens modes
-
-Use Context and Tokens below the header to switch modes. Limits opens the context editor inside the widget. **Context** keeps the task context cards and embedded context controls. **Tokens** shows cumulative recorded token counts plus account subscription quota windows, reset times and plan information. Mode selection is remembered.
-
-Live quota reads use your installed, signed-in Codex CLI once per minute while Tokens mode is selected. Click Refresh for an earlier read. The CLI handles authentication and provider network access; the widget does not extract credentials or read browser cookies. If unavailable, recorded local quota data is labeled with its source and age. Missing windows stay missing. Available reset-credit counts are read-only.
-
-Token totals cover loaded user tasks (24-hour discovery lookback, up to 128 files by default), and each task counter can include older work. They are **not today's usage, account lifetime usage, a bill, or tokens remaining in a plan**. Cached input is already part of input. See [USAGE-METHODS.md](USAGE-METHODS.md) for the tool comparison, CodexBar attribution and accounting limits.
-
-Downloading the source repository? Build the launchers first:
+From source, build first:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Build\build.ps1
 ```
 
-Then run `Setup.exe` or `ContextWidget.exe`. Generated executables are provided in the release package, not in Git. See [CONTRIBUTING.md](CONTRIBUTING.md) for build/tests, [AUDIT.md](AUDIT.md) for resource costs and [METHODS.md](METHODS.md) for credited design ideas.
+Then open `Setup.exe` or `ContextWidget.exe`. Executables are generated, not committed. The Windows package includes them. Launchers are unsigned.
 
-## Open it
+You can also launch from an extracted folder. **Default auto-open creates a Startup shortcut pointing to that folder.** Disable Auto-open in Widget settings before moving/deleting it; enable it again from the new location. This is portable storage, not a no-persistence mode.
 
-1. Extract the complete ZIP, then double-click **Setup.exe**.
-2. Choose your installation folder and shortcuts. **Auto-open is enabled by default**; uncheck it if unwanted.
-3. Click **Install**, then **Finish**. No administrator access required.
+## Views
 
-For portable use, run **ContextWidget.exe**. The VBS/CMD launchers remain as fallbacks. The installer creates branded desktop and Start-menu shortcuts. It preserves the previous runtime files when updating an existing installation.
+- **Context:** active chats, measured context percentage, compaction state and side-by-side 5h/7d quota bars. Details holds secondary readings.
+- **Tokens:** active-chat cumulative totals, input, output, cache, uncached input and reasoning; loaded-chat totals and subscription readings.
+- **Limits:** global and project defaults, including saved idle projects. Applies to all models in the chosen scope.
+- **Collapsed:** one selected active chat. Previous/next changes the chat. **Edit context limits** expands that chat's project editor.
 
-Windows 10/11 with Windows PowerShell 5.1 and desktop .NET Framework required. This release is Windows-only. Optional `sqlite3.exe` on PATH enables current desktop task names, indexed discovery, and live compaction-start events. Without it, the overlay uses session files and the session index; completed compactions remain visible. SQLite is not bundled.
+Current chat names come from local desktop state or the session index. Initial text is a tooltip fallback. Missing data stays unknown rather than being invented.
 
-The overlay has no Windows title bar. It starts as a small **mini card** in the bottom-right corner, showing the most recently active task, status, context bar and token usage. Click the task name or **Expand** for all tasks; **Collapse** returns to the mini card. The selected view is remembered.
+Context is the latest recorded request, not a continuous measurement inside Codex. Token counters update when new local records arrive. Changed model windows clear incompatible old context readings. Compaction completion comes from session events; live compaction-start indicators need compatible SQLite logs.
 
-Drag the **CONTEXT** header to move it. Release within 48 display units of a corner to snap with a small margin. Or choose a corner in the widget's **Corner** menu. Expanding and collapsing retain that corner. Drag the bottom-right grip to resize the expanded view; its dimensions are remembered separately from the mini card.
+## Context settings
 
-The **Opacity** slider is directly on the widget and changes the entire widget immediately (40-100%). The percentage updates as you drag; preference writes are debounced. **Pinned** toggles always-on-top. **Corner** chooses a screen corner without opening settings. The mini card now shows remaining tokens, observed compactions, cached-input percentage, last event time, and previous/next task controls.
+Enter `180000`, `180k`, or `default`. The compact hint shows a live ratio and an example: **180k = 90% of a 200k window**. Percentages are guidance; these fields accept token counts.
 
-**Tray** hides the widget but leaves a Frost **context-ring** icon in the Windows notification area beside the clock (possibly inside **^**). Single-click that icon to restore; right-click for settings or exit. **Park** leaves a small visible Context restore tab at the screen edge instead. The minus button minimizes to the taskbar. Close exits the monitor and removes its tray icon. The launcher also restores an existing hidden instance.
+Window and compact changes are prepared together and atomically replace the selected file, with a backup and an intervening-change check. The editor preserves multiline strings and ordinary quoted keys. Unsupported root-key syntax is rejected before writing; edit such a file through Codex instead. This is a conservative scoped editor, not a general TOML formatter.
 
-Version 4.2 fixes a lifecycle bug: WPF's modal `ShowDialog()` returned when the main window was hidden, which disposed the tray icon. The main window now uses a persistent application dispatcher, with explicit shutdown on exit. Tests hide it across multiple dispatcher ticks to verify continued operation.
+These are project/global defaults, **not persistent per-chat or per-model overrides**. Loaded chats may require a reload. There is no apply-on-idle queue. A configured number does not increase the model's supported capacity. Live usable capacity may differ from the raw configured window.
 
-## Open automatically with the app
+## Window controls
 
-In **Settings**, enable **Auto-open with app**, select **Codex**, **ChatGPT**, or **Either**, then click **Save window preferences**.
+Drag the header to move; drop near a corner to snap. Expand shows all active chats; Collapse shows the mini card. Expanded views have a 520-unit minimum height where the screen permits it.
 
-This creates a shortcut in your Windows account's Startup folder and starts a small watcher immediately. The watcher checks app processes every five seconds. It opens the overlay when the selected app starts, including if that app is already open when the watcher starts. It distinguishes Codex's `ChatGPT.exe` using its installation path. No admin privileges or scheduled task needed.
+- **Background:** live background opacity, 40–100%; text and controls stay opaque.
+- **Pinned:** always on top.
+- **Corner:** move to a screen corner.
+- **Tray:** hide; restore with the CTC icon beside the Windows clock, possibly inside the overflow menu.
+- **Park:** show a small restore tab at the screen edge.
+- **Minus:** minimize to the taskbar. **Close:** exit the widget.
 
-The overlay stays open when the app closes. Hiding/minimizing it stays respected until the next app launch or manual restore. Closing it exits that instance; the watcher can reopen it on the next app launch. Turn off Auto-open and save to remove the Startup shortcut and stop the watcher within five seconds. Move the folder only after disabling Auto-open; enable again from the new location.
+The footer includes the author and website. Opening the launcher again restores an existing hidden widget.
 
-**The selected app controls when the overlay opens. Its data source remains local Codex sessions. ChatGPT conversation context is not exposed by this monitor.**
+## Startup
 
-## Read the cards
+Widget settings chooses Codex, ChatGPT or Either. Auto-open adds a per-user Startup shortcut and a watcher. The watcher polls visible app instances every five seconds; identities include the process/window and do not pin a package version. CTC stays open after the watched app closes. Exit stays respected until another app launch or manual launch.
 
-- Current task name, model, project, status and last event time.
-- Context percentage: input tokens in the latest recorded request divided by that request's reported usable context window. It is not an exact counter of tokens currently streaming. After compaction, usage waits for the next recorded request.
-- Exactly three brand colors. HIGH at 80%, CRITICAL at 95%, and COMPACTING are explicit text states.
-- Cached input, last output and observed compaction count. Counts cover loaded recent rollouts, not guaranteed lifetime totals.
-- Saved raw context size, expected usable size when model metadata allows calculation, and whether that matches the live task. A mismatch does not identify the exact reason by itself.
-- Most recently active tasks move upward. Task controls update in place; the full window is not cleared each refresh.
-- Read failures and unavailable data appear explicitly. An old running record may be stale after a crash; absence of events does not prove a task is still executing.
+The watched application controls when CTC opens. **ChatGPT conversations are not monitored**; data comes from local Codex files.
 
-## Change context settings
+## Quotas and token totals
 
-Click the compact header's **context controls icon**. It expands directly to the Context panel inside the overlay. The gear opens the Widget panel; Tasks returns to live cards. Select global scope or a project represented by an active task. The form shows the target file, current overrides, live usable window, global fallback values for a project, and compaction accounting scope.
+Tokens mode asks the installed, signed-in Codex CLI for subscription readings, roughly once a minute after a refresh finishes. Refresh allows an earlier request. Requests run off the UI thread with a 45-second bound; errors identify initialization versus subscription-response timeout.
 
-Enter token counts such as `500000`, `500,000`, or `500k`. Enter `default` to remove that scope's override. This form intentionally requires explicit counts instead of percentages. Both fields are validated before writing. Each changed existing file gets a timestamped backup beside it.
+The newest observation wins for each quota window. Other available buckets remain visible; older readings are marked with `*`. Hover shows observation/reset times and source. Retry indicates a failed refresh. Missing readings are not treated as zero.
 
-Settings write only top-level `model_context_window` and `model_auto_compact_token_limit` in the selected `config.toml`. Other settings remain intact. The monitor does not modify model capacity or bypass model limits. Project trust, ancestor configs, profiles and runtime overrides can affect effective configuration beyond the global/project view shown here.
-
-Already-loaded desktop tasks can keep their previous runtime settings even after becoming idle. Saving a file does **not** reload a task. Reload the app/task through Codex as appropriate, then verify the live card. This edition does not promise queued runtime overrides or automatically archive/reload tasks. The configured compaction threshold can be constrained by model/runtime policy; `body_after_prefix` accounting cannot be compared directly with the card's total input size.
+Cumulative totals cover currently retained user chats, not today's usage, billing, account lifetime totals, or plan tokens remaining. Discovery considers recent files (24 hours, up to 128 by default). Active rollouts are retained; inactive rollouts are bounded by age and count. Totals can change when inactive history expires. Cached input is a subset of input; reasoning is a subset of output. Subagent counts are excluded to avoid misleading aggregation. See [USAGE-METHODS.md](USAGE-METHODS.md).
 
 ## Data and privacy
 
-Context and token-counter processing stays local. The overlay reads `.codex/sessions`, `session_index.jsonl`, model metadata, config files, and optional state/log SQLite databases in read-only mode. Tokens mode additionally asks the Codex CLI to fetch subscription limits from its provider. The CLI owns authentication. The widget sends no telemetry and does not read authentication files itself. Full prompt contents are not displayed. No conversation files are copied into the release. The author link opens only when clicked.
+The application reads session files, title indexes and optional local SQLite state. Queries use read-only SQLite access. Prompt bodies are not a UI feature; names/initial-title tooltips can contain user text. Do not share private screenshots or diagnostics without reviewing them.
 
-`CODEX_HOME` selects a different Codex data directory. SQLite lookup honors top-level `sqlite_home`, then `CODEX_SQLITE_HOME`, then Codex home. Use absolute SQLite paths. A custom data path can also be supplied:
+Subscription refresh starts a Codex CLI helper. The CLI owns authentication and provider network access. CTC does not extract credentials or read browser cookies; it requests a separate SQLite state directory for the helper and sends initialization plus account rate-limit reads. No task/queue mutation RPC or telemetry is implemented.
+
+Settings saves write only the selected context configuration. No queued Codex messages are edited. Release packaging explicitly excludes conversation data, credentials and local preferences.
+
+`CODEX_HOME` selects the data profile. SQLite discovery honors `sqlite_home`, then `CODEX_SQLITE_HOME`, then Codex home. `sqlite3.exe` on PATH is optional; without it, session-file fallback remains available. Custom launch:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File .\Overlay.ps1 -CodexHome 'D:\CodexData'
 ```
 
-Overlay preferences and window position are stored at `%LOCALAPPDATA%\CodexContextMonitor\overlay.json`. Startup uses the current Windows environment. For persistent custom paths, configure the environment before starting the watcher; one-off command-line paths are not saved as startup defaults.
+One-off profile arguments are not saved to startup. Preferences live at `%LOCALAPPDATA%\CodexContextMonitor\overlay.json`. Invalid values fall back to defaults; originals are retained as `.invalid-*.bak` before normalization.
 
-If the data folder is absent, the overlay reports the error. Create/use your Codex installation, set the path, then reopen the overlay. The monitor depends on local file formats and may need updates when Codex changes them.
+## Recovery and removal
 
-## Architecture and tests
+See [RECOVERY.md](RECOVERY.md) for a Codex repair prompt, failure checks and rollback. Failed installations restore captured runtime/preferences/shortcuts where possible; a rollback failure reports the paths that need manual recovery. Existing update backups remain available.
 
-`Monitor.Core.ps1` contains the existing incremental reader and config helpers. `Monitor.Data.ps1` produces plain snapshot objects. `Overlay.ps1` runs scanning in a background PowerShell runspace and updates WPF controls on the dispatcher. A 500ms UI timer consumes completed snapshots; data scans occur approximately every second, with indexed/fallback discovery reconciliation. There is no embedded web server. `Watch-App.ps1` handles optional app lifecycle detection independently.
+To remove: disable Auto-open and save, exit CTC, delete its installed folder, and remove the **Context-Token Codex** desktop/Start-menu shortcuts. Preferences and helper state under `%LOCALAPPDATA%\CodexContextMonitor` can be removed separately. Do not delete Codex's own profile.
 
-Run:
+## Development and compatibility
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_settings.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_repository.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_overlay.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_install.ps1
-```
+Windows PowerShell 5.1/WPF and desktop .NET Framework are the runtime; PowerShell 7 is also tested. Small launchers do not imply a small RAM footprint. See [AUDIT.md](AUDIT.md), [COMPATIBILITY.md](COMPATIBILITY.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The second test opens a temporary WPF test window, checks synthetic task lifecycle and actual settings buttons, borderless expand/collapse, corner snapping, opacity/corner persistence and minimize/hide/restore. It leaves a disposable fixture/report and expanded/mini screenshots in your temporary folder. It never changes your Codex settings. Startup shortcuts were separately tested using an isolated temporary shortcut, and live session reading was smoke-tested. Windows sign-in and physical dragging across mixed-DPI displays have not been tested.
-
-## Credits and license
-
-MIT. Built from Codex Context Monitor's console reader; the existing console release is preserved separately. See `METHODS.md` for borrowed design ideas and method comparisons with [LH-03/codex-monitor-hud](https://github.com/LH-03/codex-monitor-hud). This is an independent community utility, not an OpenAI product.
-
-## Release 6.0
-
-See BRANDING.md for palette sources and logo provenance. See AUDIT.md for disk, memory, CPU and verification results. ContextWidget.exe and Setup.exe are small launchers; the runtime is still Windows PowerShell/WPF, not a bundled browser or .NET runtime. SetCurrentProcessExplicitAppUserModelID and the custom window icon separate taskbar identity from PowerShell.
-
-To remove: disable Auto-open in Widget settings and save, exit via the tray menu, remove your installed folder and the Context Widget desktop/Start-menu shortcuts. Preferences in LOCALAPPDATA\\CodexContextMonitor are retained unless you remove them separately. No Codex task data is deleted.
+Private Codex schemas can change. Versioned discovery, read-only fallbacks and regression fixtures reduce risk; they cannot guarantee every future update. Hosted Windows CI, a separate Windows machine, mixed-DPI hardware, ARM and long-duration soak checks are not claimed unless documented as completed.
 
 ## Credits
 
-Created by [Yahya Nabil](https://yahyanabil.com). Thanks to ccusage, CodexBar, Codex Monitor HUD and Codex Usage. See [Acknowledgments](ACKNOWLEDGMENTS.md) for authors and contributions, [third-party notices](THIRD_PARTY_NOTICES.md) for licenses, and [UI writing](UI-WRITING.md) for wording rules.
+MIT. Thanks to ccusage, CodexBar, Codex Monitor HUD and Codex Usage for referenced ideas. [Acknowledgments](ACKNOWLEDGMENTS.md), [third-party notices](THIRD_PARTY_NOTICES.md), [methods](METHODS.md), [branding](BRANDING.md), and [UI writing](UI-WRITING.md) describe provenance. This is not an OpenAI product or an endorsed upstream fork.

@@ -1,3 +1,14 @@
+# Compatibility and release checks — 6.4.0
+
+## 22 September 2026 repair status
+
+The 6.3.7 audit findings are covered by new regression fixtures: TOML strings/quoted keys, one-transaction limit saves, locked writes, Unicode saved roots, blank-name fallback, changed context windows, stale indexed paths, quota freshness and bucket retention, invalid preferences, installer rollback, empty-folder discovery and resumed-chat lifecycle retention.
+
+Real read-only subscription refresh succeeded during diagnosis with CLI 0.155.0-alpha.9.2 (two windows). A follow-up completed in 1.06 seconds. Earlier timeouts remain historical evidence; their intermittent environmental cause is not proven. The request budget is now 45 seconds, with phase-specific errors and a delayed-initialization regression test.
+
+The previous audit and measurements below are historical. See AUDIT.md for current verification receipts and limitations. No hosted CI, separate-machine, ARM, mixed-DPI or long soak result is implied by local tests.
+
+---
 # Compatibility and release checks — 6.0.1
 
 ## 6.3.0 / 20 September 2026

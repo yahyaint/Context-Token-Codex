@@ -35,17 +35,65 @@ function Find-VersionedDatabase([string]$folder, [string]$stem) {
     if (Test-Path -LiteralPath $plain -PathType Leaf) { return $plain }
     return ''
 }
+function Get-TomlStatements([string]$content) {
+    # Lexical boundaries only: never interpret a table marker inside a string/array.
+    # Unsupported escaped key names are rejected by the editor, not rewritten.
+    $start=0; $depth=0; $quote=''; $multi=$false; $comment=$false; $escaped=$false
+    for ($i=0; $i -lt $content.Length; $i++) {
+        $ch=$content[$i]
+        if ($comment) { if ($ch -ne "`n") { continue }; $comment=$false }
+        elseif ($quote) {
+            if ($escaped) { $escaped=$false; continue }
+            if ($quote -eq '"' -and $ch -eq '\') { $escaped=$true; continue }
+            if ($ch -eq $quote) {
+                if (-not $multi) { $quote=''; continue }
+                if ($i+2 -lt $content.Length -and $content.Substring($i,3) -eq ($quote*3)) {
+                    $i+=2
+                    # TOML permits one/two literal quotes before the closing delimiter.
+                    while ($i+1 -lt $content.Length -and $content[$i+1] -eq $quote) { $i++ }
+                    $quote=''; $multi=$false
+                }
+            } elseif (-not $multi -and $ch -eq "`n") { throw 'Unclosed TOML string. No settings were changed.' }
+            continue
+        }
+        elseif ($ch -eq '#') { $comment=$true; continue }
+        elseif ($ch -eq '"' -or $ch -eq "'") {
+            $quote=[string]$ch
+            $multi=$i+2 -lt $content.Length -and $content.Substring($i,3) -eq ($quote*3)
+            if ($multi) { $i+=2 }; continue
+        }
+        elseif ($ch -eq '[' -or $ch -eq '{') { $depth++ }
+        elseif ($ch -eq ']' -or $ch -eq '}') { $depth--; if ($depth -lt 0) { throw 'Unbalanced TOML. No settings were changed.' } }
+        if ($ch -eq "`n" -and $depth -eq 0) {
+            [pscustomobject]@{Start=$start;Length=$i+1-$start;Text=$content.Substring($start,$i+1-$start)}
+            $start=$i+1
+        }
+    }
+    if ($quote -or $depth -ne 0) { throw 'Incomplete TOML. No settings were changed.' }
+    if ($start -lt $content.Length) { [pscustomobject]@{Start=$start;Length=$content.Length-$start;Text=$content.Substring($start)} }
+}
+
+function Get-TomlRootSettings([string]$content, [switch]$Strict) {
+    foreach ($statement in @(Get-TomlStatements $content)) {
+        $text=$statement.Text.TrimStart()
+        if ($text.StartsWith('[')) { break }
+        if (-not $text -or $text.StartsWith('#')) { continue }
+        $match=[regex]::Match($text,'^(?:([A-Za-z0-9_-]+)|"([^"\\]+)"|''([^'']+)'')\s*=\s*([\s\S]*)$')
+        if (-not $match.Success) { if ($Strict) { throw 'Unsupported TOML root key syntax. Edit this file in Codex; no settings were changed.' }; continue }
+        $key=if ($match.Groups[1].Success) {$match.Groups[1].Value} elseif ($match.Groups[2].Success) {$match.Groups[2].Value} else {$match.Groups[3].Value}
+        [pscustomobject]@{Key=$key;Value=$match.Groups[4].Value;Start=$statement.Start;Length=$statement.Length}
+    }
+}
+
 function Get-ConfiguredSqliteHome([string]$configFile) {
     if (-not (Test-Path -LiteralPath $configFile -PathType Leaf)) { return '' }
     $content = [System.IO.File]::ReadAllText($configFile)
-    $section = [regex]::Match($content, '(?m)^\s*\[')
-    if ($section.Success) { $content = $content.Substring(0, $section.Index) }
-    $matches = [regex]::Matches($content,
-        '(?m)^\s*sqlite_home\s*=\s*(["''])(.*?)\1\s*(?:#.*)?$')
-    if ($matches.Count -eq 0) { return '' }
-    $match = $matches[$matches.Count - 1]
-    $value = $match.Groups[2].Value
-    if ($match.Groups[1].Value -eq '"') { $value = $value.Replace('\\', '\') }
+    $entry=@(Get-TomlRootSettings $content | Where-Object Key -eq 'sqlite_home' | Select-Object -Last 1)
+    if (-not $entry.Count) {return ''}
+    $match=[regex]::Match($entry[0].Value,'^(["''])(.*?)\1\s*(?:#.*)?$')
+    if (-not $match.Success) {return ''}
+    $value=$match.Groups[2].Value
+    if ($match.Groups[1].Value -eq '"') {$value=$value.Replace('\\','\')}
     return $value
 }
 if (-not $SqliteHome) {
@@ -79,6 +127,7 @@ $script:lastDatabaseScan = [DateTimeOffset]::MinValue
 $script:sessionIndexPath = Join-Path $CodexHome 'session_index.jsonl'
 $script:lastIndexWrite = [DateTime]::MinValue
 $script:lastReconcile = [DateTimeOffset]::MinValue
+$script:discoveredPaths=$null
 $script:discoveryMode = 'initializing'
 $script:discoveryWarning = ''
 $script:lastFrame = @()
@@ -169,50 +218,72 @@ function Get-TopLevelNumericSetting([string]$path, [string]$key) {
     if ($key -notin @('model_auto_compact_token_limit', 'model_context_window')) { throw 'Unsupported setting.' }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
     $content = [System.IO.File]::ReadAllText($path)
-    $section = [regex]::Match($content, '(?m)^\s*\[')
-    if ($section.Success) { $content = $content.Substring(0, $section.Index) }
-    $matches = [regex]::Matches($content, '(?m)^\s*' + $key + '\s*=\s*(\d+)\s*(?:#.*)?$')
-    if ($matches.Count -eq 0) { return $null }
-    return [long]$matches[$matches.Count - 1].Groups[1].Value
+    $settings=@(Get-TomlRootSettings $content | Where-Object Key -eq $key)
+    if ($settings.Count -gt 1) { throw "Duplicate TOML setting: $key" }
+    if (-not $settings.Count) { return $null }
+    if ($settings[0].Value -notmatch '^\+?(\d(?:_?\d)*)\s*(?:#[^\r\n]*)?\s*$') { throw "Invalid numeric setting: $key" }
+    return [long]($Matches[1].Replace('_',''))
 }
 
 function Get-TopLevelAutoCompactScope([string]$path) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return '' }
     $content = [System.IO.File]::ReadAllText($path)
-    $section = [regex]::Match($content, '(?m)^\s*\[')
-    if ($section.Success) { $content = $content.Substring(0, $section.Index) }
-    $matches = [regex]::Matches($content,
-        '(?m)^\s*model_auto_compact_token_limit_scope\s*=\s*["''](total|body_after_prefix)["'']\s*(?:#.*)?$')
-    if ($matches.Count -eq 0) { return '' }
-    return $matches[$matches.Count - 1].Groups[1].Value
+    $entry=@(Get-TomlRootSettings $content | Where-Object Key -eq 'model_auto_compact_token_limit_scope' | Select-Object -Last 1)
+    if (-not $entry.Count -or $entry[0].Value -notmatch '^["''](total|body_after_prefix)["'']\s*(?:#.*)?$') {return ''}
+    return $Matches[1]
 }
 
-function Set-TopLevelNumericSetting([string]$path, [string]$key, [Nullable[long]]$limit) {
-    if ($key -notin @('model_auto_compact_token_limit', 'model_context_window')) { throw 'Unsupported setting.' }
+function Set-ContextLimits([string]$path, [hashtable]$changes) {
+    foreach ($key in $changes.Keys) {
+        if ($key -notin @('model_auto_compact_token_limit','model_context_window')) { throw 'Unsupported setting.' }
+        if ($null -ne $changes[$key] -and [long]$changes[$key] -lt 1) { throw 'Limit must be at least 1 token.' }
+    }
     $folder = Split-Path -Path $path -Parent
+    if ((Split-Path $folder -Leaf) -eq '.codex' -and -not [IO.Directory]::Exists((Split-Path $folder -Parent))) {throw 'Project folder is unavailable. Restore it before saving limits.'}
     if (-not (Test-Path -LiteralPath $folder -PathType Container)) {
         [void](New-Item -ItemType Directory -Path $folder -Force)
     }
-    $content = if (Test-Path -LiteralPath $path -PathType Leaf) {
+    $existed=Test-Path -LiteralPath $path -PathType Leaf
+    $originalBytes=if ($existed) {[IO.File]::ReadAllBytes($path)} else {@()}
+    $content = if ($existed) {
         [System.IO.File]::ReadAllText($path)
     } else { '' }
     $newline = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
-    $section = [regex]::Match($content, '(?m)^\s*\[')
-    $head = if ($section.Success) { $content.Substring(0, $section.Index) } else { $content }
-    $tail = if ($section.Success) { $content.Substring($section.Index) } else { '' }
-    $head = [regex]::Replace($head, '(?m)^\s*' + $key + '\s*=.*(?:\r?\n|$)', '')
-    if ($null -ne $limit) {
-        if ($head.Length -gt 0 -and -not $head.EndsWith("`n")) { $head += $newline }
-        $head += "$key = $limit$newline"
+    $root=@(Get-TomlRootSettings $content -Strict)
+    $updated=$content
+    foreach ($key in $changes.Keys) {
+        if (@($root|Where-Object Key -eq $key).Count -gt 1) { throw "Duplicate TOML setting: $key. No settings were changed." }
     }
-    $updated = $head + $tail
+    foreach ($entry in @($root|Where-Object {$changes.ContainsKey($_.Key)}|Sort-Object Start -Descending)) {
+        $updated=$updated.Remove($entry.Start,$entry.Length)
+    }
+    $prefix=''
+    foreach ($key in @($changes.Keys|Sort-Object)) { if ($null -ne $changes[$key]) { $prefix+="$key = $($changes[$key])$newline" } }
+    $updated=$prefix+$updated
+    $null=@(Get-TomlRootSettings $updated -Strict) # Check boundaries again before any write.
     if ($updated -ceq $content) { return $false }
-    if (Test-Path -LiteralPath $path -PathType Leaf) {
-        $backup = "$path.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss-fff')-$([guid]::NewGuid().ToString('N').Substring(0, 6))"
-        Copy-Item -LiteralPath $path -Destination $backup -ErrorAction Stop
+    $temporary="$path.ctc-$([guid]::NewGuid().ToString('N')).tmp"
+    $guard=$null
+    try {
+        [IO.File]::WriteAllText($temporary,$updated,[Text.UTF8Encoding]::new($false))
+        if ($existed) {
+            # Permit rename, but exclude concurrent writers while checking/replacing.
+            $guard=[IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::Read -bor [IO.FileShare]::Delete))
+            $current=New-Object byte[] $guard.Length; $offset=0
+            while ($offset -lt $current.Length) { $n=$guard.Read($current,$offset,$current.Length-$offset); if ($n -eq 0) {break}; $offset+=$n }
+            if ([Convert]::ToBase64String($current) -cne [Convert]::ToBase64String([byte[]]$originalBytes)) { throw 'Configuration changed during editing. Reload the form and retry.' }
+            $backup="$path.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss-fff')-$([guid]::NewGuid().ToString('N').Substring(0,6))"
+            [IO.File]::Replace($temporary,$path,$backup)
+        } else { [IO.File]::Move($temporary,$path) }
+    } finally {
+        if ($guard) {$guard.Dispose()}
+        if ([IO.File]::Exists($temporary)) {[IO.File]::Delete($temporary)}
     }
-    [System.IO.File]::WriteAllText($path, $updated, [System.Text.UTF8Encoding]::new($false))
     return $true
+}
+
+function Set-TopLevelNumericSetting([string]$path, [string]$key, [Nullable[long]]$limit) {
+    return Set-ContextLimits $path @{$key=$limit}
 }
 
 function Get-TopLevelAutoCompactLimit([string]$path) {
@@ -319,7 +390,7 @@ function Read-RolloutLine($state, [string]$line) {
 
     switch ($record.type) {
         'session_meta' {
-            if ($payload.id) { $state.ThreadId = [string]$payload.id }
+            if ($payload.id) { $state.ThreadId = [string]$payload.id; if (-not $script:titleCache.ContainsKey($state.ThreadId)) {$script:lastIndexWrite=[DateTime]::MinValue} }
             if ($payload.cwd) { $state.Cwd = [string]$payload.cwd }
             if ($payload.source -and $payload.source -isnot [string] -and
                 $payload.source.PSObject.Properties['subagent']) { $state.IsSubagent = $true }
@@ -335,7 +406,9 @@ function Read-RolloutLine($state, [string]$line) {
                     $state.StartedAt = $when
                     $state.CompactingAt = [DateTimeOffset]::MinValue
                     if ((Get-UsageInteger $payload.model_context_window) -gt 0) {
-                        $state.ContextWindow = Get-UsageInteger $payload.model_context_window
+                        $nextWindow=Get-UsageInteger $payload.model_context_window
+                        if ($state.ContextWindow -ne $nextWindow) { $state.ContextInput=$null; $state.CachedInput=$null; $state.OutputTokens=$null; $state.UsageAt=[DateTimeOffset]::MinValue }
+                        $state.ContextWindow=$nextWindow
                     }
                 }
                 'task_complete' { $state.Active = $false; $state.CompactingAt = [DateTimeOffset]::MinValue }
@@ -458,6 +531,10 @@ function Get-RolloutFiles {
         $script:discoveryWarning = ''
         return @()
     }
+    if ($null -ne $script:discoveredPaths -and ([DateTimeOffset]::Now-$script:lastReconcile).TotalSeconds -lt $ReconcileSeconds) {
+        $cached=@($script:discoveredPaths)+@($script:rollouts.Values|Where-Object Active|ForEach-Object Path)
+        return @($cached|Select-Object -Unique|ForEach-Object {if([IO.File]::Exists($_)){Get-Item -LiteralPath $_ -ErrorAction SilentlyContinue}}|Sort-Object LastWriteTime)
+    }
     $cutoff = (Get-Date).AddHours(-$LookbackHours)
     $paths = @{}
     $indexed = $false
@@ -471,7 +548,7 @@ function Get-RolloutFiles {
             $path = [string]$row.rollout_path
             if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) { $paths[$path] = $path }
         }
-        $indexed = $rows.Count -gt 0
+        $indexed = $paths.Count -gt 0 -and $paths.Count -eq $rows.Count
     }
     $now = [DateTimeOffset]::Now
     if (-not $indexed -and ($now - $script:lastReconcile).TotalSeconds -ge $ReconcileSeconds) {
@@ -489,6 +566,7 @@ function Get-RolloutFiles {
         $script:discoveryMode = 'thread index'
         $script:discoveryWarning = ''
     }
+    $script:discoveredPaths=@($paths.Keys); $script:lastReconcile=$now
     foreach ($state in $script:rollouts.Values) {
         if ($state.Active -and (Test-Path -LiteralPath $state.Path -PathType Leaf)) {
             $paths[$state.Path] = $state.Path
@@ -533,6 +611,8 @@ function Update-Titles {
     foreach ($row in $rows) {
         $uiName = ([string]$row.ui_name -replace '[\x00-\x1F\x7F]', ' ').Trim()
         $initial = ([string]$row.initial_title -replace '[\x00-\x1F\x7F]', ' ').Trim()
+        $prior=$script:titleCache[[string]$row.id]
+        if (-not $uiName -and $prior.UiName) { continue }
         $script:titleCache[[string]$row.id] = [pscustomobject]@{
             UiName = $uiName
             Initial = $initial
@@ -561,6 +641,29 @@ function Update-IndexTitles {
         $script:lastIndexWrite = $file.LastWriteTimeUtc
     }
     catch { }
+}
+
+function Remove-ExpiredRolloutStates {
+    # An old rollout's Active flag is not the lifecycle of a resumed chat.
+    $latest=@{}
+    foreach ($state in $script:rollouts.Values) {
+        if ($state.ThreadId -and (-not $latest.ContainsKey($state.ThreadId) -or $state.LastEventAt -gt $latest[$state.ThreadId].LastEventAt)) {$latest[$state.ThreadId]=$state}
+    }
+    foreach ($state in $script:rollouts.Values) {
+        if ($state.ThreadId -and -not [object]::ReferenceEquals($state,$latest[$state.ThreadId])) {$state.Active=$false}
+    }
+    $cutoff=[DateTimeOffset]::Now.AddHours(-$LookbackHours)
+    $inactive=@($script:rollouts.Values | Where-Object {-not $_.Active} | Sort-Object LastWriteAt -Descending)
+    $kept=0
+    foreach ($state in $inactive) {
+        if ($kept -ge $MaxRecentRollouts -or $state.LastWriteAt -lt $cutoff.LocalDateTime -or -not [IO.File]::Exists($state.Path)) {
+            $script:rollouts.Remove($state.Path)
+        } else { $kept++ }
+    }
+    $ids=@{};foreach($state in $script:rollouts.Values){if($state.ThreadId){$ids[$state.ThreadId]=$true}}
+    foreach($id in @($script:titleCache.Keys)){if(-not $ids.ContainsKey($id)){$script:titleCache.Remove($id)}}
+    # The bounded cache may need to reload an index name after eviction/re-discovery.
+    if ($inactive.Count -gt $kept) {$script:lastIndexWrite=[DateTime]::MinValue}
 }
 
 function Get-DisplayStates {

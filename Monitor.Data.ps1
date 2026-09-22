@@ -1,5 +1,30 @@
 # SPDX-License-Identifier: MIT
 # Dot-source after Monitor.Core.ps1. One scan produces an immutable UI snapshot.
+function Read-WidgetPreferences([string]$Path, [hashtable]$Defaults) {
+    $result=@{}; foreach ($key in $Defaults.Keys) {$result[$key]=$Defaults[$key]}
+    if (-not [IO.File]::Exists($Path)) {return $result}
+    $invalid=$false
+    try {$loaded=[IO.File]::ReadAllText($Path)|ConvertFrom-Json -ErrorAction Stop} catch {$loaded=$null; $invalid=$true}
+    foreach ($key in $Defaults.Keys) {
+        $value=$loaded.$key; if ($null -eq $value) {continue}
+        if ($key -in @('AutoOpen','Topmost','Compact')) {if ($value -is [bool]) {$result[$key]=$value};continue}
+        $choices=switch($key){'Mode'{@('Context','Tokens')};'Target'{@('Either','Codex','ChatGPT')};'Corner'{@('Free','TopLeft','TopRight','BottomLeft','BottomRight')}}
+        if ($choices) {if ($value -in $choices) {$result[$key]=[string]$value};continue}
+        $number=0.0
+        if (-not [double]::TryParse([string]$value,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$number) -or [double]::IsNaN($number) -or [double]::IsInfinity($number)) {continue}
+        switch ($key) {
+            'Opacity' {if($number -ge .4 -and $number -le 1){$result[$key]=$number}}
+            'Width' {if($number -ge 360 -and $number -le 8192){$result[$key]=$number}}
+            'Height' {if($number -ge 320 -and $number -le 8192){$result[$key]=[Math]::Max(520,$number)}}
+            default {if($key -in @('Left','Top') -and [Math]::Abs($number) -le 100000){$result[$key]=$number}}
+        }
+    }
+    foreach ($key in $Defaults.Keys) {if ($null -ne $loaded.$key -and [string]$loaded.$key -cne [string]$result[$key]) {$invalid=$true}}
+    if ($invalid) {
+        Copy-Item -LiteralPath $Path -Destination ($Path+'.invalid-'+[guid]::NewGuid().ToString('N')+'.bak') -ErrorAction Stop
+    }
+    return $result
+}
 function Get-KnownProjectPaths {
     if ($script:projectPaths -and ([DateTime]::UtcNow-$script:projectPathsAt).TotalSeconds -lt 30) { return $script:projectPaths }
     $paths=@{}
@@ -11,7 +36,7 @@ function Get-KnownProjectPaths {
     $globalState=Join-Path $CodexHome '.codex-global-state.json'
     if (Test-Path -LiteralPath $globalState) {
         try {
-            $saved=Get-Content -LiteralPath $globalState -Raw|ConvertFrom-Json
+            $saved=Get-Content -LiteralPath $globalState -Raw -Encoding UTF8|ConvertFrom-Json
             foreach ($path in @($saved.'electron-saved-workspace-roots')) { if ($path -is [string]) {$paths[$path]=$true} }
             foreach ($project in $saved.'local-projects'.PSObject.Properties) { foreach ($path in @($project.Value.rootPaths)) { if ($path -is [string]) {$paths[$path]=$true} } }
         } catch {}
@@ -23,6 +48,7 @@ function Get-KnownProjectPaths {
 function Get-MonitorSnapshot {
     Refresh-DatabasePaths
     foreach ($file in @(Get-RolloutFiles)) { Update-Rollout $file }
+    Remove-ExpiredRolloutStates
     Update-IndexTitles
     if ($script:sqlite) {
         if ($LogDatabase -and (Test-Path -LiteralPath $LogDatabase)) {

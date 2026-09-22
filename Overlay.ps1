@@ -9,11 +9,8 @@ $script:folder = $PSScriptRoot
 if (-not $PreferencesPath) { $PreferencesPath = Join-Path $env:LOCALAPPDATA 'CodexContextMonitor\overlay.json' }
 $script:preferencesPath = $PreferencesPath
 $script:prefs = @{ Topmost=$true; Target='Either'; AutoOpen=$true; Width=460; Height=620; Left=-1; Top=-1; Compact=$true; Opacity=0.92; Corner='BottomRight';Mode='Context' }
-if (Test-Path -LiteralPath $PreferencesPath) {
-    try { $loaded = Get-Content -LiteralPath $PreferencesPath -Raw | ConvertFrom-Json
-        foreach ($key in @($script:prefs.Keys)) { if ($null -ne $loaded.$key) { $script:prefs[$key]=$loaded.$key } }
-    } catch { }
-}
+. (Join-Path $PSScriptRoot 'Monitor.Data.ps1')
+$script:prefs=Read-WidgetPreferences $PreferencesPath $script:prefs
 function Save-Preferences {
     [void][IO.Directory]::CreateDirectory((Split-Path $script:preferencesPath -Parent))
     [IO.File]::WriteAllText($script:preferencesPath, ($script:prefs | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
@@ -250,7 +247,7 @@ function Set-WidgetCompact([bool]$compact) {
         $FullPanel.Visibility='Visible'; $MiniPanel.Visibility='Collapsed'; $ResizeGrip.Visibility='Visible'
         $workArea=Get-WidgetWorkArea
         $window.Width=[Math]::Min($workArea.Width,[Math]::Max(360,[double]$prefs.Width))
-        $window.Height=[Math]::Min($workArea.Height,[Math]::Max(320,[double]$prefs.Height)); $ToggleButton.Content='Collapse'
+        $window.Height=[Math]::Min($workArea.Height,[Math]::Max(520,[double]$prefs.Height)); $ToggleButton.Content='Collapse'
     }
     $prefs.Compact=$compact
     $AuthorLine.Visibility=if ($compact) {'Collapsed'} else {'Visible'}
@@ -278,7 +275,7 @@ $UserWebsite.Add_RequestNavigate({ param($sender,$eventArgs)
 $script:quotaRows=@{}
 $script:contextQuotaRows=@{}
 function Update-ContextQuotaBars {
-    $quota=if ($shared.LiveQuota) {$shared.LiveQuota} elseif ($shared.Latest.Tokens) {$shared.Latest.Tokens.Quota} else {$null}
+    $quota=Select-FreshQuota $shared.LiveQuota $shared.Latest.Tokens.Quota
     $entries=if ($quota) {@($quota.Windows)} else {@()}
     $keys=@()
     foreach ($entry in $entries) {
@@ -293,10 +290,10 @@ function Update-ContextQuotaBars {
         }
         $row=$script:contextQuotaRows[$key]
         $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}
-        $stale=([DateTimeOffset]::Now-$quota.Observed).TotalMinutes -gt 2
+        $observed=if ($entry.Observed) {$entry.Observed} else {$quota.Observed}; $stale=([DateTimeOffset]::Now-$observed).TotalMinutes -gt 2
         $row.Label.Text=('{0} | {1:N0}% left{2}' -f $period,$entry.Remaining,$(if($stale){' *'}else{''}))
         $row.Bar.Value=$entry.Remaining
-        $row.Panel.ToolTip="$($entry.Name)`n$(Format-QuotaReset $entry.Reset)`nObserved $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))$(if($stale){' (older reading)'})`n$($quota.Source)"
+        $row.Panel.ToolTip="$($entry.Name)`n$(Format-QuotaReset $entry.Reset)`nObserved $($observed.ToLocalTime().ToString('MMM d HH:mm:ss'))$(if($stale){' (older reading)'})`n$($quota.Source)"
     }
     foreach ($key in @($script:contextQuotaRows.Keys)) {
         if ($key -notin $keys) { [void]$ContextQuotaBars.Children.Remove($script:contextQuotaRows[$key].Panel); $script:contextQuotaRows.Remove($key) }
@@ -361,7 +358,7 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
         $row.Panel.ToolTip="Last model: $($chat.Model). Counts cover the whole chat, including earlier models. Last record: $(if ($chat.Observed) {$chat.Observed.ToLocalTime().ToString('HH:mm:ss')} else {'waiting'})."
     }
     foreach ($key in @($script:tokenTaskRows.Keys)) { if ($key -notin $keys) { [void]$script:tokenTaskRows[$key].Panel.Parent.Children.Remove($script:tokenTaskRows[$key].Panel); $script:tokenTaskRows.Remove($key) } }
-    $quota=if ($shared.LiveQuota) {$shared.LiveQuota} elseif ($tokens) {$tokens.Quota} else {$null}
+    $quota=Select-FreshQuota $shared.LiveQuota $tokens.Quota
     $entries=@(); if ($quota) { $entries=@($quota.Windows) }
     $keys=@()
     $index=0
@@ -374,7 +371,7 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
             [void]$panel.Children.Add($label); [void]$panel.Children.Add($bar); [void]$panel.Children.Add($reset)
             [void]$QuotaCards.Children.Add($panel); $script:quotaRows[$key]=@{Panel=$panel;Label=$label;Bar=$bar;Reset=$reset}
         }
-        $row=$script:quotaRows[$key]; $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}; $row.Label.Text=('{0} | {1:N0}% left' -f $period,$entry.Remaining); $row.Bar.Value=$entry.Remaining; $row.Reset.Text=Format-QuotaReset $entry.Reset; $row.Reset.Visibility='Collapsed'; $row.Panel.ToolTip=$entry.Name+"`n"+$row.Reset.Text
+        $row=$script:quotaRows[$key]; $observed=if ($entry.Observed) {$entry.Observed} else {$quota.Observed}; $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}; $row.Label.Text=('{0} | {1:N0}% left{2}' -f $period,$entry.Remaining,$(if(([DateTimeOffset]::Now-$observed).TotalMinutes -gt 2){' *'}else{''})); $row.Bar.Value=$entry.Remaining; $row.Reset.Text=Format-QuotaReset $entry.Reset; $row.Reset.Visibility='Collapsed'; $row.Panel.ToolTip=$entry.Name+"`n"+$row.Reset.Text+"`nObserved $($observed.ToLocalTime().ToString('MMM d HH:mm:ss')) | $($quota.Source)"
     }
     foreach ($key in @($script:quotaRows.Keys)) { if ($key -notin $keys) { [void]$QuotaCards.Children.Remove($script:quotaRows[$key].Panel); $script:quotaRows.Remove($key) } }
     $TokenSource.Text=if ($quota) { "$($quota.Source) | $($quota.Plan) | checked $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))" } else { 'No quota reading yet. Codex subscription sign-in required.' }
@@ -383,6 +380,7 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
     if ($shared.Fetching) { $TokenSource.Text+=' | Refreshing...' }
     elseif ($shared.QuotaError) { $TokenSource.Text+="`n$($shared.QuotaError)" }
     if ($quota -and ([DateTimeOffset]::Now-$quota.Observed).TotalMinutes -gt 2) { $TokenSource.Text+=' | STALE' }
+    $RefreshUsage.Content=if ($shared.Fetching) {'Reading...'} elseif ($shared.QuotaError) {'Retry'} else {'Refresh'}; $RefreshUsage.ToolTip=if ($shared.QuotaError) {$shared.QuotaError} else {'Read current subscription limits'}
     $RefreshUsage.IsEnabled=-not $shared.Fetching
 }
 $window.Add_SourceInitialized({ Set-WidgetCompact ([bool]$prefs.Compact) })
@@ -399,7 +397,7 @@ $ResizeGrip.Add_DragDelta({
     param($sender,$eventArgs)
     $workArea=Get-WidgetWorkArea
     $window.Width=[Math]::Max(360,[Math]::Min($workArea.Width,$window.Width+$eventArgs.HorizontalChange))
-    $window.Height=[Math]::Max(320,[Math]::Min($workArea.Height,$window.Height+$eventArgs.VerticalChange))
+    $window.Height=[Math]::Max(520,[Math]::Min($workArea.Height,$window.Height+$eventArgs.VerticalChange))
     $prefs.Width=$window.Width; $prefs.Height=$window.Height
 })
 $ResizeGrip.Add_DragCompleted({ Position-Widget; Save-Preferences })
@@ -562,7 +560,7 @@ function New-InlineLimitsEditor([string]$project) {
         $form=$sender.Tag
         try {
             $windowLimit=ConvertTo-TokenLimit $form.Window.Text $null; $compactLimit=ConvertTo-TokenLimit $form.Compact.Text $null
-            [void](Set-TopLevelContextWindow $form.Path $windowLimit.Limit); [void](Set-TopLevelAutoCompactLimit $form.Path $compactLimit.Limit)
+            [void](Set-ContextLimits $form.Path @{model_context_window=$windowLimit.Limit;model_auto_compact_token_limit=$compactLimit.Limit})
             $form.Result.Text='Saved for this project, all models. Reload may be required.'
         } catch { $form.Result.Text=$_.Exception.Message }
     })
@@ -661,8 +659,7 @@ function Show-Settings([string]$pane='Context') {
         try {
             if ($script:coreError) { throw $script:coreError }
             $newContext=ConvertTo-TokenLimit $script:settings.context.Text $null; $newCompact=ConvertTo-TokenLimit $script:settings.compact.Text $null
-            [void](Set-TopLevelContextWindow $script:settings.scope.SelectedItem.Path $newContext.Limit)
-            [void](Set-TopLevelAutoCompactLimit $script:settings.scope.SelectedItem.Path $newCompact.Limit)
+            [void](Set-ContextLimits $script:settings.scope.SelectedItem.Path @{model_context_window=$newContext.Limit;model_auto_compact_token_limit=$newCompact.Limit})
             $script:settings.result.Foreground='#778DA9'; $script:settings.result.Text="Saved. Backup created. Reload may be required."
             $script:settings.current.Text="Saved window: $(Format-Limit $newContext.Limit) | Compact: $(Format-Limit $newCompact.Limit)"
             $script:settings.current.ToolTip="File: $($script:settings.scope.SelectedItem.Path)`n$($script:settings.current.Text)"
@@ -797,6 +794,7 @@ $timer.Add_Tick({
                 $encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
                 $stream=[IO.File]::Create($TestReport+'.png'); try { $encoder.Save($stream) } finally { $stream.Dispose() }
             }
+            if ($window.Height -lt [Math]::Min(520,(Get-WidgetWorkArea).Height)) {throw 'Expanded viewport is below the supported minimum.'}
             $expandedWidth=$window.Width
             $ToggleButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
             $window.UpdateLayout()

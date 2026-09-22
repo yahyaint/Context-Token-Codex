@@ -7,7 +7,7 @@ $tokens = $null
 $errors = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw ('Parse failed: ' + ($errors -join '; ')) }
-foreach ($name in @('Find-VersionedDatabase', 'Get-ConfiguredSqliteHome',
+foreach ($name in @('Get-TomlStatements', 'Get-TomlRootSettings', 'Set-ContextLimits', 'Find-VersionedDatabase', 'Get-ConfiguredSqliteHome',
         'Get-TopLevelNumericSetting', 'Set-TopLevelNumericSetting',
         'Get-TopLevelAutoCompactLimit', 'Set-TopLevelAutoCompactLimit',
         'Get-TopLevelContextWindow', 'Set-TopLevelContextWindow',

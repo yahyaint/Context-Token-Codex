@@ -1,3 +1,38 @@
+# Release 6.4.0 audit repairs
+
+Verified 22 September 2026 on the development Windows 10.0.26200 desktop. All twelve findings from the 6.3.7 audit have implemented fixes and targeted checks. The live quota timeout has also been addressed with a longer startup budget, phase-specific errors and a delayed-initialization fixture. Its earlier intermittent environmental cause remains unproven.
+
+## Verification
+
+- **22/22 suite executions passed:** settings, regressions, usage, compatibility, transport, watcher, repository, bootstrap, overlay, theme and install, each under Windows PowerShell 5.1 and PowerShell 7.6.5.
+- Regression fixtures cover multiline/quoted TOML, combined settings replacement, locked writes, Unicode roots, blank titles, changed context windows, stale indexed paths, inactive retention, empty discovery, resumed names and lifecycle ordering, quota bucket freshness, invalid preferences and failed-install rollback.
+- Visual inspection of rendered limits and token views: controls remain aligned, context inputs and examples visible, quota bars side by side, author/footer and opacity controls visible.
+- Real read-only subscription query with Codex CLI 0.155.0-alpha.9.2 returned two windows. A follow-up completed in 1.06 seconds. No model turn or queued-message mutation was requested.
+- Installed 6.4.0 and restarted CTC; all **21 installed runtime files** match the tested source hashes. One responding overlay and one responding watcher were present. The preceding installation was retained in Versions.
+- Settings tests use disposable fixtures; real Codex context limits were not changed.
+
+## Size and resource sample
+
+Runtime payload: **216,646 bytes**, 21 files, excluding preferences, backups and existing Codex data. No bundled browser or language runtime.
+
+A 15-second post-install sample on this busy development desktop:
+
+| Process | Working set | Private bytes | CPU, one-core basis |
+|---|---:|---:|---:|
+| Overlay | 210.7 MiB | 190.2 MiB | 6.43% |
+| Watcher | 92.0 MiB | 70.3 MiB | 0.42% |
+
+CPU is processor-time delta divided by elapsed wall time; this is not whole-machine utilization. Working sets can share pages. These short samples do not establish a memory-leak result or a controlled performance improvement over older long-running instances.
+
+## Limits of verification
+
+Both shell versions ran on the same Windows machine. No clean unrelated PC, Windows ARM, physical mixed-DPI setup, actual sign-out/sign-in, hosted CI or long-duration soak was tested. The executables remain unsigned. Future Codex schema changes can require adaptation; see RECOVERY.md. Context writes use a conservative TOML-aware boundary scanner, not a complete TOML formatter; unsupported syntax is rejected. Installation rollback can report recovery failure if the filesystem also prevents restoration.
+
+## Reproduce
+
+Run all eleven Tests/test_*.ps1 suites listed in CONTRIBUTING.md under each supported PowerShell version. Build/package.ps1 builds the release ZIP and SHA256 receipt. Preserve the printed fixture paths for diagnostic reports and rendered screenshots.
+
+---
 # Release 5.0 audit
 
 **Historical baseline:** these resource measurements are for v5.0. Version 6.0 adds a background quota runspace and a short-lived Codex CLI helper while reading subscription limits; its resource use has not been re-benchmarked. V6 validation additionally covers quota maps, missing/weekly-only windows, reset handling, cumulative-token deduplication, mode switching, author-link controls, and a successful live read-only CLI quota query. The installer and existing overlay regression suites also passed.

@@ -26,6 +26,8 @@ jobs:
         run: .\Build\build.ps1
       - name: Test configuration helpers
         run: .\Tests\test_settings.ps1
+      - name: Test audit regressions
+        run: .\Tests\test_regressions.ps1
       - name: Test usage accounting and quota parsing
         run: .\Tests\test_usage.ps1
       - name: Verify source and isolated installation

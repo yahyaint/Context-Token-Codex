@@ -4,6 +4,13 @@ Paste this into Codex with this repository open:
 
 > Diagnose and repair Context-Token Codex using RECOVERY.md. Preserve the installed version, preferences and all Codex tasks. Inspect the current release and local errors. Run the relevant fixture tests before changing live files. Never delete, edit or replay Codex queued messages. Do not send a task to test monitoring. Show the cause, fix and test evidence. Ask before restarting Codex. Do not publish or push without my mark.
 
+## 6.4 recovery notes
+
+- Slow quota refresh: allow up to 45 seconds. Errors distinguish CLI initialization from the subscription response. Keep the newest available reading; do not edit live queues.
+- Invalid preferences: look for `overlay.json.invalid-*.bak`. Known fields are normalized to defaults; compare the preserved original if needed.
+- Unsupported TOML syntax: the editor refuses the save. Use Codex to edit that file, preserve multiline instructions, and run `Tests/test_regressions.ps1` after a repair.
+- Failed install: runtime/preferences/shortcuts are rolled back. If rollback itself fails, the error lists affected paths; preserve the Versions backup and fix access before retrying.
+
 ## First checks
 
 1. Record Windows, PowerShell, CTC and Codex versions. Keep screenshots and timestamps.

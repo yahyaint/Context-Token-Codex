@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-function Install-ContextWidget {
+function Invoke-ContextWidgetInstall {
  param([string]$Source,[string]$Destination,[bool]$AutoOpen=$true,[bool]$DesktopShortcut=$true,[string]$TestRoot='')
  $ErrorActionPreference='Stop'
  if (-not [IO.Path]::IsPathRooted($Destination)) { throw 'Choose an absolute installation folder.' }
@@ -19,18 +19,16 @@ function Install-ContextWidget {
  $sameSource=([IO.Path]::GetFullPath($Source).TrimEnd('\') -eq $destinationPath)
  $backup=$null
  if (-not $sameSource -and (Test-Path -LiteralPath (Join-Path $destinationPath 'Overlay.ps1'))) {
-  $backup=Join-Path $destinationPath ('Versions\before-6.3.7-'+[guid]::NewGuid().ToString('N').Substring(0,8))
+  $backup=Join-Path $destinationPath ('Versions\before-6.4.0-'+[guid]::NewGuid().ToString('N').Substring(0,8))
   [void][IO.Directory]::CreateDirectory($backup)
   foreach ($file in $files) { $old=Join-Path $destinationPath $file; if (Test-Path -LiteralPath $old) { Copy-Item -LiteralPath $old -Destination $backup } }
  }
  [void][IO.Directory]::CreateDirectory($destinationPath)
  if (-not $sameSource) { foreach ($file in $files) { Copy-Item -LiteralPath (Join-Path $Source $file) -Destination (Join-Path $destinationPath $file) -Force } }
  $prefs=@{AutoOpen=$AutoOpen;Target='Either';Compact=$true;Topmost=$true;Opacity=0.92;Width=460;Height=620;Left=-1;Top=-1;Corner='BottomRight'}
- if (Test-Path -LiteralPath $preferences) {
-  $prior=Get-Content -LiteralPath $preferences -Raw | ConvertFrom-Json
-  foreach ($property in $prior.PSObject.Properties) { $prefs[$property.Name]=$property.Value }
-  $prefs.AutoOpen=$AutoOpen
- }
+ . (Join-Path $Source 'Monitor.Data.ps1')
+ $prefs=Read-WidgetPreferences $preferences $prefs
+ $prefs.AutoOpen=$AutoOpen
  [void][IO.Directory]::CreateDirectory((Split-Path $preferences -Parent))
  [IO.File]::WriteAllText($preferences,($prefs|ConvertTo-Json),[Text.UTF8Encoding]::new($false))
  $shell=New-Object -ComObject WScript.Shell
@@ -54,7 +52,40 @@ function Install-ContextWidget {
    }
   }
  } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
- $manifest=@{Version='6.3.7';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
+ $manifest=@{Version='6.4.0';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
  [IO.File]::WriteAllText((Join-Path $destinationPath 'installation.json'),($manifest|ConvertTo-Json -Depth 4))
  [pscustomobject]@{Destination=$destinationPath;Backup=$backup;Files=$files.Count;Preferences=$preferences;Bytes=($files|ForEach-Object {(Get-Item -LiteralPath (Join-Path $destinationPath $_)).Length}|Measure-Object -Sum).Sum}
+}
+
+function Install-ContextWidget {
+ param([string]$Source,[string]$Destination,[bool]$AutoOpen=$true,[bool]$DesktopShortcut=$true,[string]$TestRoot='')
+ $ErrorActionPreference='Stop'
+ if (-not [IO.Path]::IsPathRooted($Destination)) {throw 'Choose an absolute installation folder.'}
+ $destinationPath=[IO.Path]::GetFullPath($Destination).TrimEnd('\')
+ if ($destinationPath -eq [IO.Path]::GetPathRoot($destinationPath).TrimEnd('\')) {throw 'Choose a dedicated subfolder.'}
+ if ($TestRoot) {
+  if (-not ($destinationPath+'\').StartsWith([IO.Path]::GetFullPath($TestRoot).TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)) {throw 'Test install must remain inside its fixture.'}
+  $preferences=Join-Path $TestRoot 'preferences/overlay.json';$startup=Join-Path $TestRoot 'startup';$desktop=Join-Path $TestRoot 'desktop';$menu=Join-Path $TestRoot 'menu'
+ } else {
+  $preferences=Join-Path $env:LOCALAPPDATA 'CodexContextMonitor/overlay.json';$startup=[Environment]::GetFolderPath('Startup');$desktop=[Environment]::GetFolderPath('DesktopDirectory');$menu=Join-Path ([Environment]::GetFolderPath('Programs')) 'Context-Token Codex'
+ }
+ # Snapshot every file the installation may replace/remove before touching the runtime.
+ $targets=@($preferences,(Join-Path $destinationPath 'installation.json'))
+ foreach($file in @(Get-ChildItem -LiteralPath $Source -File)) {$targets+=Join-Path $destinationPath $file.Name}
+ foreach($folder in @($startup,$desktop,$menu)) {foreach($name in @('Context-Token Codex.lnk','Context Widget.lnk','Codex Context Overlay.lnk')){$targets+=Join-Path $folder $name}}
+ if(-not $TestRoot){$targets+=Join-Path ([Environment]::GetFolderPath('Programs')) 'Context Widget/Context Widget.lnk'}
+ $original=@{}
+ foreach($path in @($targets|Select-Object -Unique)) {$original[$path]=if([IO.File]::Exists($path)){[IO.File]::ReadAllBytes($path)}else{$null}}
+ try {Invoke-ContextWidgetInstall -Source $Source -Destination $destinationPath -AutoOpen $AutoOpen -DesktopShortcut $DesktopShortcut -TestRoot $TestRoot}
+ catch {
+  $failure=$_; $rollbackErrors=@()
+  foreach($path in $original.Keys) {
+   try {
+    if($null -ne $original[$path]){if(-not [IO.File]::Exists($path) -or [Convert]::ToBase64String([IO.File]::ReadAllBytes($path)) -cne [Convert]::ToBase64String([byte[]]$original[$path])){[IO.File]::WriteAllBytes($path,[byte[]]$original[$path])}}
+    elseif([IO.File]::Exists($path)){[IO.File]::Delete($path)}
+   } catch {$rollbackErrors+=$path}
+  }
+  if($rollbackErrors.Count){throw ('Installation failed; rollback needs manual recovery for: '+($rollbackErrors -join ', ')+'. Original error: '+$failure.Exception.Message)}
+  throw $failure
+ }
 }

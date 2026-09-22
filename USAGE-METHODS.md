@@ -13,9 +13,9 @@ CodexBar's [Codex provider documentation](https://github.com/steipete/CodexBar/b
 
 `Usage.Provider.ps1` starts the installed `codex.exe app-server`, initializes it, requests `account/rateLimits/read`, and closes that helper. The [official app-server documentation](https://learn.chatgpt.com/docs/app-server) describes that read-only method. It never starts a model turn, redeems credits or buys anything.
 
-The Codex CLI handles its existing authentication and provider network connection. The widget does not open auth.json, extract bearer tokens, scrape browser cookies or log CLI diagnostics. Polls run in a separate background runspace, at most once per minute while Tokens mode is selected; Refresh requests an earlier poll. Timeout: 12 seconds. Context mode stops further automatic quota polls after any in-flight request finishes.
+The Codex CLI handles its existing authentication and provider network connection. The widget does not open auth.json, extract bearer tokens, scrape browser cookies or log CLI diagnostics. Polls run in a separate background runspace, at most once per minute while Tokens mode is selected; Refresh requests an earlier poll. Timeout: 45 seconds; failures identify initialization or subscription-response phase. Context mode stops further automatic quota polls after any in-flight request finishes.
 
-The quota panel supports named limit buckets, arbitrary window lengths, plan names, remaining percentages, reset times and available reset-credit counts. Missing windows remain missing; unknown is not zero. Expired reset times do not imply quota recovery. Read failures preserve a clearly labeled last reading; local rollout quota records are a fallback. Freshness is displayed and observations older than two minutes are marked stale.
+The quota panel supports named limit buckets, arbitrary window lengths, plan names, remaining percentages, reset times and available reset-credit counts. Missing windows remain missing; unknown is not zero. Expired reset times do not imply quota recovery. Read failures preserve a clearly labeled last reading. The newest live or local observation wins for each window; additional older windows remain available with their own observation time. Freshness is displayed and observations older than two minutes are marked stale.
 
 ## Token accounting and limits
 

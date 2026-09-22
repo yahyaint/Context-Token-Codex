@@ -9,7 +9,7 @@ function Find-CodexExecutable {
     if ($found) { return $found.FullName }
     throw 'Codex CLI not found. Install/sign in to Codex; recorded local quotas remain available.'
 }
-function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$Arguments='app-server',[int]$TimeoutSeconds=12) {
+function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$Arguments='app-server',[int]$TimeoutSeconds=45) {
     $info=New-Object Diagnostics.ProcessStartInfo
     $info.FileName=if ($Executable) {$Executable} else {Find-CodexExecutable}; $info.Arguments=$Arguments
     if (-not $Executable -and $Arguments -eq 'app-server') {
@@ -35,16 +35,17 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
         $startedProcess=$true
         # Drain diagnostics but never display them: CLI output can contain local paths.
         $stderr=$process.StandardError.ReadToEndAsync()
-        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.3.7"}}}')
+        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.4.0"}}}')
         $process.StandardInput.Flush()
-        $deadline=[DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+        $phase='CLI initialization'; $deadline=[DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         while ([DateTime]::UtcNow -lt $deadline) {
             $pending=$process.StandardOutput.ReadLineAsync()
             $left=[Math]::Max(1,[int]($deadline-[DateTime]::UtcNow).TotalMilliseconds)
-            if (-not $pending.Wait($left)) { throw 'Usage refresh timed out. Showing the last available reading.' }
+            if (-not $pending.Wait($left)) { throw "$phase timed out. Showing the newest available reading." }
             if ($null -eq $pending.Result) { throw 'Codex CLI closed before returning subscription usage.' }
             try { $message=$pending.Result|ConvertFrom-Json } catch { continue }
             if ($message.id -eq 1) {
+                $phase='Subscription response'
                 if ($message.error) { throw 'Codex CLI initialization failed. Update or sign in to Codex.' }
                 $process.StandardInput.WriteLine('{"method":"initialized","params":{}}')
                 $process.StandardInput.WriteLine('{"id":2,"method":"account/rateLimits/read","params":{"excludeResetCreditDetails":true}}')
@@ -150,4 +151,22 @@ function Format-QuotaReset($timestamp) {
         if ($left.TotalSeconds -le 0) { return 'Reset time passed; awaiting refreshed usage' }
         return ('Resets {0} ({1}h {2}m)' -f $reset.ToLocalTime().ToString('MMM d HH:mm'),[Math]::Floor($left.TotalHours),$left.Minutes)
     } catch { return 'Reset unknown' }
+}
+
+function Select-FreshQuota($live,$recorded) {
+    if (-not $live) {return $recorded}
+    if (-not $recorded -or -not @($recorded.Windows).Count) {return $live}
+    $byName=@{}
+    foreach($snapshot in @($live,$recorded)) {
+        foreach($entry in @($snapshot.Windows)) {
+            $key=$entry.Name
+            if(-not $key){continue}
+            if(-not $byName.ContainsKey($key) -or $snapshot.Observed -gt $byName[$key].Observed) {
+                $byName[$key]=[pscustomobject]@{Name=$entry.Name;Remaining=$entry.Remaining;Reset=$entry.Reset;Minutes=$entry.Minutes;Observed=$snapshot.Observed;Source=$snapshot.Source}
+            }
+        }
+    }
+    $windows=@($byName.Values|Sort-Object Name)
+    $newest=if($recorded.Observed -gt $live.Observed){$recorded}else{$live}
+    [pscustomobject]@{Windows=$windows;Observed=($windows|Sort-Object Observed|Select-Object -First 1).Observed;Source=(@($windows|ForEach-Object Source|Select-Object -Unique)-join ' + ');Plan=$newest.Plan;ResetCredits=$live.ResetCredits;Credits=$newest.Credits}
 }

@@ -14,6 +14,7 @@ This generates ContextWidget.exe, Setup.exe and the multi-resolution Context.ico
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_settings.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_regressions.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_repository.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_usage.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_compatibility.ps1

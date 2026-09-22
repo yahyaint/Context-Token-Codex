@@ -8,9 +8,9 @@ if ($Scenario -eq 'exit') { exit }
 if ($Scenario -eq 'hang') { Start-Sleep 30; exit }
 while ($line=[Console]::ReadLine()) {
  $message=$line|ConvertFrom-Json
- if ($message.id -eq 1) { [Console]::WriteLine('diagnostic'); [Console]::WriteLine('{"id":1,"result":{}}') }
+ if ($message.id -eq 1) { if ($Scenario -eq 'slow') {Start-Sleep -Seconds 13}; [Console]::WriteLine('diagnostic'); [Console]::WriteLine('{"id":1,"result":{}}') }
  if ($message.id -eq 2) {
-  if ($Scenario -eq 'old') { [Console]::WriteLine('{"id":2,"error":{"code":-32602}}') }
+  if ($Scenario -eq 'slow') {[Console]::WriteLine('{"id":2,"result":{"rateLimits":{"primary":{"usedPercent":25,"windowDurationMins":300}}}}')} elseif ($Scenario -eq 'old') { [Console]::WriteLine('{"id":2,"error":{"code":-32602}}') }
   else { [Console]::WriteLine('{"id":2,"error":{"code":-32000}}') }
  }
  if ($message.id -eq 3) { [Console]::WriteLine('{"id":3,"result":{"rateLimits":{"primary":{"usedPercent":25,"windowDurationMins":300}}}}') }
@@ -19,6 +19,8 @@ while ($line=[Console]::ReadLine()) {
 $exe=(Get-Process -Id $PID).Path
 $q=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" old') -TimeoutSeconds 8
 if ($q.Windows[0].Remaining -ne 75) { throw 'Legacy RPC retry failed.' }
+$slow=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" slow')
+if ($slow.Windows[0].Remaining -ne 75) {throw 'Slow initialization failed.'}
 foreach ($scenario in @('error','exit','hang')) {
  $failed=$false
  try { $null=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" '+$scenario) -TimeoutSeconds 2 } catch { $failed=$true }

@@ -1,5 +1,17 @@
 # Changelog
 
+## 6.4.0 — audit repairs
+
+- Preserve TOML strings and quoted keys; reject unsupported edits before writing.
+- Save both context limits in one atomic replacement with conflict checks and backup.
+- Read Unicode project roots as UTF-8; retain valid fallback names.
+- Clear usage when its context window changes; recover from missing indexed paths.
+- Prefer the newest quota observation; allow up to 45 seconds for CLI startup/response and report the timed-out phase.
+- Validate preferences, preserve invalid originals, and roll back failed installations.
+- Bound inactive rollout history and reuse discovery results between reconciliations.
+- Enforce a useful expanded minimum height; refresh setup icon and documentation.
+- Add regression fixtures covering audit failures and slow CLI initialization.
+
 ## 6.3.7 — text encoding fix
 
 - Use plain separators in runtime labels so Windows PowerShell 5.1 reads them correctly.

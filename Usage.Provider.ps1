@@ -1,3 +1,4 @@
+. (Join-Path $PSScriptRoot 'Quota.Estimator.ps1')
 # SPDX-License-Identifier: MIT
 # Independent CodexBar-style RPC provider and ccusage-inspired detail view.
 # No upstream source copied. See ACKNOWLEDGMENTS.md and THIRD_PARTY_NOTICES.md.
@@ -35,7 +36,7 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
         $startedProcess=$true
         # Drain diagnostics but never display them: CLI output can contain local paths.
         $stderr=$process.StandardError.ReadToEndAsync()
-        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.4.1"}}}')
+        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.5.0"}}}')
         $process.StandardInput.Flush()
         $phase='CLI initialization'; $deadline=[DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         while ([DateTime]::UtcNow -lt $deadline) {
@@ -118,13 +119,13 @@ function Get-RecordedTokenSummary {
         }
         $identity=if ($script:titleCache) {$script:titleCache[$state.ThreadId]} else {$null}
         $title=if ($identity.UiName) {$identity.UiName} elseif ($identity.Initial) {$identity.Initial} else {$state.ThreadId}
-        $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$lifecycle[$state.ThreadId].Active;Total=$state.ThreadTokens;Input=$usage.input_tokens;Cached=$usage.cached_input_tokens;Uncached=$plain;Output=$usage.output_tokens;Reasoning=$usage.reasoning_output_tokens;Observed=$when}
+        $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$lifecycle[$state.ThreadId].Active;Total=$state.ThreadTokens;Input=$usage.input_tokens;Cached=$usage.cached_input_tokens;Uncached=$plain;Output=$usage.output_tokens;Reasoning=$usage.reasoning_output_tokens;Observed=$when;LastInput=$state.ContextInput;LastCached=$state.CachedInput;LastOutput=$state.OutputTokens;Compactions=$state.CompactCount;QuotaObserved=$state.RateLimitAt}
     }
     foreach ($state in $lifecycle.Values) {
         if (-not $state.Active -or $byThread.ContainsKey($state.ThreadId)) { continue }
         $identity=if ($script:titleCache) {$script:titleCache[$state.ThreadId]} else {$null}
         $title=if ($identity.UiName) {$identity.UiName} else {$state.ThreadId}
-        $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$true;Total=$null;Input=$null;Cached=$null;Uncached=$null;Output=$null;Reasoning=$null;Observed=$null}
+        $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$true;Total=$null;Input=$null;Cached=$null;Uncached=$null;Output=$null;Reasoning=$null;Observed=$null;LastInput=$null;LastCached=$null;LastOutput=$null;Compactions=$state.CompactCount;QuotaObserved=$state.RateLimitAt}
     }
     $latest=$script:rollouts.Values | Where-Object {$_.RateLimits} | Sort-Object RateLimitAt -Descending | Select-Object -First 1
     $quota=$null
@@ -142,6 +143,12 @@ function Get-RecordedTokenSummary {
 function Format-TokenValue($value) {
     if ($null -eq $value) { return '--' }
     return ('{0:N0}' -f $value)
+}
+function Get-ChatTokenDetails($chat) {
+    $hit=if ($chat.Input -gt 0 -and $null -ne $chat.Cached -and $chat.Cached -le $chat.Input) { '{0:N1}%' -f (100.0*$chat.Cached/$chat.Input) } else {'--'}
+    $nonReasoning=if ($null -ne $chat.Output -and $null -ne $chat.Reasoning -and $chat.Reasoning -le $chat.Output) {$chat.Output-$chat.Reasoning} else {$null}
+    $share=if ($chat.Output -gt 0 -and $null -ne $chat.Reasoning -and $chat.Reasoning -le $chat.Output) {'{0:N1}%' -f (100.0*$chat.Reasoning/$chat.Output)} else {'--'}
+    @("CHAT TOTALS", "Input: $(Format-TokenValue $chat.Input)", "  Cached: $(Format-TokenValue $chat.Cached) | Hit rate: $hit", "  Uncached: $(Format-TokenValue $chat.Uncached)", "Output: $(Format-TokenValue $chat.Output)", "  Reasoning: $(Format-TokenValue $chat.Reasoning) | Share: $share", "  Other output: $(Format-TokenValue $nonReasoning)", '', 'LATEST REQUEST', "Input: $(Format-TokenValue $chat.LastInput) | Cached: $(Format-TokenValue $chat.LastCached)", "Output: $(Format-TokenValue $chat.LastOutput)", '', "Last model: $($chat.Model)", "Compactions in loaded file: $(Format-TokenValue $chat.Compactions)", "Last token record: $(if($chat.Observed){$chat.Observed.ToLocalTime().ToString('MMM d HH:mm:ss')}else{'--'})", '', 'QUOTA ESTIMATE', $chat.QuotaShare, $chat.QuotaNotes, "Last local quota record: $(if($chat.QuotaObserved -gt [DateTimeOffset]::MinValue){$chat.QuotaObserved.ToLocalTime().ToString('MMM d HH:mm:ss')}else{'--'})", 'pp = percentage points of account allowance.', 'Other chats/devices may contribute; first reading is the baseline.', 'No exact per-chat quota or model-weighted charge is supplied.', '', 'Totals include earlier models. Cache is part of input;', 'reasoning is part of output. Missing data shows --.') -join "`n"
 }
 function Format-QuotaReset($timestamp) {
     if (-not $timestamp) { return 'Reset unknown' }
@@ -168,5 +175,5 @@ function Select-FreshQuota($live,$recorded) {
     }
     $windows=@($byName.Values|Sort-Object Name)
     $newest=if($recorded.Observed -gt $live.Observed){$recorded}else{$live}
-    [pscustomobject]@{Windows=$windows;Observed=($windows|Sort-Object Observed|Select-Object -First 1).Observed;Source=(@($windows|ForEach-Object Source|Select-Object -Unique)-join ' + ');Plan=$newest.Plan;ResetCredits=$live.ResetCredits;Credits=$newest.Credits}
+    [pscustomobject]@{Windows=$windows;Observed=($windows|Sort-Object Observed|Select-Object -First 1).Observed;Source=(@($windows|ForEach-Object Source|Select-Object -Unique)-join ' + ');Plan=$(if($newest.Plan){$newest.Plan}elseif($live.Plan){$live.Plan}else{$recorded.Plan});ResetCredits=$live.ResetCredits;Credits=$newest.Credits}
 }

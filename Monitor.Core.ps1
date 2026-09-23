@@ -351,6 +351,8 @@ function New-RolloutState($file) {
         IsSubagent = $false
         Cwd = ''
         Model = ''
+        ServiceTier = ''
+        TokenEvents = (New-Object 'Collections.Generic.List[object]')
         Active = $false
         StartedAt = [DateTimeOffset]::MinValue
         LastEventAt = [DateTimeOffset]::MinValue
@@ -397,6 +399,7 @@ function Read-RolloutLine($state, [string]$line) {
         }
         'turn_context' {
             if ($payload.model) { $state.Model = [string]$payload.model }
+            $state.ServiceTier=[string]$payload.service_tier
             if ($payload.cwd) { $state.Cwd = [string]$payload.cwd }
         }
         'event_msg' {
@@ -428,6 +431,17 @@ function Read-RolloutLine($state, [string]$line) {
                             $state.UsageAt = $when
                         }
                         if ($null -ne (Get-UsageInteger $info.total_token_usage.total_tokens)) {
+                            $u=$info.total_token_usage; $prior=$state.TotalUsage
+                            $deltaInput=$null; $deltaCache=$null; $deltaOutput=$null
+                            if ($prior -and $null -ne $u.input_tokens -and $null -ne $u.output_tokens -and $null -ne $u.cached_input_tokens -and $null -ne $prior.cached_input_tokens) {
+                                $deltaInput=[long]$u.input_tokens-[long]$prior.input_tokens; $deltaCache=[long]$u.cached_input_tokens-[long]$prior.cached_input_tokens; $deltaOutput=[long]$u.output_tokens-[long]$prior.output_tokens
+                            }
+                            if ($null -ne $deltaInput -and $deltaInput -ge 0 -and $deltaCache -ge 0 -and $deltaCache -le $deltaInput -and $deltaOutput -ge 0 -and ($deltaInput+$deltaOutput) -gt 0) {
+                                $state.TokenEvents.Add([pscustomobject]@{Id=$state.ThreadId;At=$when;Model=$state.Model;Tier=$state.ServiceTier;Input=$deltaInput;Cached=$deltaCache;Output=$deltaOutput;RequestInput=$state.ContextInput;Total=[long]$u.total_tokens})
+                            } elseif ($null -eq $state.ThreadTokens -or [long]$u.total_tokens -ne $state.ThreadTokens) {
+                                $state.TokenEvents.Add([pscustomobject]@{Id=$state.ThreadId;At=$when;Model='';Tier='';Input=$null;Cached=$null;Output=$null;RequestInput=$null;Total=[long]$u.total_tokens})
+                            }
+                            if ($state.TokenEvents.Count -gt 4096) { $state.TokenEvents.RemoveRange(0,$state.TokenEvents.Count-4096) }
                             $state.ThreadTokens = Get-UsageInteger $info.total_token_usage.total_tokens
                             $state.TotalUsage = [pscustomobject]@{input_tokens=(Get-UsageInteger $info.total_token_usage.input_tokens);cached_input_tokens=(Get-UsageInteger $info.total_token_usage.cached_input_tokens);output_tokens=(Get-UsageInteger $info.total_token_usage.output_tokens);reasoning_output_tokens=(Get-UsageInteger $info.total_token_usage.reasoning_output_tokens)}
                             $state.TotalUsageAt = $when

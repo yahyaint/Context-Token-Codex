@@ -1,4 +1,4 @@
-# Context-Token Codex 6.4.1
+# Context-Token Codex 6.5.0
 
 A Windows widget for local Codex context, token counts and subscription usage.
 
@@ -99,3 +99,14 @@ Private Codex schemas can change. Versioned discovery, read-only fallbacks and r
 ## Credits
 
 MIT. Thanks to ccusage, CodexBar, Codex Monitor HUD and Codex Usage for referenced ideas. [Acknowledgments](ACKNOWLEDGMENTS.md), [third-party notices](THIRD_PARTY_NOTICES.md), [methods](METHODS.md), [branding](BRANDING.md), and [UI writing](UI-WRITING.md) describe provenance. This is not an OpenAI product or an endorsed upstream fork.
+## Quota estimates (6.5.0)
+
+Tokens mode shows actual account **5h / 7d percent used**, the reported plan, and an **Est. tracked share** below each chat. Estimates allocate observed quota increases using each chat's model-weighted uncached input, cached input and output. The model is recorded per token event; reasoning is already part of output. They are local-only estimates, not exact subscription charges or lifetime chat percentages. Other devices can contribute to the same account readings.
+
+`--` means not enough reliable data. Monitoring needs two fresh observations and supported local token deltas. Estimates cover matched intervals since the displayed baseline, independently for each reset window. Missing events/models, gaps over ten minutes, explicit non-Standard speed, long-context requests over 272k and subagent intervals stay unattributed. An absent speed field assumes Standard. Account bars remain usable regardless of estimator coverage. No hours estimate is shown.
+
+Expand **Token and quota details** for cached/uncached input, cache hit rate, reasoning/other output, latest request, last model, compactions and estimate coverage. The total covers all recorded models; it is not re-priced using the last model.
+
+`Quota.Rates.json` contains dated relative weights sourced from official rates. Unknown models get no invented price. Weights expire after 90 days until reviewed; rates do not establish an account's subscription ceiling. `Quota.Estimator.ps1` implements the independent allocator. Current-window history checkpoints every 30 seconds under `%LOCALAPPDATA%\CodexContextMonitor\QuotaHistory`; a changed profile/login-file timestamp starts a new baseline. Credential contents are not read. Keychain-only account changes cannot be detected from file metadata: restart with cleared quota history after such an account switch. History contains chat IDs and estimates, not messages or credentials.
+
+See [quota research](QUOTA-RESEARCH.md) for methods, assumptions and references. Removing only the QuotaHistory folder resets estimates; token logs and account quotas are unaffected.

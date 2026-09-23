@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.5.0 - quota share and compact details
+
+- Fix arrow/counter spacing, including large chat counts.
+- Show account quota used and model-weighted local chat estimates.
+- Add bounded history, conservative missing-data handling and separate reset windows.
+- Expand token detail without adding rows to the collapsed view.
+- Credit research methods and add estimator tests.
+
+
 ## 6.4.1 - percentage compaction input
 
 - Accept percentages in Compact at in both context editors; preview the converted token count.

@@ -30,6 +30,8 @@ jobs:
         run: .\Tests\test_regressions.ps1
       - name: Test usage accounting and quota parsing
         run: .\Tests\test_usage.ps1
+      - name: Test quota estimator
+        run: .\Tests\test_estimator.ps1
       - name: Verify source and isolated installation
         run: .\Tests\test_repository.ps1
       - name: Test compatibility and RPC failures

@@ -18,3 +18,12 @@ The previous palette was inspired by [Nord](https://www.nordtheme.com/docs/color
 UI wording follows principles from [ASD-STE100](https://www.asd-ste100.org/about_STE.html) and [Microsoft Windows writing guidance](https://learn.microsoft.com/en-us/windows/apps/design/style/writing-style). See [UI-WRITING.md](UI-WRITING.md). These references do not imply certification or endorsement.
 
 License links checked on 18 September 2026. Keep this file and the notices in source and binary distributions. If a future change copies upstream code, record its path and revision, retain its copyright and license, and identify modifications.
+
+### Quota attribution research (24 September 2026)
+
+- [Codexometer](https://github.com/merefield/codexometer), merefield and contributors, [MIT](https://github.com/merefield/codexometer/blob/main/LICENSE): local-only estimate wording, baseline/reset checks and honest precision.
+- [CPA Quota Estimator](https://github.com/Autsunset/cpa-quota-estimator), Autsunset and contributors, [MIT](https://github.com/Autsunset/cpa-quota-estimator/blob/main/LICENSE): separate model/cache weights and window research.
+- [How Much I Get From Codex](https://github.com/bigbobro/how-much-i-get-from-codex), bigbobro and contributors, [MIT](https://github.com/bigbobro/how-much-i-get-from-codex/blob/main/LICENSE): allowance-calibration comparison; its website endpoints are not used.
+- [AI Usage Tracker](https://github.com/Danielw412/AI-usage-tracker), Danielw412: interval-allocation comparison. License not confirmed; no source incorporated.
+
+CTC's implementation is independently written. These are method/research acknowledgments, not copied-code notices or endorsements. See QUOTA-RESEARCH.md.

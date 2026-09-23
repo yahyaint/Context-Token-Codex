@@ -5,7 +5,7 @@ function Invoke-ContextWidgetInstall {
  if (-not [IO.Path]::IsPathRooted($Destination)) { throw 'Choose an absolute installation folder.' }
  $destinationPath=[IO.Path]::GetFullPath($Destination).TrimEnd('\')
  if ($destinationPath -eq [IO.Path]::GetPathRoot($destinationPath).TrimEnd('\')) { throw 'Choose a dedicated subfolder, not a drive root.' }
- $files=@('ContextWidget.exe','Context.ico','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Usage.Provider.ps1','USAGE-METHODS.md','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','ERROR-AUDIT.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','METHODS.md','BRANDING.md')
+ $files=@('ContextWidget.exe','Context.ico','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','USAGE-METHODS.md','QUOTA-RESEARCH.md','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','ERROR-AUDIT.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','METHODS.md','BRANDING.md')
  foreach ($file in $files) { if (-not (Test-Path -LiteralPath (Join-Path $Source $file) -PathType Leaf)) { throw "Installer payload missing $file" } }
  if ($TestRoot) {
   $localRoot=[IO.Path]::GetFullPath($TestRoot).TrimEnd('\')+'\'
@@ -19,7 +19,7 @@ function Invoke-ContextWidgetInstall {
  $sameSource=([IO.Path]::GetFullPath($Source).TrimEnd('\') -eq $destinationPath)
  $backup=$null
  if (-not $sameSource -and (Test-Path -LiteralPath (Join-Path $destinationPath 'Overlay.ps1'))) {
-  $backup=Join-Path $destinationPath ('Versions\before-6.4.1-'+[guid]::NewGuid().ToString('N').Substring(0,8))
+  $backup=Join-Path $destinationPath ('Versions\before-6.5.0-'+[guid]::NewGuid().ToString('N').Substring(0,8))
   [void][IO.Directory]::CreateDirectory($backup)
   foreach ($file in $files) { $old=Join-Path $destinationPath $file; if (Test-Path -LiteralPath $old) { Copy-Item -LiteralPath $old -Destination $backup } }
  }
@@ -52,7 +52,7 @@ function Invoke-ContextWidgetInstall {
    }
   }
  } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
- $manifest=@{Version='6.4.1';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
+ $manifest=@{Version='6.5.0';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
  [IO.File]::WriteAllText((Join-Path $destinationPath 'installation.json'),($manifest|ConvertTo-Json -Depth 4))
  [pscustomobject]@{Destination=$destinationPath;Backup=$backup;Files=$files.Count;Preferences=$preferences;Bytes=($files|ForEach-Object {(Get-Item -LiteralPath (Join-Path $destinationPath $_)).Length}|Measure-Object -Sum).Sum}
 }

@@ -57,7 +57,7 @@ $install=Join-Path $fixture 'install';$destination=Join-Path $install 'installed
 [void][IO.Directory]::CreateDirectory($destination);[void][IO.Directory]::CreateDirectory((Join-Path $install 'preferences'))
 [IO.File]::WriteAllText((Join-Path $install 'preferences/overlay.json'),'{broken')
 $installed=Install-ContextWidget -Source $root -Destination $destination -TestRoot $install
-Assert ($installed.Files -eq 21 -and @(Get-ChildItem (Join-Path $install 'preferences') -Filter '*.bak').Count -eq 1) 'Malformed preference recovery failed.'
+Assert ($installed.Files -eq 24 -and @(Get-ChildItem (Join-Path $install 'preferences') -Filter '*.bak').Count -eq 1) 'Malformed preference recovery failed.'
 $exe=Join-Path $destination 'ContextWidget.exe';$scriptFile=Join-Path $destination 'Overlay.ps1'
 [IO.File]::WriteAllText($exe,'old launcher');[IO.File]::WriteAllText($scriptFile,'old script')
 $lock=[IO.File]::Open($scriptFile,'Open','Read','Read');$failed=$false

@@ -1,3 +1,13 @@
+# Release 6.5.0 validation - 24 September 2026
+
+- Twelve suites exercised under Windows PowerShell 5.1 and PowerShell 7: settings, regressions, usage, estimator, compatibility, transport, watcher, repository, bootstrap, overlay, theme and install. The first PS5 estimator run caught a DateTimeOffset serialization issue; explicit ISO timestamps fixed it. Estimator/persistence, repository, regression and usage checks were rerun successfully after the fix and payload changes.
+- Estimator checks: relative Astra/Sol weights, cached input, unknown models, concurrent allocation, duplicate samples, stale readings, reset isolation, missing usage, history persistence/corruption, profile changes and per-event model switches. These verify calculation mechanics, not exact agreement with private subscription charging.
+- WPF visual inspection: mini navigation at 2 / 2, compact token summary, account percent-used bars and expanded token details. Layout assertions verify at least seven device-independent pixels between counter and arrows for 2 / 2 and 128 / 128.
+- Expected runtime payload: 24 files. Rates and estimator are independent local components; no third-party executable or source copied. New history contains current-window estimates and chat IDs, no credential contents or messages.
+- Attribution remains a local-only estimate. A known model's standard credit weights are a relative proxy; missing speed assumes Standard. Unknown models, explicit non-Standard tiers, requests above 272k input, child-agent events and observation gaps stay unattributed. Other-device use during local activity cannot be identified exactly. History invalidates on profile/login-file metadata changes; keychain-only account changes require clearing estimator history.
+- No account-limit changes, model requests, public push, unrelated-machine test, long soak or backend-accuracy guarantee is implied. Historical performance measurements below are not new 6.5 benchmarks.
+
+---
 # Release 6.4.0 audit repairs
 
 Verified 22 September 2026 on the development Windows 10.0.26200 desktop. All twelve findings from the 6.3.7 audit have implemented fixes and targeted checks. The live quota timeout has also been addressed with a longer startup budget, phase-specific errors and a delayed-initialization fixture. Its earlier intermittent environmental cause remains unproven.

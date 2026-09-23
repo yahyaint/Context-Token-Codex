@@ -17,6 +17,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_settings.ps
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_regressions.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_repository.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_usage.ps1
+.\Tests\test_estimator.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_compatibility.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_transport.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_overlay.ps1

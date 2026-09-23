@@ -36,7 +36,7 @@ $worker = [PowerShell]::Create()
         . (Join-Path $folder 'Monitor.Data.ps1')
         . (Join-Path $folder 'Usage.Provider.ps1')
         while (-not $shared.Stop) {
-            try { $shared.Latest=Get-MonitorSnapshot; $shared.Error=''; $shared.Scans++ }
+            try { $snapshot=Get-MonitorSnapshot; Update-SnapshotQuota $snapshot $shared.LiveQuota $CodexHome; $shared.Latest=$snapshot; $shared.Error=''; $shared.Scans++ }
             catch { $shared.Error=$_.Exception.Message }
             for ($i=0; $i -lt 5 -and -not $shared.Stop; $i++) { Start-Sleep -Milliseconds 200 }
         }
@@ -92,14 +92,14 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
    <StackPanel><TextBlock Text="COMPACTIONS" FontSize="9" Foreground="#E0E1DD"/><TextBlock x:Name="MiniCompactions" Text="--" FontSize="15" Margin="0,3,0,0"/></StackPanel>
    <StackPanel><TextBlock Text="CACHED INPUT" FontSize="9" Foreground="#E0E1DD"/><TextBlock x:Name="MiniCached" Text="--" FontSize="15" Margin="0,3,0,0"/></StackPanel>
   </UniformGrid>
-  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="MiniUpdated" Text="Waiting for data" FontSize="10" Foreground="#E0E1DD" VerticalAlignment="Center"/><StackPanel Orientation="Horizontal" Grid.Column="1"><Button x:Name="PreviousTask" Content="&#x2039;" Padding="8,2" ToolTip="Previous active chat"/><TextBlock x:Name="TaskPosition" Text="0 / 0" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0"/><Button x:Name="NextTask" Content="&#x203A;" Padding="8,2" Margin="0" ToolTip="Next active chat"/></StackPanel></Grid>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="MiniUpdated" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Text="Waiting for data" FontSize="10" Foreground="#E0E1DD" VerticalAlignment="Center"/><Grid Grid.Column="1" Margin="8,0,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="28"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="28"/></Grid.ColumnDefinitions><Button x:Name="PreviousTask" Grid.Column="0" Content="&#x2039;" Width="28" Height="28" Padding="0" Margin="0" ToolTip="Previous active chat"/><TextBlock x:Name="TaskPosition" Grid.Column="1" Text="0 / 0" MinWidth="40" TextAlignment="Center" FontSize="10" VerticalAlignment="Center" Margin="8,0"/><Button x:Name="NextTask" Grid.Column="2" Content="&#x203A;" Width="28" Height="28" Padding="0" Margin="0" ToolTip="Next active chat"/></Grid></Grid>
   <Button x:Name="MiniEditContext" Content="Edit context limits" FontSize="11" Padding="10,3" HorizontalAlignment="Left" Margin="0,8,0,0" IsEnabled="False" ToolTip="Open the displayed chat project context editor. Applies to all models in that project."/><!-- mini shortcut --></StackPanel><ScrollViewer x:Name="TokensPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed"><StackPanel Margin="0,0,8,0"><TextBlock x:Name="ActiveTokenHeading" Text="Active chats" FontSize="10" Foreground="#778DA9" Margin="0,0,0,6"/><StackPanel x:Name="ActiveTokenTasks"/><Expander x:Name="TokenSummary" Header="All loaded chats" Foreground="#E0E1DD" IsExpanded="True" Margin="0,0,0,8"><StackPanel>
   <DockPanel><TextBlock Text="Recorded totals" FontSize="10" Foreground="#778DA9"/><TextBlock x:Name="TokenLive" Text="Watching files" FontSize="10" HorizontalAlignment="Right"/></DockPanel>
   <TextBlock x:Name="TokenTotal" Text="Waiting for usage" FontSize="28" FontWeight="SemiBold" Margin="0,4,0,4"/>
   <TextBlock x:Name="TokenBreakdown" FontSize="10" Opacity="0.75" Margin="0,0,0,8"/>
   <UniformGrid x:Name="TokenMetrics" Columns="3" Margin="0,0,0,8"/>
   </StackPanel></Expander><Expander Header="Other chat details" Foreground="#E0E1DD" Margin="0,0,0,8"><StackPanel x:Name="TokenTasks"/></Expander>
-  <DockPanel Margin="0,4,0,8"><Button x:Name="RefreshUsage" Content="Refresh" DockPanel.Dock="Right" FontSize="10" Padding="8,3"/><TextBlock Text="Subscription" FontSize="10" Foreground="#778DA9" VerticalAlignment="Center"/></DockPanel>
+  <DockPanel Margin="0,4,0,8"><Button x:Name="RefreshUsage" Content="Refresh" DockPanel.Dock="Right" FontSize="10" Padding="8,3"/><TextBlock x:Name="SubscriptionHeading" Text="Account quota used" FontSize="10" Foreground="#778DA9" VerticalAlignment="Center"/></DockPanel>
   <UniformGrid x:Name="QuotaCards" Columns="2"/>
   <Expander Header="Reading status" Margin="0,4,0,4"><TextBlock x:Name="TokenSource" Text="Reading subscription usage..." FontSize="10" Margin="0,4,0,6"/></Expander>
   <Expander Header="How counts work" Foreground="#E0E1DD"><TextBlock x:Name="TokenCoverage" FontSize="10" Opacity="0.85" Margin="0,6,0,0"/></Expander>
@@ -161,7 +161,7 @@ function Apply-WidgetTheme($element) {
 }
 Apply-WidgetTheme $window
 $iconDecoder=[Windows.Media.Imaging.BitmapDecoder]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico')),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad); $window.Icon=$iconDecoder.Frames[$iconDecoder.Frames.Count-1]; $window.FindName('BrandIcon').Source=$window.Icon
-foreach ($name in @('MiniEditContext','SettingsButton','TrayButton','Pin','Health','ContextQuotaBars','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','QuickContext','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','QuotaCards','TokenSource','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
+foreach ($name in @('MiniEditContext','SettingsButton','TrayButton','Pin','Health','ContextQuotaBars','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','QuickContext','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','QuotaCards','TokenSource','SubscriptionHeading','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
 $window.Width=[Math]::Max(360,[double]$prefs.Width); $window.Height=[Math]::Max(300,[double]$prefs.Height)
 $area=[Windows.SystemParameters]::WorkArea
 $hasSavedPosition=($prefs.Left -ne -1 -or $prefs.Top -ne -1)
@@ -291,7 +291,7 @@ function Update-ContextQuotaBars {
         $row=$script:contextQuotaRows[$key]
         $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}
         $observed=if ($entry.Observed) {$entry.Observed} else {$quota.Observed}; $stale=([DateTimeOffset]::Now-$observed).TotalMinutes -gt 2
-        $row.Label.Text=('{0} | {1:N0}% left{2}' -f $period,$entry.Remaining,$(if($stale){' *'}else{''}))
+        $row.Label.Text=('{0} | {1:N0}% used{2}' -f $period,(100-$entry.Remaining),$(if($stale){' *'}else{''}))
         $row.Bar.Value=$entry.Remaining
         $row.Panel.ToolTip="$($entry.Name)`n$(Format-QuotaReset $entry.Reset)`nObserved $($observed.ToLocalTime().ToString('MMM d HH:mm:ss'))$(if($stale){' (older reading)'})`n$($quota.Source)"
     }
@@ -344,8 +344,10 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
         if (-not $script:tokenTaskRows.ContainsKey($key)) {
             $panel=New-Object Windows.Controls.StackPanel; $panel.Margin='0,3,0,9'
             $title=New-Label '' 13 '#778DA9'; $detail=New-Label '' 11 '#E0E1DD'; $total=New-Label '' 25 '#E0E1DD'
-            [void]$panel.Children.Add($title); [void]$panel.Children.Add($total); [void]$panel.Children.Add($detail); [void]$TokenTasks.Children.Add($panel)
-            $script:tokenTaskRows[$key]=@{Panel=$panel;Title=$title;Total=$total;Detail=$detail}
+            $brief=New-Label '' 11 '#778DA9'
+            $expand=New-Object Windows.Controls.Expander; $expand.Header='Token and quota details'; $expand.Content=$detail; $expand.Margin='0,5,0,0'
+            [void]$panel.Children.Add($title); [void]$panel.Children.Add($total); [void]$panel.Children.Add($brief); [void]$panel.Children.Add($expand); [void]$TokenTasks.Children.Add($panel)
+            $script:tokenTaskRows[$key]=@{Panel=$panel;Title=$title;Total=$total;Detail=$detail;Brief=$brief;Expand=$expand}
         }
         $row=$script:tokenTaskRows[$key]
         $target=if ($chat.Active) {$ActiveTokenTasks} else {$TokenTasks}
@@ -354,7 +356,9 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
         $row.Total.ToolTip='Cumulative total for this chat, including earlier turns.'
         $status=if ($chat.Active) {'Running'} else {'Idle'}
         $row.Title.Text="$($chat.Title) | $status"
-        $row.Detail.Text="Input $(Format-TokenValue $chat.Input) | Output $(Format-TokenValue $chat.Output)`nCache $(Format-TokenValue $chat.Cached) | Uncached $(Format-TokenValue $chat.Uncached) | Reasoning $(Format-TokenValue $chat.Reasoning)"
+        $row.Brief.Text=if($chat.QuotaShare){$chat.QuotaShare}else{'Est. tracked share: 5h -- | 7d --'}
+        $row.Brief.ToolTip=$chat.QuotaNotes
+        $row.Detail.Text=Get-ChatTokenDetails $chat
         $row.Panel.ToolTip="Last model: $($chat.Model). Counts cover the whole chat, including earlier models. Last record: $(if ($chat.Observed) {$chat.Observed.ToLocalTime().ToString('HH:mm:ss')} else {'waiting'})."
     }
     foreach ($key in @($script:tokenTaskRows.Keys)) { if ($key -notin $keys) { [void]$script:tokenTaskRows[$key].Panel.Parent.Children.Remove($script:tokenTaskRows[$key].Panel); $script:tokenTaskRows.Remove($key) } }
@@ -371,9 +375,10 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
             [void]$panel.Children.Add($label); [void]$panel.Children.Add($bar); [void]$panel.Children.Add($reset)
             [void]$QuotaCards.Children.Add($panel); $script:quotaRows[$key]=@{Panel=$panel;Label=$label;Bar=$bar;Reset=$reset}
         }
-        $row=$script:quotaRows[$key]; $observed=if ($entry.Observed) {$entry.Observed} else {$quota.Observed}; $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}; $row.Label.Text=('{0} | {1:N0}% left{2}' -f $period,$entry.Remaining,$(if(([DateTimeOffset]::Now-$observed).TotalMinutes -gt 2){' *'}else{''})); $row.Bar.Value=$entry.Remaining; $row.Reset.Text=Format-QuotaReset $entry.Reset; $row.Reset.Visibility='Collapsed'; $row.Panel.ToolTip=$entry.Name+"`n"+$row.Reset.Text+"`nObserved $($observed.ToLocalTime().ToString('MMM d HH:mm:ss')) | $($quota.Source)"
+        $row=$script:quotaRows[$key]; $observed=if ($entry.Observed) {$entry.Observed} else {$quota.Observed}; $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}; $row.Label.Text=('{0} | {1:N0}% used{2}' -f $period,(100-$entry.Remaining),$(if(([DateTimeOffset]::Now-$observed).TotalMinutes -gt 2){' *'}else{''})); $row.Bar.Value=100-$entry.Remaining; $row.Reset.Text=Format-QuotaReset $entry.Reset; $row.Reset.Visibility='Collapsed'; $row.Panel.ToolTip=$entry.Name+"`n"+$row.Reset.Text+"`nObserved $($observed.ToLocalTime().ToString('MMM d HH:mm:ss')) | $($quota.Source)"
     }
     foreach ($key in @($script:quotaRows.Keys)) { if ($key -notin $keys) { [void]$QuotaCards.Children.Remove($script:quotaRows[$key].Panel); $script:quotaRows.Remove($key) } }
+    $SubscriptionHeading.Text=if ($quota.Plan) {"Account quota used | $($quota.Plan)"} else {'Account quota used'}
     $TokenSource.Text=if ($quota) { "$($quota.Source) | $($quota.Plan) | checked $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))" } else { 'No quota reading yet. Codex subscription sign-in required.' }
     if ($quota -and -not $entries.Count) { $TokenSource.Text+=' | No quota windows supplied.' }
     if ($quota -and $null -ne $quota.ResetCredits) { $TokenSource.Text+="`nAvailable reset credits: $($quota.ResetCredits) (read only)" }
@@ -802,6 +807,15 @@ $timer.Add_Tick({
             $directOpacityPassed=($window.Opacity -eq 1 -and [Math]::Abs($window.Content.Background.Opacity-0.55) -lt 0.001 -and $LiveOpacityLabel.Text -eq '55%'); $window.UpdateLayout()
             $buttonBottom=$MiniEditContext.TranslatePoint([Windows.Point]::new(0,$MiniEditContext.ActualHeight),$MiniPanel).Y
             if ($buttonBottom -gt $MiniPanel.ActualHeight) { throw 'Mini context button is clipped.' }
+            foreach ($counter in @('2 / 2','128 / 128')) {
+                $TaskPosition.Text=$counter; $window.UpdateLayout()
+                $left=$PreviousTask.TranslatePoint([Windows.Point]::new($PreviousTask.ActualWidth,0),$MiniPanel).X
+                $textLeft=$TaskPosition.TranslatePoint([Windows.Point]::new(0,0),$MiniPanel).X
+                $textRight=$TaskPosition.TranslatePoint([Windows.Point]::new($TaskPosition.ActualWidth,0),$MiniPanel).X
+                $right=$NextTask.TranslatePoint([Windows.Point]::new(0,0),$MiniPanel).X
+                if ($textLeft-$left -lt 7 -or $right-$textRight -lt 7) {throw 'Navigation counter overlaps an arrow.'}
+            }
+            $TaskPosition.Text='2 / 2'; $window.UpdateLayout()
             $compactPassed=($prefs.Compact -and $window.Width -eq 370 -and $FullPanel.Visibility -eq 'Collapsed' -and $window.WindowStyle -eq 'None' -and $window.AllowsTransparency -and $directOpacityPassed)
             if ($TestReport) {
                 $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
@@ -843,6 +857,14 @@ $timer.Add_Tick({
                 $bitmap.Render($window); $encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder
                 $encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap)); $stream=[IO.File]::Create($TestReport+'.tokens.png')
                 try { $encoder.Save($stream) } finally { $stream.Dispose() }
+            }
+            if ($TestReport -and $script:tokenTaskRows.Count -gt 0) {
+                $detailRow=@($script:tokenTaskRows.Values)[0]; $detailRow.Expand.IsExpanded=$true; $window.UpdateLayout()
+                $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
+                $bitmap.Render($window); $encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder
+                $encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap)); $stream=[IO.File]::Create($TestReport+'.details.png')
+                try { $encoder.Save($stream) } finally { $stream.Dispose() }
+                $detailRow.Expand.IsExpanded=$false
             }
             $ContextMode.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
             if ($TokensPanel.Visibility -ne 'Collapsed' -or $prefs.Mode -ne 'Context') { throw 'Context mode did not restore.' }

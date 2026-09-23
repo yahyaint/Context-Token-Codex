@@ -45,3 +45,9 @@ CTC sends only initialization and `account/rateLimits/read`. Its helper uses a s
 - Keep the old release. Use a new version and explain the behavior change.
 
 For a Codex Desktop update, finish and save work first. Restart only after approval. Afterward, verify actual installed versions, a local task's read-only monitoring, subscription refresh, tray restore and Limits. Do not use a live queued message as a destructive test fixture.
+
+## Quota estimator after updates
+
+If account percentages work but chat estimates show --, open Token and quota details. Check two fresh observations, a nonzero observed delta, matching reset windows and supported token/model fields. Missing or expired rates, explicit non-Standard tiers, long-context requests and subagent intervals are conservatively left unattributed. Review Quota.Rates.json against its official source; do not extrapolate unknown models. Never add cached input or reasoning twice. Check Tests/test_estimator.ps1 before deploying a change.
+
+If current-window history is damaged, CTC starts a fresh baseline. Its files are under %LOCALAPPDATA%\CodexContextMonitor\QuotaHistory. Stop CTC and move this folder aside to reset estimator history, including after a keychain-only account change. Do not edit Codex auth.json or session logs to repair the estimator. Local history does not prove exact per-chat billing.

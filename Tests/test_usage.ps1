@@ -41,3 +41,6 @@ Assert ($summary.ActiveRows.Count -eq 1 -and $null -eq $summary.ActiveRows[0].To
 $pending.Active=$false
 Assert (@((Get-RecordedTokenSummary).ActiveRows).Count -eq 0) 'Finished task remained in active highlights.'
 'PASS: quota maps, null/missing windows, weekly-only plan, clamping, resets, cumulative deduplication and cached subset.'
+$detail=Get-ChatTokenDetails ([pscustomobject]@{Input=100;Cached=80;Uncached=20;Output=50;Reasoning=30;Model='fixture'})
+Assert ($detail -match 'Other output: 20' -and $detail -match '80[.,]0%') 'Derived token detail incorrect.'
+Write-Output 'PASS: detailed token breakdown.'

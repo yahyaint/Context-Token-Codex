@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.4.1 - percentage compaction input
+
+- Accept percentages in Compact at in both context editors; preview the converted token count.
+- Require an explicit numeric context window; save the calculated token threshold.
+- Exercise percentage input through the inline editor save test.
+
 ## 6.4.0 — audit repairs
 
 - Preserve TOML strings and quoted keys; reject unsupported edits before writing.

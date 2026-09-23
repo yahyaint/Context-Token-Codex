@@ -1,4 +1,4 @@
-# Context-Token Codex 6.4.0
+# Context-Token Codex 6.4.1
 
 A Windows widget for local Codex context, token counts and subscription usage.
 
@@ -35,7 +35,7 @@ Context is the latest recorded request, not a continuous measurement inside Code
 
 ## Context settings
 
-Enter `180000`, `180k`, or `default`. The compact hint shows a live ratio and an example: **180k = 90% of a 200k window**. Percentages are guidance; these fields accept token counts.
+Enter `180000`, `180k`, or `default`. **Compact at also accepts percentages**, e.g. `90%` with a `200k` context window saves `180000` tokens. Decimal percentages are supported, above 0 through 100. Enter a numeric context window first; `default` has no fixed denominator across models. The live hint previews the token result. Percentages are converted on save, not stored as a rule for future window changes.
 
 Window and compact changes are prepared together and atomically replace the selected file, with a backup and an intervening-change check. The editor preserves multiline strings and ordinary quoted keys. Unsupported root-key syntax is rejected before writing; edit such a file through Codex instead. This is a conservative scoped editor, not a general TOML formatter.
 

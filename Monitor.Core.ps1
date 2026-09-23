@@ -196,7 +196,7 @@ function ConvertTo-TokenLimit([string]$inputText, $window) {
     if ($value -eq 'default') { return [pscustomobject]@{ IsDefault = $true; Limit = $null } }
     $number = $value -replace '[,_ ]', ''
     if ($number -match '^(\d+(?:\.\d+)?)%$') {
-        if ($null -eq $window) { throw 'Percent needs a known model window. Enter a token count instead.' }
+        if ($null -eq $window) { throw 'Enter a numeric context window first (e.g. 200k), or enter Compact at in tokens.' }
         $percent = [double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture)
         if ($percent -le 0 -or $percent -gt 100) { throw 'Percent must be above 0 and at most 100.' }
         $tokens = [long][Math]::Round([double]$window * $percent / 100)

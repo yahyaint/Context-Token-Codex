@@ -524,11 +524,11 @@ function Hide-Overlay([bool]$park=$false) {
     $window.Hide()
 }
 function Update-CompactPercentageHint($form) {
-    $example='Example: 180k = 90% of 200k. Enter tokens, not %. Reset: default.'
+    $example='Example: 90% of 200k = 180k. Percent needs an entered window. Saved as tokens. Reset: default.'
     try {
-        $w=ConvertTo-TokenLimit $form.Window.Text $null; $c=ConvertTo-TokenLimit $form.Compact.Text $null
+        $w=ConvertTo-TokenLimit $form.Window.Text $null; $c=ConvertTo-TokenLimit $form.Compact.Text $w.Limit
         if ($w.Limit -gt 0 -and $null -ne $c.Limit) {
-            $form.Hint.Text=('{0:N1}% of the entered window. ' -f (100.0*$c.Limit/$w.Limit))+$example
+            $form.Hint.Text=('{0:N1}% = {1:N0} tokens. ' -f (100.0*$c.Limit/$w.Limit),$c.Limit)+$example
         } else { $form.Hint.Text=$example }
     } catch { $form.Hint.Text=$example }
 }
@@ -546,7 +546,7 @@ function New-InlineLimitsEditor([string]$project) {
     $path=Join-Path $project '.codex/config.toml'
     [void]$panel.Children.Add((New-Label 'Project defaults for all models. Running chats may need a reload.' 10))
     $fields=@{}
-    foreach ($spec in @(@('Window','Context window: e.g. 258400 or 1000k'),@('Compact','Compact at: e.g. 180000 or 180k'))) {
+    foreach ($spec in @(@('Window','Context window: e.g. 258400 or 1000k'),@('Compact','Compact at: e.g. 180k or 90%'))) {
         [void]$panel.Children.Add((New-Label $spec[1] 10))
         $input=New-Object Windows.Controls.TextBox; $input.Padding='8,6'; $input.Margin='0,3,0,6'
         $current=if ($spec[0] -eq 'Window') {Get-TopLevelContextWindow $path} else {Get-TopLevelAutoCompactLimit $path}
@@ -559,7 +559,7 @@ function New-InlineLimitsEditor([string]$project) {
     $save.Add_Click({param($sender,$eventArgs)
         $form=$sender.Tag
         try {
-            $windowLimit=ConvertTo-TokenLimit $form.Window.Text $null; $compactLimit=ConvertTo-TokenLimit $form.Compact.Text $null
+            $windowLimit=ConvertTo-TokenLimit $form.Window.Text $null; $compactLimit=ConvertTo-TokenLimit $form.Compact.Text $windowLimit.Limit
             [void](Set-ContextLimits $form.Path @{model_context_window=$windowLimit.Limit;model_auto_compact_token_limit=$compactLimit.Limit})
             $form.Result.Text='Saved for this project, all models. Reload may be required.'
         } catch { $form.Result.Text=$_.Exception.Message }
@@ -589,12 +589,12 @@ function Show-Settings([string]$pane='Context') {
   <Border BorderBrush="#778DA9" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,12"><TextBlock x:Name="Current" FontSize="11" TextWrapping="Wrap"/></Border>
   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
    <StackPanel><TextBlock Text="Context window (all models)"/><TextBox x:Name="Context" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Raw token count. Use a number or default."/></StackPanel>
-   <StackPanel Grid.Column="2"><TextBlock Text="Compact at"/><TextBox x:Name="Compact" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Auto-compaction threshold in tokens. Use a number or default."/></StackPanel>
+   <StackPanel Grid.Column="2"><TextBlock Text="Compact at"/><TextBox x:Name="Compact" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Use tokens, 90% of the entered context window, or default. Percent is saved as tokens."/></StackPanel>
   </Grid>
   <TextBlock Text="Tokens: 180000 = 180k | 1000000 = 1000k" FontSize="10" Opacity="0.8" Margin="0,6,0,10"/>
   <TextBlock x:Name="CompactHint" FontSize="10" Margin="0,0,0,10"/><TextBlock Text="Saved limits may need a chat reload." FontSize="11" Foreground="#778DA9" Margin="0,0,0,10"/>
   <Button x:Name="SaveLimits" Content="Save limits" HorizontalAlignment="Right" MinWidth="120" Padding="12,6" Margin="0,0,0,12"/>
-  <Expander Header="How limits work" Foreground="#E0E1DD"><TextBlock Text="The window is a raw token count. Live chats report usable capacity. A saved value does not change a running chat or increase model capacity. Use default to remove this scope's override. Percent input is not supported. Hover over the saved values to see the file and inherited settings." FontSize="11" Margin="0,8,0,8" TextWrapping="Wrap"/></Expander>
+  <Expander Header="How limits work" Foreground="#E0E1DD"><TextBlock Text="The window is a raw token count. Live chats report usable capacity. A saved value does not change a running chat or increase model capacity. Use default to remove this scope's override. Compact at accepts 90% when a context window is entered. Percent is converted to tokens on save; it does not track future window changes. Hover over the saved values to see the file and inherited settings." FontSize="11" Margin="0,8,0,8" TextWrapping="Wrap"/></Expander>
   </StackPanel><TextBlock x:Name="Result" TextWrapping="Wrap" Foreground="#778DA9"/>
  </StackPanel></ScrollViewer></DockPanel>
 </UserControl>
@@ -658,7 +658,7 @@ function Show-Settings([string]$pane='Context') {
     $script:settings.dialog.FindName('SaveLimits').Add_Click({
         try {
             if ($script:coreError) { throw $script:coreError }
-            $newContext=ConvertTo-TokenLimit $script:settings.context.Text $null; $newCompact=ConvertTo-TokenLimit $script:settings.compact.Text $null
+            $newContext=ConvertTo-TokenLimit $script:settings.context.Text $null; $newCompact=ConvertTo-TokenLimit $script:settings.compact.Text $newContext.Limit
             [void](Set-ContextLimits $script:settings.scope.SelectedItem.Path @{model_context_window=$newContext.Limit;model_auto_compact_token_limit=$newCompact.Limit})
             $script:settings.result.Foreground='#778DA9'; $script:settings.result.Text="Saved. Backup created. Reload may be required."
             $script:settings.current.Text="Saved window: $(Format-Limit $newContext.Limit) | Compact: $(Format-Limit $newCompact.Limit)"
@@ -680,7 +680,7 @@ function Show-Settings([string]$pane='Context') {
                 $script:settings.context.Text='invalid'; $script:settings.compact.Text='180k'
                 $script:settings.dialog.FindName('SaveLimits').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
                 if ($script:settings.result.Tag -ne 'Error') { throw 'Invalid settings were not rejected.' }
-                $script:settings.context.Text='500k'
+                $script:settings.context.Text='500k'; $script:settings.compact.Text='36%'
                 $script:settings.dialog.FindName('SaveLimits').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
                 if ((Get-TopLevelContextWindow $script:settings.scope.SelectedItem.Path) -ne 500000 -or (Get-TopLevelAutoCompactLimit $script:settings.scope.SelectedItem.Path) -ne 180000) { throw 'Settings buttons failed to save.' }
                 $script:settingsTestPassed=$true
@@ -766,15 +766,15 @@ $timer.Add_Tick({
                 if ($prefs.Compact -or -not $script:cardControls[$script:displayedTask].Editor.IsExpanded -or $prefs.Mode -ne 'Context') { throw 'Mini context shortcut failed.' }
                 $inline=New-InlineLimitsEditor $CodexHome
                 $inlineSave=@($inline.Content.Children|Where-Object {$_ -is [Windows.Controls.Button]})[0]
-                $inlineSave.Tag.Window.Text='200k'; $inlineSave.Tag.Compact.Text='180k'
+                $inlineSave.Tag.Window.Text='200k'; $inlineSave.Tag.Compact.Text='90%'
                 if ($inlineSave.Tag.Compact.Tag.Hint.Text -notlike (('{0:N1}%' -f 90.0)+'*')) { throw 'Compact percentage example did not update.' }
                 $inlineSave.Tag.Window.Text='1000k'
                 $inlineSave.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
-                if ((Get-TopLevelContextWindow $inlineSave.Tag.Path) -ne 1000000 -or (Get-TopLevelAutoCompactLimit $inlineSave.Tag.Path) -ne 180000) { throw 'Inline chat limit edit failed.' }
+                if ((Get-TopLevelContextWindow $inlineSave.Tag.Path) -ne 1000000 -or (Get-TopLevelAutoCompactLimit $inlineSave.Tag.Path) -ne 900000) { throw 'Inline chat limit edit failed.' }
                 $LimitsMode.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
                 if ($SettingsHost.Visibility -ne 'Visible' -or $SettingsHost.Content -isnot [Windows.Controls.UserControl]) { throw 'Settings did not open inside the overlay.' }
                 # Exercise handlers after Show-Settings has returned (no modal local scope).
-                $script:settings.context.Text='500k'
+                $script:settings.context.Text='500k'; $script:settings.compact.Text='36%'
                 $script:settings.dialog.FindName('SaveLimits').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
                 if ((Get-TopLevelContextWindow $script:settings.scope.SelectedItem.Path) -ne 500000) { throw 'Embedded settings save failed after return.' }
                 if ($TestReport) {

@@ -16,7 +16,7 @@ Copy-Item -LiteralPath (Join-Path $root 'Tests') -Destination $payload -Recurse
 Copy-Item -LiteralPath (Join-Path $root 'CONTRIBUTING.md') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $root 'COMPATIBILITY.md') -Destination $payload
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
-$zip=Join-Path $OutputDirectory 'Context-Token-Codex-Windows-v6.8.3.zip'
+$zip=Join-Path $OutputDirectory 'Context-Token-Codex-Windows-v6.8.4.zip'
 # Windows PowerShell 5.1 Compress-Archive can emit backslash paths. Use
 # canonical ZIP separators on every runtime so strict installer checks agree.
 Add-Type -AssemblyName System.IO.Compression,System.IO.Compression.FileSystem

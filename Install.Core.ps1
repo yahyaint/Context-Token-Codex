@@ -19,7 +19,7 @@ function Invoke-ContextWidgetInstall {
  $sameSource=([IO.Path]::GetFullPath($Source).TrimEnd('\') -eq $destinationPath)
  $backup=$null
  if (-not $sameSource -and (Test-Path -LiteralPath (Join-Path $destinationPath 'Overlay.ps1'))) {
-  $backup=Join-Path $destinationPath ('Versions\before-6.8.3-'+[guid]::NewGuid().ToString('N').Substring(0,8))
+  $backup=Join-Path $destinationPath ('Versions\before-6.8.4-'+[guid]::NewGuid().ToString('N').Substring(0,8))
   [void][IO.Directory]::CreateDirectory($backup)
   foreach ($file in $files) { $old=Join-Path $destinationPath $file; if (Test-Path -LiteralPath $old) { Copy-Item -LiteralPath $old -Destination $backup } }
  }
@@ -52,7 +52,7 @@ function Invoke-ContextWidgetInstall {
    }
   }
  } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
- $manifest=@{Version='6.8.3';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
+ $manifest=@{Version='6.8.4';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
  [IO.File]::WriteAllText((Join-Path $destinationPath 'installation.json'),($manifest|ConvertTo-Json -Depth 4))
  [pscustomobject]@{Destination=$destinationPath;Backup=$backup;Files=$files.Count;Preferences=$preferences;Bytes=($files|ForEach-Object {(Get-Item -LiteralPath (Join-Path $destinationPath $_)).Length}|Measure-Object -Sum).Sum}
 }

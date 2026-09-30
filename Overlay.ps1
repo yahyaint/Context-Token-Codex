@@ -353,6 +353,35 @@ function Update-ContextQuotaBars {
     }
 }
 $script:tokenMetricRows=@{}; $script:tokenTaskRows=@{}
+function New-ActivityMetricGrid([string[]]$Names=@()) {
+    $grid=New-Object Windows.Controls.Primitives.UniformGrid;$grid.Columns=3
+    $view=@{Grid=$grid;Values=@{};Cells=@{};Order=''}
+    foreach($name in $Names){Add-ActivityMetricCell $view $name}
+    return $view
+}
+function Add-ActivityMetricCell($view,[string]$Name) {
+    $cell=New-Object Windows.Controls.StackPanel;$cell.Margin='0,5,5,5'
+    [void]$cell.Children.Add((New-Label $Name 9 '#778DA9'))
+    $value=New-Label '--' 16 '#E0E1DD'
+    [void]$cell.Children.Add($value);[void]$view.Grid.Children.Add($cell)
+    $view.Values[$Name]=$value;$view.Cells[$Name]=$cell
+}
+function Update-ActivityMetricGrid($view,$Counts,[string]$Prefix='') {
+    $names=@();if($Counts){$names=@($Counts.Keys|Sort-Object)}
+    $order=$names -join '|'
+    foreach($name in $names){
+        $label=$Prefix+$name
+        if(-not $view.Cells.ContainsKey($label)){Add-ActivityMetricCell $view $label}
+        $view.Values[$label].Text=Format-ShortTokenValue $Counts[$name]
+        $view.Values[$label].ToolTip=Format-TokenValue $Counts[$name]
+    }
+    if($view.Order -ne $order){
+        $view.Grid.Children.Clear()
+        foreach($name in $names){[void]$view.Grid.Children.Add($view.Cells[$Prefix+$name])}
+        foreach($label in @($view.Cells.Keys)){if($label -notin @($names|ForEach-Object {$Prefix+$_})){$view.Cells.Remove($label);$view.Values.Remove($label)}}
+        $view.Order=$order
+    }
+}
 function New-TokenDetailPanel {
     $panel=New-Object Windows.Controls.StackPanel
     $grid=New-Object Windows.Controls.Grid
@@ -372,27 +401,50 @@ function New-TokenDetailPanel {
     $last=New-Object Windows.Controls.Expander;$last.Header='Latest request';$last.Content=$latest;[void]$panel.Children.Add($last)
     $tools=New-Label '' 11
     $activity=New-Object Windows.Controls.Expander;$activity.Header='Tool calls';$activity.Margin='0,0,5,5'
+    $activityHeader=New-Object Windows.Controls.StackPanel
+    $activityLabel=New-Label 'Tool calls' 10 '#778DA9';$activityCount=New-Label '--' 18 '#E0E1DD'
+    [void]$activityHeader.Children.Add($activityLabel);[void]$activityHeader.Children.Add($activityCount);$activity.Header=$activityHeader
+    # Align the label and value with the metric tiles. Put the arrow on the right.
+    [xml]$activityTemplate=@'
+<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="Expander">
+ <StackPanel>
+  <ToggleButton x:Name="HeaderToggle" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Tool calls. Show details.">
+   <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border x:Name="HeaderBorder" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="4" Padding="0,3"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/></Grid.ColumnDefinitions><ContentPresenter/><Path x:Name="Arrow" Grid.Column="1" Data="M0,0 L4,4 L0,8" Stroke="#778DA9" StrokeThickness="2" Width="10" Height="10" VerticalAlignment="Center"/></Grid></Border><ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="Arrow" Property="Data" Value="M0,2 L4,6 L8,2"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeaderBorder" Property="BorderBrush" Value="#778DA9"/></Trigger></ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template>
+   <ContentPresenter ContentSource="Header"/>
+  </ToggleButton>
+  <ContentPresenter x:Name="Body" Visibility="Collapsed" Margin="0,8,0,0"/>
+ </StackPanel><ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="Body" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
+</ControlTemplate>
+'@
+    $activity.Template=[Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($activityTemplate))
     $toolBody=New-Object Windows.Controls.StackPanel;[void]$toolBody.Children.Add($tools)
     $execText=New-Label '' 10
     $exec=New-Object Windows.Controls.Expander;$exec.Header='Exec';$exec.Margin='0,4,0,0'
     $execBody=New-Object Windows.Controls.StackPanel
-    $execGrid=New-Object Windows.Controls.Primitives.UniformGrid;$execGrid.Columns=3;$execValues=@{}
-    foreach($name in @('Results','Succeeded','Errors','No result','Status unknown','Recorded time')){
-        $cell=New-Object Windows.Controls.StackPanel;$cell.Margin='0,5,5,5'
-        [void]$cell.Children.Add((New-Label $name 9 '#778DA9'));$value=New-Label '--' 16;$execValues[$name]=$value;[void]$cell.Children.Add($value);[void]$execGrid.Children.Add($cell)
-    }
+    $execMetrics=New-ActivityMetricGrid @('Results','Succeeded','Errors','No result','Status unknown','Recorded time')
+    $execGrid=$execMetrics.Grid;$execValues=$execMetrics.Values
     [void]$execBody.Children.Add($execGrid);[void]$execBody.Children.Add($execText)
-    $kindText=New-Label '' 10;$kinds=New-Object Windows.Controls.Expander;$kinds.Header='Command types';$kinds.Content=$kindText;[void]$execBody.Children.Add($kinds)
+    $kindBody=New-Object Windows.Controls.StackPanel
+    $kindText=New-Label '' 10 '#778DA9';[void]$kindBody.Children.Add($kindText)
+    $kindMetrics=New-ActivityMetricGrid;[void]$kindBody.Children.Add($kindMetrics.Grid)
+    $scriptKindLabel=New-Label 'Script references' 10 '#778DA9';[void]$kindBody.Children.Add($scriptKindLabel)
+    $scriptKindMetrics=New-ActivityMetricGrid;[void]$kindBody.Children.Add($scriptKindMetrics.Grid)
+    $kinds=New-Object Windows.Controls.Expander;$kinds.Header='Command types';$kinds.Content=$kindBody;[void]$execBody.Children.Add($kinds)
     $refText=New-Label '' 10;$references=New-Object Windows.Controls.Expander;$references.Header='Script tools';$references.Content=$refText;[void]$execBody.Children.Add($references)
-    $shellText=New-Label '' 10;$shell=New-Object Windows.Controls.Expander;$shell.Header='Shell results';$shell.Content=$shellText;[void]$execBody.Children.Add($shell)
+    $shellBody=New-Object Windows.Controls.StackPanel
+    $shellMetrics=New-ActivityMetricGrid @('Results','Succeeded','Nonzero exit','Open-process records','Reported time')
+    [void]$shellBody.Children.Add($shellMetrics.Grid)
+    $shellText=New-Label '' 10 '#778DA9';[void]$shellBody.Children.Add($shellText)
+    $exitMetrics=New-ActivityMetricGrid;[void]$shellBody.Children.Add($exitMetrics.Grid)
+    $shell=New-Object Windows.Controls.Expander;$shell.Header='Shell results';$shell.Content=$shellBody;[void]$execBody.Children.Add($shell)
     $exec.Content=$execBody;[void]$toolBody.Children.Add($exec)
     $activity.Content=$toolBody;$activity.Margin=0
-    $activityTile=New-Object Windows.Controls.Border;$activityTile.Background='#1B263B';$activityTile.BorderBrush='#415A77';$activityTile.BorderThickness=1;$activityTile.CornerRadius=6;$activityTile.Padding=8;$activityTile.Margin='0,0,5,5';$activityTile.Child=$activity
+    $activityTile=New-Object Windows.Controls.Border;$activityTile.Background='#1B263B';$activityTile.CornerRadius=6;$activityTile.Padding=8;$activityTile.Margin='0,0,5,5';$activityTile.Child=$activity
     [Windows.Controls.Grid]::SetRow($activityTile,3);[Windows.Controls.Grid]::SetColumnSpan($activityTile,2);[void]$grid.Children.Add($activityTile)
     $divider=New-Object Windows.Controls.Border;$divider.Height=1;$divider.Background='#415A77';$divider.Margin='0,7,0,7';$panel.Children.Insert(1,$divider)
     $data=New-Label '' 10 '#778DA9'
     $help=New-Object Windows.Controls.Expander;$help.Header='Data and estimate';$help.Content=$data;$help.Margin='0,5,0,0';[void]$panel.Children.Add($help)
-    return @{Panel=$panel;Values=$values;Ratios=$ratios;Latest=$latest;Tools=$tools;Activity=$activity;ActivityTile=$activityTile;Exec=$exec;ExecText=$execText;ExecValues=$execValues;Kinds=$kinds;KindText=$kindText;References=$references;RefText=$refText;Shell=$shell;ShellText=$shellText;Data=$data}
+    return @{Panel=$panel;Values=$values;Ratios=$ratios;Latest=$latest;Tools=$tools;Activity=$activity;ActivityLabel=$activityLabel;ActivityCount=$activityCount;ActivityTile=$activityTile;Exec=$exec;ExecText=$execText;ExecValues=$execValues;Kinds=$kinds;KindText=$kindText;KindMetrics=$kindMetrics;ScriptKindMetrics=$scriptKindMetrics;ScriptKindLabel=$scriptKindLabel;References=$references;RefText=$refText;Shell=$shell;ShellText=$shellText;ShellMetrics=$shellMetrics;ExitMetrics=$exitMetrics;Data=$data}
 }
 function Update-TokenDetailPanel($view,$chat) {
     $signature=$chat|ConvertTo-Json -Depth 8 -Compress
@@ -406,7 +458,8 @@ function Update-TokenDetailPanel($view,$chat) {
     $view.Ratios.Text="Cache hit: $hit   |   Reasoning share: $share"
     $view.Latest.Text="Input: $(Format-TokenValue $chat.LastInput)`nCached input: $(Format-TokenValue $chat.LastCached)`nOutput: $(Format-TokenValue $chat.LastOutput)"
     $a=$chat.Activity
-    $view.Activity.Header=if($a.Ready){"Tool calls: $(Format-TokenValue $a.Calls)$(if($a.Partial){' *'})"}else{'Tool calls: --'}
+    $view.ActivityCount.Text=if($a.Ready){"$(Format-ShortTokenValue $a.Calls)$(if($a.Partial){' *'})"}else{'--'}
+    $view.ActivityCount.ToolTip=if($a.Ready){"$(Format-TokenValue $a.Calls) recorded calls"}else{'No complete call record is available.'}
     $lines=@()
     if($a.Ready){
         $top=@($a.Tools|Where-Object {-not (Test-ExecToolName $_.Name)}|Select-Object -First 6)
@@ -433,12 +486,18 @@ function Update-TokenDetailPanel($view,$chat) {
         $view.ExecValues.'Recorded time'.Text=Format-ActivitySeconds $seconds
         $view.ExecValues.'Recorded time'.ToolTip=if($e.Timed){"Sum of $($e.Timed) recorded wall times. Calls can overlap. Other results have no wall time."}else{"Sum of $($e.Spans) call-to-result spans. Includes waiting time. Calls can overlap."}
     }else{foreach($label in $view.ExecValues.Keys){$view.ExecValues[$label].Text='--'}}
-    $view.KindText.Text=if($a.Ready -and $e.Kinds.Count){(@($e.Kinds.GetEnumerator()|Sort-Object Value -Descending|ForEach-Object {"$($_.Key)   $(Format-TokenValue $_.Value)"}) -join "`n")}else{'No command type record.'}
-    if($a.Ready -and $e.ScriptKinds.Count){$view.KindText.Text+="`nScript requests (references)`n"+(@($e.ScriptKinds.GetEnumerator()|Sort-Object Value -Descending|ForEach-Object {"$($_.Key)   $(Format-TokenValue $_.Value)"}) -join "`n")}
+    $view.KindText.Text=if($a.Ready -and $e.Kinds.Count){'Recorded requests'}else{'No command type record.'}
+    $kindCounts=if($a.Ready){$e.Kinds}else{@{}};Update-ActivityMetricGrid $view.KindMetrics $kindCounts
+    $scriptCounts=if($a.Ready){$e.ScriptKinds}else{@{}};Update-ActivityMetricGrid $view.ScriptKindMetrics $scriptCounts
+    $view.ScriptKindLabel.Visibility=if($scriptCounts.Count){'Visible'}else{'Collapsed'}
     $view.Kinds.ToolTip='Recorded request types and literal shell requests in script code. A request can have more than one type. Script references do not prove execution. Unknown and dynamic commands are not classified.'
     $shell=$e.Shell
     $view.Shell.Header=if($a.Ready){"Shell results: $(Format-ShortTokenValue $shell.Results)$(if($shell.Partial){' *'})"}else{'Shell results: --'}
-    $view.ShellText.Text=if($a.Ready -and $shell.Results){"Succeeded: $(Format-TokenValue $shell.Success) | Nonzero exit: $(Format-TokenValue $shell.Errors)`nOpen-process records: $(Format-TokenValue $shell.Running)`nReported wall time: $(Format-ActivitySeconds $shell.Seconds)`n"+(@($shell.ExitCodes.GetEnumerator()|Sort-Object Value -Descending|ForEach-Object {"Exit $($_.Key): $(Format-TokenValue $_.Value)"}) -join "`n")}else{'No shell result metadata.'}
+    $shellMap=@{Results=$shell.Results;Succeeded=$shell.Success;'Nonzero exit'=$shell.Errors;'Open-process records'=$shell.Running}
+    foreach($key in $shellMap.Keys){$view.ShellMetrics.Values[$key].Text=if($a.Ready){Format-ShortTokenValue $shellMap[$key]}else{'--'}}
+    $view.ShellMetrics.Values.'Reported time'.Text=if($a.Ready -and $shell.Timed){Format-ActivitySeconds $shell.Seconds}else{'--'}
+    $view.ShellText.Text=if($a.Ready -and $shell.ExitCodes.Count){'Exit codes'}else{'No shell result metadata.'}
+    $exits=if($a.Ready){$shell.ExitCodes}else{@{}};Update-ActivityMetricGrid $view.ExitMetrics $exits 'Exit '
     $view.Shell.ToolTip='Shell helper result records printed by an exec script. Duplicate chunk IDs count once. A running-process record is not a live status. Other tool results are excluded. * means some records exceed scan limits.'
     $refs=0L;foreach($count in $e.ScriptTools.Values){$refs+=$count}
     $view.References.Header=if($a.Ready){"Script tools: $(Format-ShortTokenValue $refs) references$(if($e.ReferencesPartial){' *'})"}else{'Script tools: --'}
@@ -1324,11 +1383,15 @@ $timer.Add_Tick({
                 $bitmap.Render($window); $encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder
                 $encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap)); $stream=[IO.File]::Create($TestReport+'.details.png')
                 try { $encoder.Save($stream) } finally { $stream.Dispose() }
-                $detailRow.Detail.Activity.IsExpanded=$true;$detailRow.Detail.Exec.IsExpanded=$true;$detailRow.Detail.Kinds.IsExpanded=$true;$detailRow.Detail.References.IsExpanded=$true
+                $detailRow.Detail.Activity.IsExpanded=$true;$detailRow.Detail.Exec.IsExpanded=$true;$detailRow.Detail.Kinds.IsExpanded=$true;$detailRow.Detail.References.IsExpanded=$true;$detailRow.Detail.Shell.IsExpanded=$true
                 $window.UpdateLayout();$TokensPanel.ScrollToVerticalOffset(300);$window.UpdateLayout()
                 $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
                 $bitmap.Render($window);$encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder;$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
                 $stream=[IO.File]::Create($TestReport+'.tools.png');try{$encoder.Save($stream)}finally{$stream.Dispose()}
+                $TokensPanel.ScrollToVerticalOffset(650);$window.UpdateLayout()
+                $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
+                $bitmap.Render($window);$encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder;$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
+                $stream=[IO.File]::Create($TestReport+'.tool-metrics.png');try{$encoder.Save($stream)}finally{$stream.Dispose()}
                 $detailRow.Expand.IsExpanded=$false;$TokensPanel.ScrollToVerticalOffset(0)
             }
             $ContextMode.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))

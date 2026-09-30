@@ -1,3 +1,13 @@
+# Version 6.8.4 visual check - 30 September 2026
+
+Tool calls now uses the token tile label color, value color and font sizes.
+The label and number align with the tiles above. The expand arrow is on the right.
+Command types, Shell results and exit codes use the same metric cell layout as Exec.
+The WPF checks pass in PowerShell 5.1 and 7. Compact and expanded views were rendered and inspected.
+No collector, context-setting or restart behavior changed.
+
+---
+
 # Version 6.8.3 verification - 30 September 2026
 
 - Fifteen backend suites pass in Windows PowerShell 5.1 and PowerShell 7.

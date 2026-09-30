@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.8.4 - 30 September 2026
+
+- Match the Tool calls label and value to the token metric tiles.
+- Keep the full-width tile. Put its expand arrow on the right.
+- Use the Exec metric layout for Command types, Shell results and exit codes.
+- Keep request categories and script references separate.
+- Preserve detail controls when their values change.
+- Check the compact and expanded WPF views in PowerShell 5.1 and 7.
+
 ## 6.8.3 - 30 September 2026
 
 - Use a full-width tile for Tool calls in the token grid.

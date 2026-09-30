@@ -1,4 +1,4 @@
-# Context-Token Codex 6.8.5
+# Context-Token Codex 6.8.6
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
@@ -85,6 +85,8 @@ Closing one window can leave Codex running in the background.
 Check for a new usage record. CTC confirms the setting only when the recorded window matches.
 The usable window can be smaller than the saved value. Codex can reserve space.
 **Queue**, beside **Limits**, shows saved changes and restart controls.
+If a file changes outside CTC, Queue shows the original queued values and current file values.
+Project overrides cannot confirm a global queue entry.
 The controls stay visible while the change list scrolls.
 CTC keeps the latest saved change for each settings file after it closes.
 Recorded windows are per chat. Confirmation of a window does not confirm the compaction threshold.
@@ -95,6 +97,7 @@ Unknown lifecycle data, incomplete records, read errors, and scan limits block t
 The helper requests a normal close. It does not force-stop Codex.
 If Codex stays open, quit it manually. The request expires after 24 h.
 The helper reopens Codex. Resume the chat. Check its next context record.
+Helper maintenance preserves the request expiry. It does not create a new 24-hour request.
 CTC writes settings at Save. It queues the restart, not a separate per-chat configuration.
 
 Enter `200000`, `200k`, or `default` for the context window.

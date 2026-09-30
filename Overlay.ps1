@@ -851,7 +851,7 @@ function Start-WidgetRestart([bool]$now) {
     $scriptPath=Join-Path $script:folder 'Restart-Codex.ps1'
     $arguments=@('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',('"'+$scriptPath+'"'),'-CodexHome',('"'+$homePath+'"'),'-StatusPath',('"'+$script:restartStatusPath+'"'))
     if($now){$arguments+='-Now'}
-    Write-RestartStatus $script:restartStatusPath 'Waiting' 'CTC waits for running chats to stop.'
+    Write-RestartStatus $script:restartStatusPath 'Waiting' 'CTC waits for running chats to stop.' ([DateTimeOffset]::UtcNow.AddHours(24).ToString('o'))
     Start-Process -FilePath powershell.exe -WindowStyle Hidden -ArgumentList $arguments
     Update-LimitRestartControls
 }
@@ -910,7 +910,11 @@ function Update-QueuePage {
     if(-not $script:queue){return}
     $state=Get-WidgetRestartStatus
     $script:queue.Gate.Text=if($state.Status -eq 'Reopened'){'Codex reopened. Resume the chat. Check the next context record.'}else{$shared.Latest.Restart.Reason}
-    try{$entries=@(Read-LimitsQueue $script:limitsQueuePath)}catch{$script:queue.Gate.Text=$_.Exception.Message;return}
+    try{$entries=@(Read-LimitsQueue $script:limitsQueuePath)}catch{
+        $script:queue.Gate.Text=$_.Exception.Message
+        $script:queue.Items.Children.Clear();$script:queue.Signature=''
+        return
+    }
     # Show earlier saved windows even if they predate this queue file.
     foreach($card in @($shared.Latest.Cards|Where-Object {$_.Saved.Status -eq 'Pending'})){
         $path=$card.Saved.Path
@@ -920,23 +924,32 @@ function Update-QueuePage {
             $entries+=[pscustomobject]@{Path=$path;Window=$card.Saved.Requested;Compact=$compact;SavedAt=$null}
         }
     }
-    $signature=@{Entries=$entries;Cards=@($shared.Latest.Cards|Select-Object Id,Title,Cwd,Window,Saved)}|ConvertTo-Json -Depth 6 -Compress
+    $views=@(foreach($entry in $entries){Get-LimitsQueueEntryView $entry $shared.Latest.Cards $script:configPath})
+    $signature=@{Entries=$entries;Views=$views}|ConvertTo-Json -Depth 6 -Compress
     if($script:queue.Signature -eq $signature){return};$script:queue.Signature=$signature
     $script:queue.Items.Children.Clear()
     if(-not $entries.Count){[void]$script:queue.Items.Children.Add((New-Label 'No saved limit changes.' 11));return}
+    $entryIndex=0
     foreach($entry in $entries){
+        $view=$views[$entryIndex];$entryIndex++
         $globalScope=$entry.Path -ieq $script:configPath
         $project=Split-Path (Split-Path $entry.Path -Parent) -Parent
-        $cards=@($shared.Latest.Cards|Where-Object {$globalScope -or $_.Saved.Path -ieq $entry.Path -or $_.Cwd -ieq $project})
         $tile=New-Object Windows.Controls.Border;$tile.Background='#1B263B';$tile.CornerRadius=6;$tile.Padding=8;$tile.Margin='0,0,0,8';$tile.ToolTip=$entry.Path
         $content=New-Object Windows.Controls.StackPanel;$tile.Child=$content
         $title=if($globalScope){'Global - all projects'}else{Split-Path $project -Leaf}
         [void]$content.Children.Add((New-Label $title 12))
         $w=if($null -eq $entry.Window){'Default'}else{Format-TokenValue $entry.Window}
         $c=if($null -eq $entry.Compact){'Default'}else{Format-TokenValue $entry.Compact}
-        [void]$content.Children.Add((New-Label "Saved window: $w   |   Compact: $c" 10 '#778DA9'))
-        foreach($card in $cards){[void]$content.Children.Add((New-Label "$($card.Title)`nRecorded: $(Format-TokenValue $card.Window) | $($card.Saved.Status)" 10))}
-        if(-not $cards.Count){[void]$content.Children.Add((New-Label 'No active chat record. Check the next session.' 10))}
+        $label=if($view.Changed -or $view.ReadError){'Queued window'}else{'Saved window'}
+        [void]$content.Children.Add((New-Label "${label}: $w   |   Compact: $c" 10 '#778DA9'))
+        if($view.ReadError){$errorLabel=New-Label 'CTC cannot read the current settings.' 10;$errorLabel.ToolTip=$view.ReadError;[void]$content.Children.Add($errorLabel)}
+        elseif($view.Changed){
+            $fileWindow=if($null -eq $view.CurrentWindow){'Default'}else{Format-TokenValue $view.CurrentWindow}
+            $fileCompact=if($null -eq $view.CurrentCompact){'Default'}else{Format-TokenValue $view.CurrentCompact}
+            [void]$content.Children.Add((New-Label "File changed. Window: $fileWindow | Compact: $fileCompact" 10))
+        }
+        foreach($card in $view.Rows){[void]$content.Children.Add((New-Label "$($card.Title)`nRecorded: $(Format-TokenValue $card.Window) | $($card.Status)" 10))}
+        if(-not $view.Rows.Count){[void]$content.Children.Add((New-Label 'No matching active chat record. Check the next session.' 10))}
         [void]$content.Children.Add((New-Label 'Restart loads saved limits. A new usage record confirms the window.' 10 '#778DA9'))
         Apply-WidgetTheme $tile;[void]$script:queue.Items.Children.Add($tile)
     }
@@ -1478,6 +1491,22 @@ $timer.Add_Tick({
                     $bitmap.Render($window);$encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder;$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
                     $stream=[IO.File]::Create($TestReport+'.queue.png');try{$encoder.Save($stream)}finally{$stream.Dispose()}
                 }
+                # Only the marked fixture is edited. External changes must reach the Queue view.
+                [void](Set-ContextLimits $script:configPath @{model_context_window=350000;model_auto_compact_token_limit=315000})
+                Update-QueuePage;$window.UpdateLayout()
+                $queueText=@(foreach($tile in $script:queue.Items.Children){if($tile.Child){foreach($label in $tile.Child.Children){if($label -is [Windows.Controls.TextBlock]){$label.Text}}}}) -join "`n"
+                if(-not $queueText.Contains('Queued window:') -or -not $queueText.Contains("File changed. Window: $(Format-TokenValue 350000)")){throw 'Queue did not display the external settings change.'}
+                if($TestReport){
+                    $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
+                    $bitmap.Render($window);$encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder;$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
+                    $stream=[IO.File]::Create($TestReport+'.queue-changed.png');try{$encoder.Save($stream)}finally{$stream.Dispose()}
+                }
+                $queueBackup=[IO.File]::ReadAllText($script:limitsQueuePath)
+                try {
+                    [IO.File]::WriteAllText($script:limitsQueuePath,'{"Version":1,"Entries":[null]}')
+                    Update-QueuePage
+                    if($script:queue.Items.Children.Count -ne 0 -or $script:queue.Gate.Text -notmatch 'Keep the file'){throw 'Corrupt queue retained misleading old rows.'}
+                }finally{[IO.File]::WriteAllText($script:limitsQueuePath,$queueBackup);Update-QueuePage}
                 foreach($view in $script:restartControls){if($view.Now.IsEnabled){throw 'Restart now was enabled for a running chat.'}}
                 $detailView=@($script:tokenTaskRows.Values)[0].Detail
                 if($detailView.Values.Input.Text -ne (Format-ShortTokenValue 88000)){throw 'Token cards missed live counters.'}

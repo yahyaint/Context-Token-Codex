@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-param([string]$CodexHome='', [string]$StatusPath='', [switch]$Now,[string]$TestRoot='',[string]$TestExecutable='')
+param([string]$CodexHome='', [string]$StatusPath='', [switch]$Now,[string]$TestRoot='',[string]$TestExecutable='',[string]$RequestExpiresAt='',[string]$DiagnosticReport='')
 $ErrorActionPreference='Stop'
 if(-not $CodexHome){$CodexHome=if($env:CODEX_HOME){$env:CODEX_HOME}else{Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'}}
 if(-not $StatusPath){$StatusPath=Join-Path $env:LOCALAPPDATA 'CodexContextMonitor/restart.json'}
@@ -26,12 +26,17 @@ try {
     . (Join-Path $PSScriptRoot 'Monitor.Data.ps1')
     # Scan user and agent records through the folder path for restart checks.
     $script:sqlite=$null; $script:stateDatabase=$null
-    $deadline=[DateTime]::UtcNow.AddHours(24);$idleSince=$null
-    Write-RestartStatus $StatusPath 'Waiting' 'CTC waits for running chats to stop.'
+    $deadline=if($RequestExpiresAt){([DateTimeOffset]::Parse($RequestExpiresAt)).UtcDateTime}else{[DateTime]::UtcNow.AddHours(24)};$idleSince=$null
+    Write-RestartStatus $StatusPath 'Waiting' 'CTC waits for running chats to stop.' ([DateTimeOffset]$deadline).ToString('o')
     while([DateTime]::UtcNow -lt $deadline){
         try{$request=[IO.File]::ReadAllText($StatusPath)|ConvertFrom-Json;if($request.Status -eq 'Cancelled'){exit}}catch{}
         $snapshot=Get-MonitorSnapshot
         $gate=Get-RestartReadiness @($script:rollouts.Values) 256
+        if($DiagnosticReport){
+            [void][IO.Directory]::CreateDirectory((Split-Path ([IO.Path]::GetFullPath($DiagnosticReport)) -Parent))
+            $metrics=@{At=[DateTimeOffset]::UtcNow.ToString('o');PID=$PID;Ready=$gate.Ready;States=$script:rollouts.Count;TypeNamesMax=($script:rollouts.Values|ForEach-Object {$_.PSTypeNames.Count}|Measure-Object -Maximum).Maximum;ManagedMiB=[GC]::GetTotalMemory($false)/1MB;WorkingMiB=[Diagnostics.Process]::GetCurrentProcess().WorkingSet64/1MB;ExpiresAt=([DateTimeOffset]$deadline).ToString('o')}
+            [IO.File]::WriteAllText($DiagnosticReport,($metrics|ConvertTo-Json),[Text.UTF8Encoding]::new($false))
+        }
         if(-not $gate.Ready){
             $idleSince=$null
             if($Now){Write-RestartStatus $StatusPath 'Blocked' $gate.Reason;exit}

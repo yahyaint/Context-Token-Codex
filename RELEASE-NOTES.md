@@ -1,6 +1,12 @@
-# Context-Token Codex 6.8.5
+# Context-Token Codex 6.8.6
 
 Created by Yahya Nabil | [yahyanabil.com](https://yahyanabil.com)
+
+## Verification repairs
+
+- Fix queue confirmation across scopes and external configuration edits.
+- Reject malformed queue files. Preserve restart expiry during helper maintenance.
+- Verify every item in QUEUE-VERIFICATION.md.
 
 ## Changes
 

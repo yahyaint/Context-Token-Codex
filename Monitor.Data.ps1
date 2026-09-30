@@ -83,6 +83,27 @@ function Get-MonitorSnapshot([switch]$QuickStart) {
         Restart=$(if(Test-Path Function:\Get-RestartReadiness){Get-RestartReadiness @($script:rollouts.Values) $MaxRecentRollouts}else{$null}); Discovery=$script:discoveryMode; Warning=$script:discoveryWarning; Compaction=$script:logStatus }
 }
 
+function Get-LimitsQueueEntryView($Entry,$Cards,[string]$GlobalPath) {
+    $globalScope=$Entry.Path -ieq $GlobalPath
+    $project=Split-Path (Split-Path $Entry.Path -Parent) -Parent
+    $currentWindow=$null;$currentCompact=$null;$readError=''
+    try {
+        $currentWindow=Get-TopLevelContextWindow $Entry.Path
+        $currentCompact=Get-TopLevelAutoCompactLimit $Entry.Path
+    }catch{$readError=$_.Exception.Message}
+    $changed=([string]$Entry.Window -cne [string]$currentWindow -or [string]$Entry.Compact -cne [string]$currentCompact)
+    $rows=@(foreach($card in @($Cards)){
+        $cwd=[string]$card.Cwd
+        $inProject=$cwd -ieq $project -or ($cwd -and $cwd.StartsWith($project.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase))
+        if(-not $globalScope -and -not $inProject -and $card.Saved.Path -ine $Entry.Path){continue}
+        # A project override cannot confirm a queued global setting.
+        $sameScope=$card.Saved.Path -ieq $Entry.Path
+        $status=if($readError){'Unverified'}elseif($changed){'Settings changed'}elseif($sameScope -and $card.Saved.Status){[string]$card.Saved.Status}elseif($globalScope -and $card.Saved.Path){'Project override'}elseif($card.Saved.Path){'Inherited window'}else{'Unverified'}
+        [pscustomobject]@{Id=$card.Id;Title=$card.Title;Window=$card.Window;Status=$status}
+    })
+    [pscustomobject]@{Changed=$changed;ReadError=$readError;CurrentWindow=$currentWindow;CurrentCompact=$currentCompact;Rows=$rows}
+}
+
 function Get-TargetAppInstances([string]$target, $Processes=$null) {
     if ($target -notin @('Codex','ChatGPT','Either')) {$target='Either'}
     if ($null -eq $Processes) {$Processes=@(Get-Process -ErrorAction SilentlyContinue)}

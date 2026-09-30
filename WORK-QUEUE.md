@@ -14,7 +14,7 @@ Keep previous versions and user settings. Do not push to GitHub without the owne
 | 5 | Research tool and automation usage | Show recorded call counts by tool when available. Show exact tokens only where records supply them. | Passed in PowerShell 5.1 and 7 |
 | 6 | Replace the parked tab | Show a small bar at the same corner. Include chat navigation, context, tokens, and account quotas. | Passed in PowerShell 5.1 and 7 |
 | 7 | Review the technology choice | Run an independent read-only review. Compare native options and record a migration plan. | Complete. C# / .NET 10 / WPF recommended. Two confirmed P2 issues fixed. |
-| 8 | Verify and install | Check both PowerShell versions and window layouts. Preserve the current runtime. Commit locally. | Version 6.8.5 is installed with 26 matching files. Both runtimes pass. Preferences and previous versions are retained. The 30-minute memory check passed. Push remains held. |
+| 8 | Verify and install | Check both PowerShell versions and window layouts. Preserve the current runtime. Commit locally. | Version 6.8.6 is installed with 26 matching files. Both runtimes pass. Preferences and previous versions are retained. Version 6.8.5 passed the 30-minute widget test. The repaired helper passed ten minutes. Push remains held. |
 
 ## Data rules
 
@@ -50,4 +50,5 @@ The repair keeps an array outside the expression. Both WPF runtimes now show one
 The actual installed PowerShell 5.1 widget shows the current native weekly reading.
 Account-change tests reject earlier responses and keep estimate histories separate.
 
-See NEXT-TASKS.md for the remaining release checks and the real-session result.
+See NEXT-TASKS.md for the completed local queue and real-session result.
+See QUEUE-VERIFICATION.md for repairs found during the completion check and publication checks still on hold.

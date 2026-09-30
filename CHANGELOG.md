@@ -1,5 +1,15 @@
 # Changelog
 
+## 6.8.6 - 1 October 2026
+
+- Verify all queue items against code, tests, runtime files, and release evidence.
+- Separate global confirmation from project overrides. Show inherited window status.
+- Show external file changes beside the original queued values.
+- Reject malformed queue paths and limits. Clear misleading rows after a queue read error.
+- Preserve restart request expiry during helper maintenance. Test expired requests without closing the fixture.
+- Refresh the owner's outdated waiting helper with the memory repair. Keep its request and idle gate.
+- Add QUEUE-VERIFICATION.md and exact runtime bytes to the release receipt.
+
 ## 6.8.5 - 30 September 2026
 
 - Fix growing PowerShell type metadata during repeated quota reads. Use array indexes for persistent objects.

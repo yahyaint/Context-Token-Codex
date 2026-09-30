@@ -73,12 +73,21 @@ Use STE for app text. Preserve earlier versions and settings. Keep GitHub public
    - Refresh the open CTC. Keep earlier versions and current settings.
    - Update test evidence, docs, source archive and local Git. Keep publication held.
 
+## Verification follow-up - 1 October 2026
+
+12. [x] Verify all queue items and repair missed cases.
+    - Check implementation, actual WPF controls, runtime hashes, startup, and local Git.
+    - Fix scope confirmation, external queue changes, and malformed queue entries.
+    - Refresh the old waiting helper. Preserve the request and original expiry.
+    - Keep local checks separate from publication and environment checks that remain unverified.
+    - See QUEUE-VERIFICATION.md for the item-by-item result.
+
 ## Real-session result
 
-- [x] This chat now records 516800. Its saved544000 value and the current95% catalog value match.
-- [x] The earlier Astra chat also records516800 in its latest usage record.
+- [x] The original Sol chat records 516800. Its saved 544000 value and the 95% catalog value match.
+- [x] The original Astra chat also records 516800 in its checked usage record.
 Its project and global overrides are now absent. That external settings change is preserved.
-The Astra record confirms the earlier544000 setting, not a later reset to default.
+The Astra record confirms the earlier 544000 setting, not a later reset to default.
 Do not restore or change those settings without a user request.
 A full app restart is no longer needed to prove that the earlier window update was adopted.
 Do not force-close running chats.
@@ -87,7 +96,7 @@ Do not force-close running chats.
 
 Working source: `work/context-widget`.
 The canonical publication checkout and installed runtime are recorded in the private workspace resume file.
-Version 6.8.5 is the current repair. The latest widget is restored after tested UI changes.
+Version 6.8.6 is the current repair. The latest widget is restored after tested UI changes.
 Weekly-only WPF fixtures pass in PowerShell 5.1 and 7 after the array repair.
 Weekly-only quota, parked startup, Queue, token layout, tool tile, Exec results, command types and script references are implemented.
 Final package, runtime alignment, local commit and source archive are prepared. Publication remains held.

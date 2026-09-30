@@ -28,6 +28,10 @@ try {
     Start-Sleep -Milliseconds 500
     $new=@(Get-Process -Name CTCTestCodex -ErrorAction SilentlyContinue|Where-Object Path -eq $exe)
     if($new.Count -ne 1 -or $new[0].Id -eq $desktop.Id){throw 'Fixture did not reopen exactly once.'}
+    $reopenedPID=$new[0].Id
+    & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Restart-Codex.ps1') -CodexHome $profile -StatusPath $status -Now -TestRoot $fixture -TestExecutable $exe -RequestExpiresAt ([DateTimeOffset]::UtcNow.AddMinutes(-1).ToString('o'))
+    $expired=Get-Content $status -Raw|ConvertFrom-Json
+    if($expired.Status -ne 'Expired' -or -not (Get-Process -Id $reopenedPID -ErrorAction SilentlyContinue)){throw 'Expired resumed request closed the fixture or extended its deadline.'}
     'PASS: isolated normal close, process exit, and one reopen. Real Codex was not touched.'
 }finally{
     foreach($process in @(Get-Process -Name CTCTestCodex -ErrorAction SilentlyContinue|Where-Object Path -eq $exe)){

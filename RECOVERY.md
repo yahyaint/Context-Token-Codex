@@ -179,3 +179,22 @@ The optional diagnostic request is a file named `<report-path>.collect`.
 CTC consumes this file and records BeforeGCMB and AfterGCMB after garbage collection.
 Use this request outside the stability test. It changes memory measurements.
 Diagnostic reports and heap data must stay outside the public repository.
+
+## Queue values differ from the file
+
+Queue keeps the values from the last CTC save. A file edit outside CTC can replace those values.
+Check the File changed line. Open Limits to read the current settings.
+A Project override row does not confirm a global queued limit.
+An Inherited window row does not confirm a project override or a compaction threshold.
+If the queue file is corrupt, keep it for repair. CTC clears old display rows and rejects a save.
+
+## A waiting helper runs old code
+
+An existing PowerShell helper keeps its loaded code after files change on disk.
+Check Restart-Codex.ps1 processes when RAM still grows after an update.
+For a manual update, cancel the waiting restart before you replace runtime files.
+After the update, queue the restart again if you still need it.
+For controlled maintenance, keep the existing request and its original expiry.
+Start the replacement helper with -RequestExpiresAt. Preserve CodexHome and StatusPath.
+Do not stop Codex to replace a CTC helper. Do not start a new request without authorization.
+Use -DiagnosticReport to record helper PID, type-name count, memory, idle gate, and expiry.

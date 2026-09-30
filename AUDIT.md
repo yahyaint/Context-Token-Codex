@@ -1,3 +1,31 @@
+# Version 6.8.6 queue verification - 1 October 2026
+
+All queue items were checked against code, tests, installed files, and release evidence.
+See QUEUE-VERIFICATION.md for the item-by-item result and unperformed checks.
+
+The verification found stale queue labels, confirmation from the wrong scope, and incomplete queue format validation.
+The repair displays queued and current file values. Global rows identify project overrides.
+Malformed queues remain unchanged. The view clears old rows after a read error.
+Both shells pass the new queue cases. Actual WPF controls show the external file change.
+
+An existing waiting restart helper still ran code loaded before the memory repair.
+Its working set was 3623.5 MiB. Only that CTC process was replaced.
+The existing waiting request and its original expiry were preserved. Real Codex was not closed for this check.
+The repaired helper passed a ten-minute check with 40 samples in one process.
+Peak working set was 202.4 MiB. Peak managed memory was 99.9 MiB.
+Source type names stayed at two. Maximum reading age was 2.3 seconds.
+The idle gate blocked restart throughout the test. No forced garbage collection ran.
+These runs had different durations. They are not a controlled performance comparison.
+
+Expiry tests pass in both shells. An expired resumed request does not close the marked fixture.
+The actual startup shortcut, one overlay, and one watcher were verified.
+Owner settings retain parked startup, 85% background, and Auto-open.
+The updater still reports up_to_date. No actual update was available.
+The release receipt now records runtime bytes, file counts, archive sizes, and hashes.
+GitHub publication remains held for the owner's mark.
+
+---
+
 # Version 6.8.5 repair checks - 30 September 2026
 
 The audit found a retained-memory fault in Windows PowerShell 5.1.

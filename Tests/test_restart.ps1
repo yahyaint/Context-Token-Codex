@@ -35,3 +35,14 @@ Assert ($selected.Count -eq 3 -and $selected.Id -contains 1 -and $selected.Id -c
 Assert ($selected.Id -notcontains 2 -and $selected.Id -notcontains 4 -and $selected.Id -notcontains 6) 'Other apps or unknown paths were selected.'
 Assert ($selected.Id -notcontains 7 -and $selected.Id -notcontains 8) 'CLI or bundled helper was selected.'
 'PASS: restart gate blocks active, unknown, partial, unreadable and capped scans; latest lifecycle wins. No apps were closed.'
+$fixture=Join-Path $env:TEMP ('ctc-expiry-'+[guid]::NewGuid().ToString('N'))
+[void][IO.Directory]::CreateDirectory($fixture)
+$statusPath=Join-Path $fixture 'restart.json';$expiry=$now.AddHours(2).ToUniversalTime().ToString('o')
+Write-RestartStatus $statusPath 'Waiting' 'Fixture waiting.' $expiry
+Write-RestartStatus $statusPath 'Blocked' 'Fixture blocked.'
+$stored=[IO.File]::ReadAllText($statusPath)|ConvertFrom-Json
+Assert (([DateTimeOffset]$stored.ExpiresAt) -eq ([DateTimeOffset]$expiry)) 'Status update extended or removed request expiry.'
+$newExpiry=$now.AddHours(24).ToUniversalTime().ToString('o')
+Write-RestartStatus $statusPath 'Waiting' 'New fixture request.' $newExpiry
+Assert (([DateTimeOffset]([IO.File]::ReadAllText($statusPath)|ConvertFrom-Json).ExpiresAt) -eq ([DateTimeOffset]$newExpiry)) 'A new explicit request did not get its own expiry.'
+'PASS: restart expiry persists across helper status updates; new requests get a new expiry.'

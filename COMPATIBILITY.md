@@ -1,3 +1,14 @@
+# 6.8.6 verification - 1 October 2026
+
+Queue scope, external edits, malformed entries, actual rendering, and restart expiry pass in both shells.
+Normal close/reopen and expired-request handling use marked fixtures. Real Codex was not closed for verification.
+The old waiting helper was replaced without extending its existing request.
+Its ten-minute resource check passed. The 30-minute widget test below belongs to version 6.8.5.
+Public installation, hosted CI, another Windows machine, ARM, and actual sign-in remain unverified.
+See QUEUE-VERIFICATION.md for the complete matrix.
+
+---
+
 # 6.8.5 checks - 30 September 2026
 
 Fifteen backend suites pass in PowerShell 5.1 and 7 on this Windows host.

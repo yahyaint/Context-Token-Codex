@@ -1,4 +1,4 @@
-# Context-Token Codex (CTC)
+﻿# Context-Token Codex (CTC)
 
 Product name: **Context-Token Codex**. Logo: a simple lowercase **ctc** wordmark in **Segoe UI Semibold**, matching the app's Windows UI typeface.
 
@@ -19,3 +19,12 @@ Ivory lettering sits on an ink-blue rounded square. Build/build.ps1 outlines the
 Controls use a shared centered content template and a 28-pixel minimum target height. The Limits tab embeds the context editor in the widget. Combo boxes use the same palette, including their dropdown. Compact mode reserves enough vertical space for navigation and the footer.
 
 Existing executable names, settings paths and process coordination IDs remain stable for upgrade compatibility. The public name and shortcut labels use Context-Token Codex. Windows launchers remain unsigned.
+
+## Display and shortcut icons
+
+The taskbar artwork is the source for every current logo.
+The widget and setup select an icon frame for the display scale. They use high-quality image scaling.
+Desktop, Start Menu, and startup shortcuts use ContextWidget.exe,0.
+The installer notifies Explorer when it changes a shortcut. It does not clear the global icon cache.
+Tests compare the encoded image resources in both launchers with Context.ico.
+Earlier logos remain only in historical release files and version backups.

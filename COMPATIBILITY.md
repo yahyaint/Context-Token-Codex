@@ -1,3 +1,13 @@
+﻿# 6.8.7 verification - 1 October 2026
+
+The actual widget and setup wizard pass in PowerShell 5.1 and 7 on this Windows host.
+Corner return, free placement, resize, mode changes, logo frame selection, icon resources, and isolated upgrades pass.
+WPF logo renders use simulated display scales. A physical mixed-DPI monitor move remains unverified.
+Current shortcuts use the launcher icon. Earlier releases remain in version backups.
+See AUDIT.md for the test scope. Earlier results retain their original version labels.
+
+---
+
 # 6.8.6 verification - 1 October 2026
 
 Queue scope, external edits, malformed entries, actual rendering, and restart expiry pass in both shells.

@@ -44,7 +44,9 @@ jobs:
       - name: Test quota estimator
         run: .\Tests\test_estimator.ps1
       - name: Verify source and isolated installation
-        run: .\Tests\test_repository.ps1
+        run: |
+          .\Tests\test_repository.ps1
+          .\Tests\test_branding.ps1
       - name: Test compatibility and RPC failures
         run: |
           .\Tests\test_compatibility.ps1

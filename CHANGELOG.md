@@ -1,4 +1,11 @@
-# Changelog
+﻿# Changelog
+
+## 6.8.7 - 1 October 2026
+
+- Use the launcher icon for desktop, Start Menu, and startup shortcuts. Notify Explorer about each changed shortcut.
+- Select a logo frame for the display scale. Use high-quality scaling in the widget and setup window.
+- Keep the original compact corner during expansion. Restore it after movement, resize, or mode changes.
+- Test all four corners, free placement, display scales, setup, and installation in both PowerShell versions.
 
 ## 6.8.6 - 1 October 2026
 

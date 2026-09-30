@@ -6,7 +6,7 @@ Add-Type -AssemblyName PresentationFramework,System.Windows.Forms
 [xml]$xaml=@'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Install Context-Token Codex" Width="600" Height="550" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Background="#0D1B2A" Foreground="#E0E1DD">
  <Grid Margin="28"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <StackPanel Orientation="Horizontal" Margin="0,0,0,20"><Image x:Name="Logo" Width="52" Height="52" Margin="0,0,16,0"/><StackPanel><TextBlock Text="Context-Token Codex" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Setup 6.8.6  /  Windows" Foreground="#778DA9" FontSize="12"/></StackPanel></StackPanel>
+  <StackPanel Orientation="Horizontal" Margin="0,0,0,20"><Image x:Name="Logo" Width="52" Height="52" Margin="0,0,16,0"/><StackPanel><TextBlock Text="Context-Token Codex" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Setup 6.8.7  /  Windows" Foreground="#778DA9" FontSize="12"/></StackPanel></StackPanel>
   <Grid Grid.Row="1">
    <StackPanel x:Name="Welcome"><TextBlock Text="Monitor your active chats." FontSize="22" Margin="0,0,0,16"/><TextBlock Text="Read context and token records. Check compaction status. Edit context limits. Use the tray icon to restore the widget." Margin="0,0,0,14"/><TextBlock Text="CTC installs for your Windows account. Windows supplies the required runtime. CTC keeps your Codex chats and settings in their current locations."/><TextBlock x:Name="Size" Foreground="#778DA9" Margin="0,20,0,0"/></StackPanel>
    <StackPanel x:Name="Options" Visibility="Collapsed"><TextBlock Text="Choose your setup" FontSize="22" Margin="0,0,0,16"/><TextBlock Text="Installation folder"/><DockPanel Margin="0,5,0,16"><Button x:Name="Browse" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0"/><TextBox x:Name="Destination" Padding="8"/></DockPanel><CheckBox x:Name="Startup" IsChecked="True" Content="Auto-open with ChatGPT or Codex (watcher starts at sign-in)" Margin="0,0,0,12"/><CheckBox x:Name="Desktop" IsChecked="True" Content="Create a desktop shortcut" Margin="0,0,0,12"/><CheckBox x:Name="Launch" IsChecked="True" Content="Open the widget after installation" Margin="0,0,0,12"/><TextBlock Text="Auto-open is on by default. To disable it, clear the option here or in Widget settings. CTC keeps a backup when you install an update." Foreground="#778DA9"/></StackPanel>
@@ -19,8 +19,11 @@ Add-Type -AssemblyName PresentationFramework,System.Windows.Forms
 $w=[Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($xaml))
 $theme=New-Object Windows.ResourceDictionary; $theme.set_Source([Uri]::new((Join-Path $PSScriptRoot 'Theme.xaml'))); $w.Resources.MergedDictionaries.Add($theme)
 $decoder=[Windows.Media.Imaging.BitmapDecoder]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico')),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
-$w.Icon=$decoder.Frames[$decoder.Frames.Count-1]
-$w.FindName('Logo').Source=$w.Icon
+. (Join-Path $PSScriptRoot 'Branding.ps1')
+$w.Icon=Get-CtcLogoFrame $decoder 256
+Set-CtcLogo $w ($w.FindName('Logo')) $decoder
+$w.Add_SourceInitialized({Set-CtcLogo $w ($w.FindName('Logo')) $decoder})
+$w.Add_DpiChanged({param($sender,$eventArgs) Set-CtcLogo $w ($w.FindName('Logo')) $decoder $eventArgs.NewDpi.DpiScaleX})
 foreach ($name in @('Welcome','Options','Done','Destination','Startup','Desktop','Launch','Summary','ErrorLabel','Back','Next')) { Set-Variable $name $w.FindName($name) }
 $Destination.Text=if ($TestRoot) { Join-Path $TestRoot 'installed' } else { Join-Path $env:LOCALAPPDATA 'Programs\ContextWidget' }
 $w.FindName('Size').Text='File size: {0:N0} KB. Windows supplies PowerShell and .NET.' -f ((Get-ChildItem $PSScriptRoot -File|Measure-Object Length -Sum).Sum/1KB)

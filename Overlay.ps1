@@ -184,7 +184,11 @@ function Apply-WidgetTheme($element) {
     }
 }
 Apply-WidgetTheme $window
-$iconDecoder=[Windows.Media.Imaging.BitmapDecoder]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico')),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad); $window.Icon=$iconDecoder.Frames[$iconDecoder.Frames.Count-1]; $window.FindName('BrandIcon').Source=$window.Icon
+. (Join-Path $PSScriptRoot 'Branding.ps1')
+$iconDecoder=[Windows.Media.Imaging.BitmapDecoder]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico')),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
+$window.Icon=Get-CtcLogoFrame $iconDecoder 256
+Set-CtcLogo $window ($window.FindName('BrandIcon')) $iconDecoder
+$window.Add_DpiChanged({param($sender,$eventArgs) Set-CtcLogo $window ($window.FindName('BrandIcon')) $iconDecoder $eventArgs.NewDpi.DpiScaleX})
 foreach ($name in @('MiniEditContext','SettingsButton','TrayButton','Pin','Health','ContextQuotaBars','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','DirectTray','SettingsHost','ContextMode','TokenMode','LimitsMode','QueueMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','TokenSource','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
 $window.Width=[Math]::Max(360,[double]$prefs.Width); $window.Height=[Math]::Max(300,[double]$prefs.Height)
 $area=[Windows.SystemParameters]::WorkArea
@@ -237,8 +241,8 @@ function Get-WidgetWorkArea {
     $size=$transform.Transform([Windows.Point]::new($rect.Width,$rect.Height))
     return [Windows.Rect]::new($origin.X,$origin.Y,$size.X,$size.Y)
 }
-function Position-Widget([switch]$Snap) {
-    $workArea=Get-WidgetWorkArea
+function Position-Widget([switch]$Snap,[Windows.Rect]$WorkArea=[Windows.Rect]::Empty) {
+    if($WorkArea.IsEmpty){$workArea=Get-WidgetWorkArea}
     $right=[Math]::Max($workArea.Left,$workArea.Right-$window.Width)
     $bottom=[Math]::Max($workArea.Top,$workArea.Bottom-$window.Height)
     if ($Snap) {
@@ -262,6 +266,22 @@ function Position-Widget([switch]$Snap) {
     $prefs.Left=$window.Left; $prefs.Top=$window.Top
 }
 function Set-WidgetCompact([bool]$compact) {
+    # Capture once per expansion. Mode changes and editor navigation also call
+    # this function, and must not replace the original compact position.
+    if($prefs.Compact -and -not $compact){
+        $screen=[Windows.Forms.Screen]::FromHandle(([Windows.Interop.WindowInteropHelper]::new($window)).Handle)
+        $script:compactAnchor=@{Corner=$prefs.Corner;Left=$window.Left;Top=$window.Top;WorkArea=(Get-WidgetWorkArea);Monitor=$screen.DeviceName;PhysicalArea=$screen.WorkingArea}
+    }
+    $returnArea=[Windows.Rect]::Empty
+    if($compact -and -not $prefs.Compact -and $script:compactAnchor){
+        $anchor=$script:compactAnchor
+        $prefs.Corner=$anchor.Corner; $window.Left=$anchor.Left; $window.Top=$anchor.Top
+        # Restore the original monitor when it still has the same work area.
+        # If its geometry changed or it was removed, use the current work area.
+        $screens=@([Windows.Forms.Screen]::AllScreens | Where-Object DeviceName -eq $anchor.Monitor)
+        if($screens.Count -and $screens[0].WorkingArea.Equals($anchor.PhysicalArea)){$returnArea=$anchor.WorkArea}
+        $script:compactAnchor=$null
+    }
     $SettingsHost.Visibility='Collapsed'
     $window.FindName('AppearanceControls').Visibility='Visible'
     $LimitsMode.Tag=''; $QueueMode.Tag=''
@@ -282,7 +302,7 @@ function Set-WidgetCompact([bool]$compact) {
     if ($prefs.Mode -eq 'Tokens') {
         $MiniPanel.Visibility='Collapsed'; $FullPanel.Visibility='Collapsed'; $TokensPanel.Visibility='Visible'
     }
-    Position-Widget
+    Position-Widget -WorkArea $returnArea
 }
 function Set-WidgetMode([string]$mode) {
     $prefs.Mode=$mode; $shared.Mode=$mode
@@ -594,7 +614,7 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
     if ($quota -and ([DateTimeOffset]::Now-$quota.Observed).TotalMinutes -gt 2) { $TokenSource.Text+=' | Old data' }
 
 }
-$window.Add_SourceInitialized({ Set-WidgetCompact ([bool]$prefs.Compact) })
+$window.Add_SourceInitialized({ Set-WidgetCompact ([bool]$prefs.Compact); Set-CtcLogo $window ($window.FindName('BrandIcon')) $iconDecoder })
 $DragHandle.Add_MouseLeftButtonDown({
     param($sender,$eventArgs)
     $source=$eventArgs.OriginalSource
@@ -1377,6 +1397,41 @@ $timer.Add_Tick({
             $window.Left=$workArea.Right-$window.Width-20; $window.Top=$workArea.Bottom-$window.Height-20
             Position-Widget -Snap
             $snapPassed=($prefs.Corner -eq 'BottomRight')
+            # Use the real Expand/Collapse and resize handlers. A later mode
+            # refresh must not overwrite the position captured before expansion.
+            $savedWidth=$prefs.Width; $savedHeight=$prefs.Height
+            $cornerReturnPassed=$true
+            foreach($corner in @('TopLeft','TopRight','BottomLeft','BottomRight','Free')){
+                Set-WidgetCompact $true
+                $prefs.Corner=$corner
+                if($corner -eq 'Free'){$window.Left=$workArea.Left+70; $window.Top=$workArea.Top+80}
+                Position-Widget
+                $expectedLeft=$window.Left; $expectedTop=$window.Top
+                $ToggleButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                $window.Left=$workArea.Left+100; $window.Top=$workArea.Top+100
+                Position-Widget -Snap
+                $ResizeGrip.RaiseEvent([Windows.Controls.Primitives.DragDeltaEventArgs]::new(60,70))
+                Set-WidgetMode $prefs.Mode
+                $ToggleButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                $window.UpdateLayout()
+                if($prefs.Corner -ne $corner -or [Math]::Abs($window.Left-$expectedLeft) -gt 1 -or [Math]::Abs($window.Top-$expectedTop) -gt 1){throw "Collapse did not restore the original position: $corner"}
+                if([Math]::Abs($prefs.Left-$expectedLeft) -gt 1 -or [Math]::Abs($prefs.Top-$expectedTop) -gt 1){throw 'Restored position was not saved.'}
+            }
+            $prefs.Width=$savedWidth; $prefs.Height=$savedHeight; $prefs.Corner='BottomRight'; Position-Widget
+            Set-WidgetCompact $false
+            $logoPassed=$true
+            foreach($scale in @(1,1.25,1.5,2,3)){
+                Set-CtcLogo $window ($window.FindName('BrandIcon')) $iconDecoder $scale
+                $image=$window.FindName('BrandIcon')
+                if($image.Source.PixelWidth -lt 32*$scale -or [Windows.Media.RenderOptions]::GetBitmapScalingMode($image) -ne 'HighQuality'){throw 'Logo resolution is below the display size.'}
+                if($TestReport){
+                    $logoBitmap=[Windows.Media.Imaging.RenderTargetBitmap]::new([int](32*$scale),[int](32*$scale),96*$scale,96*$scale,[Windows.Media.PixelFormats]::Pbgra32)
+                    $window.UpdateLayout(); $logoBitmap.Render($image)
+                    $encoder=[Windows.Media.Imaging.PngBitmapEncoder]::new(); $encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($logoBitmap))
+                    $stream=[IO.File]::Create($TestReport+".logo-$scale.png"); try{$encoder.Save($stream)}finally{$stream.Dispose()}
+                }
+            }
+            Set-CtcLogo $window ($window.FindName('BrandIcon')) $iconDecoder
             $TokenMode.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
             $shared.LiveQuota=ConvertTo-QuotaSnapshot ([pscustomobject]@{rateLimits=[pscustomobject]@{planType='plus';primary=[pscustomobject]@{usedPercent=35;windowDurationMins=300;resetsAt=[DateTimeOffset]::Now.AddHours(2).ToUnixTimeSeconds()};secondary=[pscustomobject]@{usedPercent=72;windowDurationMins=10080;resetsAt=[DateTimeOffset]::Now.AddDays(3).ToUnixTimeSeconds()}}}) 'Test quota' ([DateTimeOffset]::Now)
             Update-TokenPanel
@@ -1514,8 +1569,8 @@ $timer.Add_Tick({
             }
             Show-Overlay; Hide-Overlay $true; $hidden=(-not $window.IsVisible -and $restoreTab.IsVisible -and $tray.Visible); Show-Overlay
             $script:testPassed=($script:shared.Scans -gt 0 -and $minimized -and $hidden -and $window.IsVisible -and -not $script:shared.Error)
-            if (-not $script:hiddenLoopPassed -or -not $compactPassed -or -not $snapPassed -or ($TestSettings -and (-not $script:settingsTestPassed -or -not $script:widgetSettingsPassed))) { $script:testPassed=$false }
-            if ($TestReport) { [IO.File]::WriteAllText($TestReport, (@{ Passed=$script:testPassed; HiddenLoopPassed=$script:hiddenLoopPassed; DirectOpacityPassed=$directOpacityPassed; Scans=$script:shared.Scans; Cards=$script:cardControls.Count; Minimized=$minimized; Hidden=$hidden; Restored=$window.IsVisible; Error=$script:shared.Error; SettingsPassed=$script:settingsTestPassed; SettingsError=$script:settingsTestError; CompactPassed=$compactPassed; SnapPassed=$snapPassed; WidgetSettingsPassed=$script:widgetSettingsPassed } | ConvertTo-Json)) }
+            if (-not $script:hiddenLoopPassed -or -not $compactPassed -or -not $snapPassed -or -not $cornerReturnPassed -or -not $logoPassed -or ($TestSettings -and (-not $script:settingsTestPassed -or -not $script:widgetSettingsPassed))) { $script:testPassed=$false }
+            if ($TestReport) { [IO.File]::WriteAllText($TestReport, (@{ Passed=$script:testPassed; HiddenLoopPassed=$script:hiddenLoopPassed; DirectOpacityPassed=$directOpacityPassed; Scans=$script:shared.Scans; Cards=$script:cardControls.Count; Minimized=$minimized; Hidden=$hidden; Restored=$window.IsVisible; Error=$script:shared.Error; SettingsPassed=$script:settingsTestPassed; SettingsError=$script:settingsTestError; CompactPassed=$compactPassed; SnapPassed=$snapPassed; CornerReturnPassed=$cornerReturnPassed; LogoPassed=$logoPassed; WidgetSettingsPassed=$script:widgetSettingsPassed } | ConvertTo-Json)) }
             $window.Close()
         }
     } catch { $Health.Text='Overlay error: '+$_.Exception.Message

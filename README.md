@@ -1,4 +1,4 @@
-# Context-Token Codex 6.8.6
+﻿# Context-Token Codex 6.8.7
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 

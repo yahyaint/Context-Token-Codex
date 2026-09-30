@@ -1,4 +1,4 @@
-# CTC ordered task list - 30 September 2026
+﻿# CTC ordered task list - 30 September 2026
 
 Use this list to continue work after an interruption. Complete one item before the next item.
 Use STE for app text. Preserve earlier versions and settings. Keep GitHub publication on hold.
@@ -96,7 +96,7 @@ Do not force-close running chats.
 
 Working source: `work/context-widget`.
 The canonical publication checkout and installed runtime are recorded in the private workspace resume file.
-Version 6.8.6 is the current repair. The latest widget is restored after tested UI changes.
+Version 6.8.7 is the current repair. The latest widget is restored after tested UI changes.
 Weekly-only WPF fixtures pass in PowerShell 5.1 and 7 after the array repair.
 Weekly-only quota, parked startup, Queue, token layout, tool tile, Exec results, command types and script references are implemented.
 Final package, runtime alignment, local commit and source archive are prepared. Publication remains held.
@@ -115,3 +115,12 @@ Do not send the same continuation again. Continue from this checklist.
 The user requested that the latest CTC stay open after tested UI changes.
 Refresh only the CTC runtime. Preserve current preferences.
 Restore the widget after startup is ready. Do not restart Codex to preview CTC.
+
+## Icon and corner request - 1 October 2026
+
+- [x] Use the current taskbar artwork in the widget, setup, tray, and shortcuts. Check display-scale frame selection.
+- [x] Return Collapse to the position before Expand. Test all corners, free placement, expanded movement, resize, and mode changes.
+- [x] Test in PowerShell 5.1 and 7. Preserve earlier runtime versions and user preferences.
+- [x] Restore the latest widget. Prepare a local commit and package. Keep publication held.
+
+See AUDIT.md for the test scope and platform limits.

@@ -139,6 +139,20 @@ function Get-WatcherLaunchAction($state,$current,[bool]$ready,$now=[DateTimeOffs
     return $false
 }
 function Get-StartupShortcut { Join-Path ([Environment]::GetFolderPath('Startup')) 'Context-Token Codex.lnk' }
+function Update-CtcShortcutIcon([string]$Path) {
+    # Notify Explorer about this shortcut only. Do not clear the user's icon cache.
+    if(-not ('CtcShellIcons' -as [type])){
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class CtcShellIcons {
+ [DllImport("shell32.dll", CharSet=CharSet.Unicode)]
+ public static extern void SHChangeNotify(uint change, uint flags, string path, IntPtr unused);
+}
+'@
+    }
+    [CtcShellIcons]::SHChangeNotify(0x2000,0x5,$Path,[IntPtr]::Zero)
+}
 function Set-OverlayStartup([bool]$enabled, [string]$folder) {
     $path = Get-StartupShortcut
     if ($enabled) {
@@ -146,10 +160,11 @@ function Set-OverlayStartup([bool]$enabled, [string]$folder) {
         $link = $shell.CreateShortcut($path)
         $link.TargetPath = Join-Path $folder 'ContextWidget.exe'
         $link.Arguments = '/watch'
-        $link.IconLocation = (Join-Path $folder 'Context.ico') + ',0'
+        $link.IconLocation = (Join-Path $folder 'ContextWidget.exe') + ',0'
         $link.WorkingDirectory = $folder
         $link.Description = 'Open the widget when the selected app starts.'
         $link.Save()
+        Update-CtcShortcutIcon $path
         [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell)
     } elseif (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
 }

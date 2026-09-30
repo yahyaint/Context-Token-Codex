@@ -13,7 +13,7 @@ $shell=New-Object -ComObject WScript.Shell
 try {
  $link=$shell.CreateShortcut((Join-Path $fixture 'startup\Context-Token Codex.lnk'))
  Assert ($link.TargetPath -eq (Join-Path $destination 'ContextWidget.exe') -and $link.Arguments -eq '/watch') 'Startup shortcut is incorrect.'
- Assert ($link.IconLocation -like '*Context.ico*') 'Shortcut does not use custom icon.'
+ Assert ($link.IconLocation -eq ((Join-Path $destination 'ContextWidget.exe')+',0')) 'Shortcut does not use the launcher icon.'
  $legacy=$shell.CreateShortcut((Join-Path $fixture 'startup\Codex Context Overlay.lnk')); $legacy.TargetPath=Join-Path $destination 'ContextWidget.exe'; $legacy.Save()
  $unrelated=$shell.CreateShortcut((Join-Path $fixture 'desktop\Context Widget.lnk')); $unrelated.TargetPath=Join-Path $env:WINDIR 'notepad.exe'; $unrelated.Save()
 } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }

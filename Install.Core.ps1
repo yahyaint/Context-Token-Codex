@@ -5,7 +5,7 @@ function Invoke-ContextWidgetInstall {
  if (-not [IO.Path]::IsPathRooted($Destination)) { throw 'Enter a full path for the installation folder.' }
  $destinationPath=[IO.Path]::GetFullPath($Destination).TrimEnd('\')
  if ($destinationPath -eq [IO.Path]::GetPathRoot($destinationPath).TrimEnd('\')) { throw 'Select a subfolder for CTC. Do not select the drive root.' }
- $files=@('ContextWidget.exe','Context.ico','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Restart.Core.ps1','Restart-Codex.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','USAGE-METHODS.md','QUOTA-RESEARCH.md','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','ERROR-AUDIT.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','METHODS.md','BRANDING.md')
+ $files=@('ContextWidget.exe','Context.ico','Branding.ps1','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Restart.Core.ps1','Restart-Codex.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','USAGE-METHODS.md','QUOTA-RESEARCH.md','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','ERROR-AUDIT.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','METHODS.md','BRANDING.md')
  foreach ($file in $files) { if (-not (Test-Path -LiteralPath (Join-Path $Source $file) -PathType Leaf)) { throw "The installation file is missing: $file." } }
  if ($TestRoot) {
   $localRoot=[IO.Path]::GetFullPath($TestRoot).TrimEnd('\')+'\'
@@ -19,7 +19,7 @@ function Invoke-ContextWidgetInstall {
  $sameSource=([IO.Path]::GetFullPath($Source).TrimEnd('\') -eq $destinationPath)
  $backup=$null
  if (-not $sameSource -and (Test-Path -LiteralPath (Join-Path $destinationPath 'Overlay.ps1'))) {
-  $backup=Join-Path $destinationPath ('Versions\before-6.8.6-'+[guid]::NewGuid().ToString('N').Substring(0,8))
+  $backup=Join-Path $destinationPath ('Versions\before-6.8.7-'+[guid]::NewGuid().ToString('N').Substring(0,8))
   [void][IO.Directory]::CreateDirectory($backup)
   foreach ($file in $files) { $old=Join-Path $destinationPath $file; if (Test-Path -LiteralPath $old) { Copy-Item -LiteralPath $old -Destination $backup } }
  }
@@ -40,7 +40,8 @@ function Invoke-ContextWidgetInstall {
   if ($AutoOpen) { $links+=@{Path=$startupLink;Args='/watch'} } elseif (Test-Path -LiteralPath $startupLink) { Remove-Item -LiteralPath $startupLink }
   foreach ($entry in $links) {
    $link=$shell.CreateShortcut($entry.Path); $link.TargetPath=Join-Path $destinationPath 'ContextWidget.exe'; $link.Arguments=$entry.Args
-   $link.WorkingDirectory=$destinationPath; $link.IconLocation=(Join-Path $destinationPath 'Context.ico')+',0'; $link.Description='Context-Token Codex - live context and token monitor'; $link.Save()
+   $link.WorkingDirectory=$destinationPath; $link.IconLocation=(Join-Path $destinationPath 'ContextWidget.exe')+',0'; $link.Description='Context-Token Codex - live context and token monitor'; $link.Save()
+   Update-CtcShortcutIcon $entry.Path
   }
   # Remove only legacy shortcuts that point to this same installation.
   $legacy=@((Join-Path $startup 'Codex Context Overlay.lnk'),(Join-Path $desktop 'Context Widget.lnk'),(Join-Path $menu 'Context Widget.lnk'))
@@ -52,7 +53,7 @@ function Invoke-ContextWidgetInstall {
    }
   }
  } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
- $manifest=@{Version='6.8.6';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
+ $manifest=@{Version='6.8.7';Files=$files;AutoOpen=$AutoOpen;InstalledAt=[DateTimeOffset]::Now.ToString('o')}
  [IO.File]::WriteAllText((Join-Path $destinationPath 'installation.json'),($manifest|ConvertTo-Json -Depth 4))
  [pscustomobject]@{Destination=$destinationPath;Backup=$backup;Files=$files.Count;Preferences=$preferences;Bytes=($files|ForEach-Object {(Get-Item -LiteralPath (Join-Path $destinationPath $_)).Length}|Measure-Object -Sum).Sum}
 }

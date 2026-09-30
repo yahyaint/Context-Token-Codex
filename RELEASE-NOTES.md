@@ -1,6 +1,13 @@
-# Context-Token Codex 6.8.6
+﻿# Context-Token Codex 6.8.7
 
 Created by Yahya Nabil | [yahyanabil.com](https://yahyanabil.com)
+
+## Icon and corner repair
+
+- Use the current launcher icon for shortcuts. Refresh each changed shortcut in Explorer.
+- Select the logo resolution for the display scale in the widget and setup window.
+- Return Collapse to its original corner after expanded movement or resize.
+- Keep previous versions and current preferences.
 
 ## Verification repairs
 

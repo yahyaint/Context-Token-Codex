@@ -1,3 +1,24 @@
+﻿# Version 6.8.7 icon and corner checks - 1 October 2026
+
+Both PowerShell versions pass the actual WPF controls and setup wizard.
+Expand and Collapse restore all four corners and free placement after expanded movement, resize, and mode changes.
+The original compact monitor work area is used while its geometry is unchanged.
+If the monitor is removed or its work area changes, the widget uses the current work area.
+A physical monitor removal or mixed-DPI monitor move was not tested.
+
+Logo selection passes at 100%, 125%, 150%, 200%, 300%, and the largest-frame fallback.
+Actual WPF logo renders at 100% through 300% were inspected.
+Tests compare every encoded icon image in both launchers with Context.ico.
+The artwork is unchanged. The widget selects a suitable frame and uses high-quality image scaling.
+Shortcuts use the launcher icon. Explorer receives a notification for each changed shortcut.
+Previous release icons remain in version backups.
+
+Repository syntax, installer rollback, preference retention, and release checksum checks pass in both shells.
+The new runtime adds Branding.ps1. Memory soak results below belong to earlier versions.
+Publication remains held.
+
+---
+
 # Version 6.8.6 queue verification - 1 October 2026
 
 All queue items were checked against code, tests, installed files, and release evidence.

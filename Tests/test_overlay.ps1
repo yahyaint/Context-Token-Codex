@@ -40,10 +40,10 @@ try {
     & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -STA -File (Join-Path $folder 'Overlay.ps1') -CodexHome $fixture -PreferencesPath (Join-Path $fixture 'prefs.json') -TestSeconds 5 -TestSettings -TestReport $report
     Assert ($LASTEXITCODE -eq 0) "Overlay failed: $(Get-Content $report -Raw -ErrorAction SilentlyContinue)"
     $result=Get-Content $report -Raw | ConvertFrom-Json
-    Assert ($result.Passed -and $result.SettingsPassed -and $result.CompactPassed -and $result.SnapPassed -and $result.WidgetSettingsPassed -and $result.Cards -eq 1) 'UI integration failed.'
+    Assert ($result.Passed -and $result.SettingsPassed -and $result.CompactPassed -and $result.SnapPassed -and $result.CornerReturnPassed -and $result.LogoPassed -and $result.WidgetSettingsPassed -and $result.Cards -eq 1) 'UI integration failed.'
     [IO.File]::AppendAllText($rollout,(Event 'event_msg' @{type='task_complete'})+"`n")
     $snapshot=Get-MonitorSnapshot
     Assert ($snapshot.Cards.Count -eq 0) 'Completed task card did not disappear.'
-    Write-Output "PASS: snapshot, title, usage, compaction, completion, borderless WPF render, expand/collapse, corner snap, opacity and corner persistence, minimize, tray hide/restore, invalid input, settings save."
+    Write-Output "PASS: snapshot, title, usage, compaction, completion, borderless WPF render, expand/collapse, original corner after movement and resize, DPI logo renders, corner snap, opacity and corner persistence, minimize, tray hide/restore, invalid input, settings save."
     Write-Output "Fixture/report/screenshot: $fixture"
 } finally { $env:CODEX_SQLITE_HOME=$previousSqlite }

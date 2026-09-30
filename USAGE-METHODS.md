@@ -68,3 +68,16 @@ Design references:
 
 CTC uses the display patterns. It does not copy a tokenizer or claim exact content attribution.
 See ACKNOWLEDGMENTS.md for licenses and fixed revisions.
+
+## Exec details
+
+CTC reads tool arguments in memory to classify command requests and direct script tool references.
+It reads result metadata for status and timing. It keeps only categories, counters and numeric metadata.
+It does not retain commands, arguments or stdout in activity summaries.
+
+Script references are not execution counts. Dynamic calls and conditional branches can change the number of calls.
+Reported shell results come from printed helper metadata. They are separate from the outer script result.
+Duplicate output IDs and shell chunk IDs count once.
+Large records, code and collections have scan limits. Missing data stay marked.
+Call-to-result spans include waiting. Concurrent calls can overlap.
+Neither call counts nor time totals supply exact tool token costs.

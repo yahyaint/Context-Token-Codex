@@ -1,5 +1,44 @@
 # Changelog
 
+## 6.8.3 - 30 September 2026
+
+- Use a full-width tile for Tool calls in the token grid.
+- Add expandable Exec results, command types, script tools and reported shell results.
+- Read native input_text blocks. Count unique outputs and shell result IDs.
+- Show missing status and missing results. Keep wall time separate from call-to-result spans.
+- Mark script references as references. Do not claim that every nested call ran.
+- Keep command text and tool output out of stored activity data.
+- Bound large output scans. Use a compiled in-memory script scanner with a PowerShell fallback.
+- Copy activity totals before the UI reads them. Keep collector IDs private.
+- Add native-format, privacy, live append, output deduplication and large-record tests.
+- Skip unchanged token details. Avoid resetting metrics before updates. Skip JSON parsing for raw JavaScript.
+
+## 6.8.2 - 30 September 2026
+
+- Display a single weekly quota in Windows PowerShell 5.1. Do not add a missing 5-hour window.
+- Refresh after sign-in metadata changes. Reject older account responses. Separate quota estimate histories by account.
+- Repair repeated estimate history saves.
+- Open new installations in the small bar. Set background opacity to 85%. Apply startup preferences to automatic launches.
+- Add Queue beside Limits. Keep restart controls visible while saved changes scroll. Keep changes after CTC closes.
+- Keep Queue open during Expand and Collapse. Block restart when chat state is active or unknown.
+- Put Tool calls in a full grid row. Add an Exec section with recorded counts.
+- Add token section dividers. Put Data status and How counts work beside each other.
+- Make Minimize show the small bar. Remove Park. Put Corner in its place.
+- Test queue persistence, cancellation, weekly-only accounts, login changes and both WPF layouts.
+
+## 6.8.1 - 30 September 2026
+
+- Reject saves from a form that has older settings than the file.
+- Let Undo recover after the user corrects an invalid settings file.
+- Read parent project limits for chats inside a Git repository.
+- Remove old usage when a new context window has no usage record.
+- Save limits after Default leaves an empty settings file.
+- Preserve comments and formatting when limit values do not change.
+- Reject invalid writer values before changing a settings file.
+- Use decimal arithmetic for percentage input.
+- Read quoted model names after multiline instructions. Keep setting names case sensitive.
+- Add 85 limit cases and an isolated Codex engine test.
+
 ## 6.8.0 - 30 September 2026
 
 - Show saved limits as pending until recorded context confirms them.

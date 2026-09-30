@@ -21,3 +21,26 @@ function Write-RestartStatus([string]$Path,[string]$Status,[string]$Message) {
         if([IO.File]::Exists($Path)){[IO.File]::Replace($temp,$Path,[NullString]::Value)}else{[IO.File]::Move($temp,$Path)}
     }finally{if([IO.File]::Exists($temp)){[IO.File]::Delete($temp)}}
 }
+function Read-LimitsQueue([string]$Path) {
+    if(-not [IO.File]::Exists($Path)){return @()}
+    $data=[IO.File]::ReadAllText($Path)|ConvertFrom-Json
+    if($data.Version -ne 1){throw 'CTC cannot read this queue format. Keep the file for repair.'}
+    # New PowerShell releases can deserialize ISO dates as DateTime. Keep the
+    # stored representation stable across runtimes and regional formats.
+    foreach($entry in @($data.Entries)){
+        if($entry.SavedAt -is [DateTime]){$entry.SavedAt=$entry.SavedAt.ToUniversalTime().ToString('o')}
+    }
+    return @($data.Entries)
+}
+function Save-LimitsQueueEntry([string]$Path,[string]$ConfigPath,$Window,$Compact) {
+    $entries=@(Read-LimitsQueue $Path)
+    $resolved=[IO.Path]::GetFullPath($ConfigPath)
+    $entries=@($entries|Where-Object {$_.Path -ine $resolved})
+    $entries+= [pscustomobject]@{Path=$resolved;Window=$Window;Compact=$Compact;SavedAt=[DateTimeOffset]::UtcNow.ToString('o')}
+    [void][IO.Directory]::CreateDirectory((Split-Path $Path -Parent))
+    $temp=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
+    try {
+        [IO.File]::WriteAllText($temp,(@{Version=1;Entries=$entries}|ConvertTo-Json -Depth 5),[Text.UTF8Encoding]::new($false))
+        if([IO.File]::Exists($Path)){[IO.File]::Replace($temp,$Path,[NullString]::Value)}else{[IO.File]::Move($temp,$Path)}
+    }finally{if([IO.File]::Exists($temp)){[IO.File]::Delete($temp)}}
+}

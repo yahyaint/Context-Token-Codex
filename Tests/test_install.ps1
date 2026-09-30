@@ -18,7 +18,9 @@ try {
  $unrelated=$shell.CreateShortcut((Join-Path $fixture 'desktop\Context Widget.lnk')); $unrelated.TargetPath=Join-Path $env:WINDIR 'notepad.exe'; $unrelated.Save()
 } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
 $prefsPath=Join-Path $fixture 'preferences\overlay.json'
-$prefs=Get-Content $prefsPath -Raw | ConvertFrom-Json; $prefs.Opacity=0.61; $prefs | Add-Member Mode 'Tokens' -Force
+$prefs=Get-Content $prefsPath -Raw | ConvertFrom-Json
+Assert ($prefs.StartParked -and $prefs.Opacity -eq .85) 'Fresh installation must use the parked bar and 85% background opacity.'
+$prefs.Opacity=0.61; $prefs | Add-Member Mode 'Tokens' -Force
 $prefs | ConvertTo-Json | Set-Content $prefsPath
 $upgrade=Install-ContextWidget -Source $source -Destination $destination -AutoOpen $false -TestRoot $fixture
 Assert (Test-Path (Join-Path $upgrade.Backup 'Overlay.ps1')) 'Upgrade did not preserve previous version.'

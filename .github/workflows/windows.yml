@@ -28,13 +28,18 @@ jobs:
         run: |
           .\Tests\test_settings.ps1
           .\Tests\test_context_editor.ps1
+          .\Tests\test_limits_matrix.ps1
       - name: Test audit regressions
         run: .\Tests\test_regressions.ps1
       - name: Test usage accounting and quota parsing
-        run: .\Tests\test_usage.ps1
+        run: |
+          .\Tests\test_usage.ps1
+          .\Tests\test_account_quota.ps1
+          .\Tests\test_limits_queue.ps1
       - name: Test tool activity and restart safety
         run: |
           .\Tests\test_activity.ps1
+          .\Tests\test_exec_activity.ps1
           .\Tests\test_restart.ps1
       - name: Test quota estimator
         run: .\Tests\test_estimator.ps1

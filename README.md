@@ -1,4 +1,4 @@
-# Context-Token Codex 6.8.0
+# Context-Token Codex 6.8.3
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
@@ -82,7 +82,10 @@ After all chats stop, quit Codex fully. Open Codex again. Resume the chat.
 Closing one window can leave Codex running in the background.
 Check for a new usage record. CTC confirms the setting only when the recorded window matches.
 The usable window can be smaller than the saved value. Codex can reserve space.
-**Limits updates in queue** contains restart controls.
+**Queue**, beside **Limits**, shows saved changes and restart controls.
+The controls stay visible while the change list scrolls.
+CTC keeps the latest saved change for each settings file after it closes.
+Recorded windows are per chat. Confirmation of a window does not confirm the compaction threshold.
 **Restart now safely** is disabled while CTC records running chats.
 **Restart after all chats stop** queues one restart. **Cancel restart** removes the waiting request.
 The helper scans recent user and agent records. It waits for ten seconds of recorded idle state.
@@ -138,8 +141,7 @@ Drag the lower right control to resize the expanded view.
 | Pinned | Keeps CTC above other windows. |
 | Corner | Selects a screen corner. |
 | Tray | Hides CTC beside the Windows clock. Select the ctc icon to restore it. |
-| Park bar | Shows context, tokens, navigation, and small quotas at the same corner. Select its restore button to open CTC. |
-| Minus | Minimizes CTC to the taskbar. |
+| Minus | Shows context, tokens, navigation, and small quotas in a bar at the same corner. Select its restore button to open CTC. |
 | Close | Stops CTC. |
 
 If the widget is hidden, open ContextWidget.exe again to restore it.
@@ -148,6 +150,9 @@ The icon can be in the tray's ^ menu.
 ## Startup and data
 
 Auto-open is on by default.
+New installations open in the small bar. Background is 85%.
+Change **Open in the small bar** in Window and startup to open the full widget.
+Manual restore opens the widget. Automatic app launches use the startup preference.
 Widget settings can follow Codex, ChatGPT, or Either.
 The watcher starts at Windows sign-in.
 It checks app windows every 1.5 seconds without a fixed app version.
@@ -182,3 +187,22 @@ Call counts do not measure token cost. Separate tool and automation token costs 
 See [USAGE-METHODS.md](USAGE-METHODS.md) for the data rules and design sources.
 
 The source package includes [ARCHITECTURE-REVIEW.md](ARCHITECTURE-REVIEW.md) and [WORK-QUEUE.md](WORK-QUEUE.md).
+
+Context limit tests and reload checks: [LIMITS-VERIFICATION.md](LIMITS-VERIFICATION.md).
+
+## Tool activity
+
+Tool calls has one full-width tile in Breakdown.
+Open Exec for call results, status, time, and command types.
+Open Script tools for nested tool references.
+Open Shell results for reported helper results and exit codes.
+
+A script reference does not prove execution. Loops and branches can change call counts.
+Command types describe recorded requests. One request can have more than one type.
+A missing result does not prove that a call is running.
+Nonzero exit codes can have normal meanings. For example, search can return 1 for no match.
+Reported shell results are separate from wrapper results.
+CTC does not add shell results to the number of recorded tool calls.
+Recorded time uses available wall times, or call-to-result spans when wall time is unavailable.
+Spans include waiting. Concurrent calls can overlap. These totals are not active work hours.
+CTC cannot read exact token costs for a tool or automation.

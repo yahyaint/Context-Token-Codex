@@ -76,14 +76,14 @@ function Save-QuotaLedger($ledger,[string]$path) {
         }
         $saved=@{Schema=1;Scope=$ledger.Scope;Windows=$windows}
         [IO.File]::WriteAllText($temp,($saved|ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))
-        if (Test-Path -LiteralPath $path) {[IO.File]::Replace($temp,$path,$null)} else {[IO.File]::Move($temp,$path)}
+        if (Test-Path -LiteralPath $path) {[IO.File]::Replace($temp,$path,[System.Management.Automation.Language.NullString]::Value)} else {[IO.File]::Move($temp,$path)}
         $ledger.SavedAt=[DateTimeOffset]::Now
     } finally {if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp}}
 }
 function Get-QuotaShareText($ledger,[string]$id,$now=[DateTimeOffset]::Now) {
     $parts=@()
-    foreach ($minutes in @(300,10080)) {
-        $label=if($minutes -eq 300){'5h'}else{'7d'}
+    foreach ($minutes in @($ledger.Windows.Values.Minutes|Where-Object {$_ -gt 0}|Sort-Object -Unique)) {
+        $label=if($minutes -eq 300){'5h'}elseif($minutes -eq 10080){'7d'}else{"$($minutes)m"}
         $windows=@($ledger.Windows.Values|Where-Object {$_.Minutes -eq $minutes -and [DateTimeOffset]::FromUnixTimeSeconds([long]$_.Reset) -gt $now})
         # Multiple buckets cannot safely be added into one percentage.
         if ($windows.Count -ne 1) {$parts+="$label --";continue}
@@ -92,23 +92,25 @@ function Get-QuotaShareText($ledger,[string]$id,$now=[DateTimeOffset]::Now) {
         $n=$w.Shares[$id]; $value=if($n -lt 1){'<1%'}else{'~{0:N0}%' -f $n}
         $parts+="$label $value"
     }
-    'Quota estimate: '+($parts -join ' | ')
+    'Quota estimate: '+$(if($parts.Count){$parts -join ' | '}else{'--'})
 }
 function Update-SnapshotQuota($snapshot,$live,[string]$homePath) {
     if (-not $homePath) {$homePath=if($env:CODEX_HOME){$env:CODEX_HOME}else{Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'}}
     # Metadata only: never read credentials. A changed login file invalidates estimates.
     $auth=Get-Item -LiteralPath (Join-Path $homePath 'auth.json') -ErrorAction SilentlyContinue
     $scope=[IO.Path]::GetFullPath($homePath)+'|'+[string]$auth.LastWriteTimeUtc.Ticks+'|'+[string]$auth.Length
+    if($live.AccountKey){$scope=[IO.Path]::GetFullPath($homePath)+'|'+$live.AccountKey}
     if (-not $script:quotaLedger -or $script:quotaLedger.Scope -ne $scope) {
         $sha=[Security.Cryptography.SHA256]::Create()
-        try {$key=([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes([IO.Path]::GetFullPath($homePath))))).Replace('-','').Substring(0,16)}finally{$sha.Dispose()}
+        $historyIdentity=[IO.Path]::GetFullPath($homePath)+'|'+[string]$live.AccountKey
+        try {$key=([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($historyIdentity)))).Replace('-','').Substring(0,16)}finally{$sha.Dispose()}
         $base=if(Test-Path -LiteralPath (Join-Path $homePath '.overlay-test-fixture')){$homePath}else{Join-Path $env:LOCALAPPDATA 'CodexContextMonitor/QuotaHistory'}
         $script:quotaLedgerPath=Join-Path $base ($key+'.json')
         $script:quotaLedger=Read-QuotaLedger $script:quotaLedgerPath $scope
         $script:quotaLedgerStamp=''
         $script:quotaRates=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Quota.Rates.json'))|ConvertFrom-Json
     }
-    $quota=Select-FreshQuota $live $snapshot.Tokens.Quota
+    $quota=Get-CurrentAccountQuota $live $snapshot.Tokens.Quota (Get-QuotaProfileStamp $homePath) $false
     $stamp=($quota.Windows|ForEach-Object {"$($_.Name)|$($_.Reset)|$($_.Remaining)|$($_.Observed)"}) -join ';'
     $stamp+='|'+[string]$quota.Observed
     if ($stamp -ne $script:quotaLedgerStamp) {

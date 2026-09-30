@@ -29,4 +29,6 @@ Assert ($null -eq (Get-RecordedToolActivity $state).Calls) 'Incomplete backfill 
 Update-Rollout (Get-Item $path)
 Assert ((Get-RecordedToolActivity $script:rollouts[$path]).Calls -eq 4) 'Backfill double counted calls.'
 Assert ((Format-ShortTokenValue 1250000) -match '^1[.,]3M$' -and (Format-ShortTokenValue $null) -eq '--') 'Compact token formatting failed.'
+foreach($name in @('functions.exec','exec_command','functions.write_stdin')){Assert (Test-ExecToolName $name) "Exec call was omitted: $name"}
+foreach($name in @('apply_patch','execute_query','web.run','functions.execExtra')){Assert (-not (Test-ExecToolName $name)) "Other call was counted as exec: $name"}
 'PASS: deduplicated calls, output exclusion, missing IDs, live append, unknown backfill, private data exclusion and token formatting.'

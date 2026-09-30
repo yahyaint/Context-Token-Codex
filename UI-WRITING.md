@@ -100,3 +100,12 @@ Check sentence length, active voice, conditions, and the input examples.
 Check the compact layout for text that does not fit.
 Do not describe an estimated or old reading as an exact live value.
 Do not claim that a larger setting increases model capacity.
+
+## Activity terms
+
+- Script reference: A direct tool call written in recorded script code. Execution is not confirmed.
+- Result record: The recorded reply to a tool call.
+- Shell result: Numeric helper metadata printed by an exec script.
+- Recorded time: Available wall time, or the time between a call and its result.
+- No result: No matching output is in the scanned record. This does not mean the call is running.
+- Status unknown: A result has no recognized exit status.

@@ -1,3 +1,47 @@
+# Version 6.8.3 verification - 30 September 2026
+
+- Fifteen backend suites pass in Windows PowerShell 5.1 and PowerShell 7.
+- The limit matrix passes 85 cases per runtime. The native Sol and Astra fixtures passed 24 checks.
+- Actual WPF controls pass in both runtimes: queue controls, cancellation, idle gates, grid layout, startup, opacity and saves.
+- Native text-block outputs were checked against local records. Exec outcomes and reported shell results are available.
+- Activity summaries keep categories, counters and timing. They exclude commands, arguments, stdout and internal correlation IDs.
+- A single weekly account reading displays one 7d bar in the actual installed PowerShell 5.1 widget.
+- The actual /auto launcher parks the widget at 85%. The manual launcher restores it.
+- Installation checks preserve the previous runtime and current preferences.
+
+The first real-profile context scan took about 3 seconds on this host.
+The full activity backfill took about 32 seconds. Context appears before that backfill finishes.
+This is not a clean-machine or long-duration benchmark. New records use the existing file offsets.
+The full backfill delay remains a performance limit on large histories.
+A PowerShell 5.1 collector comparison after garbage collection measured about 18 MiB managed memory before activity details and 26 MiB after them.
+The next scans took about 0.2 seconds in both versions.
+A live Tokens working-set sample reached about 900 MiB. This did not prove a retained-data leak.
+CTC now skips unchanged detail formatting and does not reset each metric before an update.
+A 45-second synthetic Tokens run measured about 67 MiB managed memory and 242 MiB working set.
+A fresh real Tokens run after the data-change gate measured 98 MiB managed memory and 319 MiB working set with three chat panels.
+Those samples are not directly comparable. Real long-duration Tokens memory remains unverified.
+Hosted CI, ARM, a separate Windows machine and a real Windows sign-in are unverified.
+No running Codex chat was closed. Real saved context values still need a safe reload and a new usage record.
+Public download remains unverified until publication. GitHub publication is held.
+
+---
+
+# Version 6.8.1 context limit audit - 30 September 2026
+
+The limit matrix passes all 85 cases in PowerShell 5.1 and PowerShell 7.
+The updated WPF test checks both window sizes and real save handlers.
+The audit found stale-save overwrites, missing parent settings, stale usage after capacity changes, and empty-file save failures.
+Those failures have regression tests and repairs.
+Percentage calculations now use decimal arithmetic. Invalid writer values cannot change settings.
+Unchanged saves preserve comments and do not create restart requests.
+See [LIMITS-VERIFICATION.md](LIMITS-VERIFICATION.md) for the native checks and repeat commands.
+
+The real saved project values are 544000, 544000, and 500000.
+The two active chats still record 258400. Their actual desktop reload is pending.
+No real Codex chat was closed or changed during the audit.
+
+---
+
 # Version 6.8.0 verification - 30 September 2026
 
 Eleven backend checks passed in PowerShell 5.1 and PowerShell 7.

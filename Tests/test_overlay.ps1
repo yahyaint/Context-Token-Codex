@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $folder=Split-Path $PSScriptRoot -Parent
 $fixture=Join-Path $env:TEMP ('context-overlay-test-'+[guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory((Join-Path $fixture 'sessions'))
@@ -13,6 +13,11 @@ $events=@(
     (Event 'session_meta' @{ id=$id; cwd=$fixture; source='vscode' }),
     (Event 'turn_context' @{ model='gpt-6-astra'; cwd=$fixture }),
     (Event 'event_msg' @{type='task_started'}),
+    (Event 'response_item' @{type='function_call';name='functions.exec';call_id='exec-wrapper';arguments='text(await tools.exec_command({cmd:"rg --files"})); await tools.apply_patch("private");'}),
+    (Event 'response_item' @{type='function_call';name='exec_command';call_id='exec-shell';arguments='{"cmd":"Get-Content private; rg private"}'}),
+    (Event 'response_item' @{type='function_call';name='apply_patch';call_id='patch'}),
+    (Event 'response_item' @{type='function_call_output';call_id='exec-wrapper';output="Script completed`nWall time: 2.5 seconds`nOutput:`nprivate"}),
+    (Event 'response_item' @{type='function_call_output';call_id='exec-shell';output='{"exit_code":1,"wall_time_seconds":1.5,"output":"private"}'}),
     (Event 'event_msg' @{type='token_count'; info=@{ model_context_window=100000; last_token_usage=@{input_tokens=85000; cached_input_tokens=20000; output_tokens=800}; total_token_usage=@{total_tokens=85800} } })
 )
 [IO.File]::WriteAllText($rollout,($events -join "`n")+"`n")
@@ -30,7 +35,7 @@ try {
     [IO.File]::AppendAllText($rollout,(Event 'compacted' @{})+"`n")
     $snapshot=Get-MonitorSnapshot
     Assert ($snapshot.Cards[0].Compactions -eq 1) 'Compaction was not counted.'
-    [IO.File]::AppendAllText($rollout,$events[3]+"`n")
+    [IO.File]::AppendAllText($rollout,$events[-1]+"`n")
     $report=Join-Path $fixture 'ui-report.json'
     & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -STA -File (Join-Path $folder 'Overlay.ps1') -CodexHome $fixture -PreferencesPath (Join-Path $fixture 'prefs.json') -TestSeconds 5 -TestSettings -TestReport $report
     Assert ($LASTEXITCODE -eq 0) "Overlay failed: $(Get-Content $report -Raw -ErrorAction SilentlyContinue)"

@@ -10,7 +10,21 @@ function Find-CodexExecutable {
     if ($found) { return $found.FullName }
     throw 'CTC cannot find the Codex CLI. Install Codex. Sign in to Codex. CTC keeps the last recorded quota.'
 }
+function Get-QuotaProfileStamp([string]$homePath) {
+    if (-not $homePath) {$homePath=if($env:CODEX_HOME){$env:CODEX_HOME}else{Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'}}
+    $auth=Get-Item -LiteralPath (Join-Path $homePath 'auth.json') -ErrorAction SilentlyContinue
+    $metadata=[IO.Path]::GetFullPath($homePath)+'|'+[string]$auth.LastWriteTimeUtc.Ticks+'|'+[string]$auth.Length
+    $sha=[Security.Cryptography.SHA256]::Create()
+    try{return ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($metadata)))).Replace('-','')}
+    finally{$sha.Dispose()}
+}
+function Get-CurrentAccountQuota($live,$recorded,[string]$profileStamp,[bool]$identityPending) {
+    if($identityPending){return $null}
+    if($live.ProfileStamp -and $profileStamp -and $live.ProfileStamp -cne $profileStamp){return $null}
+    return Select-FreshQuota $live $recorded
+}
 function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$Arguments='app-server',[int]$TimeoutSeconds=45) {
+    $profileStamp=Get-QuotaProfileStamp $HomePath
     $info=New-Object Diagnostics.ProcessStartInfo
     $info.FileName=if ($Executable) {$Executable} else {Find-CodexExecutable}; $info.Arguments=$Arguments
     if (-not $Executable -and $Arguments -eq 'app-server') {
@@ -36,7 +50,7 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
         $startedProcess=$true
         # Drain diagnostics but never display them: CLI output can contain local paths.
         $stderr=$process.StandardError.ReadToEndAsync()
-        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.8.0"}}}')
+        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.8.3"}}}')
         $process.StandardInput.Flush()
         $phase='CLI initialization'; $deadline=[DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         while ([DateTime]::UtcNow -lt $deadline) {
@@ -58,7 +72,10 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
             }
             if ($message.id -in @(2,3)) {
                 if ($message.error) { throw 'Account quota data are unavailable. Check your Codex sign-in and network connection.' }
-                return ConvertTo-QuotaSnapshot $message.result 'Codex CLI' ([DateTimeOffset]::Now)
+                if((Get-QuotaProfileStamp $HomePath) -cne $profileStamp){throw 'The Codex sign-in changed. Refresh account quotas.'}
+                $quota=ConvertTo-QuotaSnapshot $message.result 'Codex CLI' ([DateTimeOffset]::Now)
+                $quota|Add-Member ProfileStamp $profileStamp
+                return $quota
             }
         }
         throw 'The account quota request timed out.'
@@ -68,6 +85,12 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
     }
 }
 function ConvertTo-QuotaSnapshot($response,[string]$source,$observed) {
+    $accountKey=''
+    if($response.accountId){
+        $sha=[Security.Cryptography.SHA256]::Create()
+        try{$accountKey=([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes([string]$response.accountId)))).Replace('-','')}
+        finally{$sha.Dispose()}
+    }
     $buckets=@()
     if ($response.rateLimitsByLimitId) { $buckets=@($response.rateLimitsByLimitId.PSObject.Properties | ForEach-Object { [pscustomobject]@{Data=$_.Value;Id=$_.Name} }) }
     if (-not $buckets.Count -and $response.rateLimits) { $buckets=@([pscustomobject]@{Data=$response.rateLimits;Id=$response.rateLimits.limitId}) }
@@ -88,7 +111,7 @@ function ConvertTo-QuotaSnapshot($response,[string]$source,$observed) {
             $windows+=[pscustomobject]@{Name="$bucketName / $label";WindowId="$bucketId/$role/$minutes";Remaining=[Math]::Max(0.0,[Math]::Min(100.0,100.0-$used));Reset=$entry.resetsAt;Minutes=$minutes}
         }
     }
-    [pscustomobject]@{Source=$source;Observed=$observed;Plan=$plan;Windows=$windows;Credits=$credits;ResetCredits=$response.rateLimitResetCredits.availableCount}
+    [pscustomobject]@{Source=$source;Observed=$observed;Plan=$plan;Windows=$windows;Credits=$credits;ResetCredits=$response.rateLimitResetCredits.availableCount;AccountKey=$accountKey;IsAccountReading=($source -eq 'Codex CLI')}
 }
 function Get-RecordedTokenSummary {
     $byThread=@{}; $lifecycle=@{}
@@ -143,6 +166,23 @@ function Get-RecordedTokenSummary {
     [pscustomobject]@{Total=$total;Input=$input;Cached=$cached;Output=$output;Reasoning=$reasoning;Uncached=$uncached;CacheTasks=$cacheTasks;ReasoningTasks=$reasoningTasks;Rows=@($rows|Sort-Object Observed -Descending);ActiveRows=@($rows|Where-Object Active);Observed=$observed;Tasks=$byThread.Count;DetailedTasks=$detailed;Quota=$quota;
         Coverage="These counts cover $($byThread.Count) chats. CTC reads up to $MaxRecentRollouts files from the last $LookbackHours h. These are not account totals."}
 }
+function Test-ExecToolName([string]$Name) {
+    return $Name -match '(^|[.])(?:exec|exec_command|write_stdin|wait)$'
+}
+function Format-ActivitySeconds($Seconds){
+    if($null -eq $Seconds){return '--'}
+    if($Seconds -lt 1){return ('{0:N0}ms' -f ($Seconds*1000))}
+    if($Seconds -lt 60){return ('{0:N1}s' -f $Seconds)}
+    return ('{0:N1}min' -f ($Seconds/60))
+}
+function Format-ToolActivityName([string]$Name){
+    switch -Regex ($Name){
+        '(^|[._])exec_command$' {return 'Shell commands (exec_command)'}
+        '(^|[._])write_stdin$' {return 'Process input (write_stdin)'}
+        '(^|[._])apply_patch$' {return 'File edits (apply_patch)'}
+        default {return $Name}
+    }
+}
 function Get-RecordedToolActivity($state) {
     $ready=[bool]$state.HasMetadata -and -not $state.NeedsBackfill -and -not $state.ReadError
     $items=@();$count=0L
@@ -150,7 +190,14 @@ function Get-RecordedToolActivity($state) {
         $items=@($state.ToolCounts.GetEnumerator() | Sort-Object Value -Descending | ForEach-Object { [pscustomobject]@{Name=$_.Key;Count=[long]$_.Value} })
         foreach($item in $items){$count+=$item.Count}
     }
-    [pscustomobject]@{Ready=$ready;Partial=[bool]$state.ActivityPartial;Calls=$(if($ready){$count}else{$null});Tools=$items;Originator=$state.Originator}
+    # Copy aggregate data before publishing a snapshot to the UI thread.
+    # Keep internal correlation IDs in the collector only.
+    $exec=@{};$e=if($state.ExecActivity){$state.ExecActivity}else{@{Shell=@{}}}
+    foreach($key in @('Results','Success','Errors','UnknownStatus','Timed','Seconds','Spans','SpanSeconds','ReferencesPartial')){$exec[$key]=$e[$key]}
+    foreach($key in @('Kinds','ScriptKinds','ScriptTools')){$exec[$key]=if($e[$key]){$e[$key].Clone()}else{@{}}}
+    $exec.Shell=@{};foreach($key in @('Results','Success','Errors','Running','Timed','Seconds','Partial')){$exec.Shell[$key]=$e.Shell[$key]}
+    $exec.Shell.ExitCodes=if($e.Shell.ExitCodes){$e.Shell.ExitCodes.Clone()}else{@{}}
+    [pscustomobject]@{Ready=$ready;Partial=[bool]$state.ActivityPartial;Calls=$(if($ready){$count}else{$null});Tools=$items;Exec=$exec;Originator=$state.Originator}
 }
 function Format-ShortTokenValue($value) {
     if($null -eq $value){return '--'}
@@ -181,6 +228,9 @@ function Format-QuotaReset($timestamp) {
 
 function Select-FreshQuota($live,$recorded) {
     if (-not $live) {return $recorded}
+    # A direct account response describes the current windows. Missing windows
+    # must not be restored from unidentified history or an earlier account.
+    if ($live.IsAccountReading -or $live.AccountKey) {return $live}
     if (-not $recorded -or -not @($recorded.Windows).Count) {return $live}
     $byName=@{}
     foreach($snapshot in @($live,$recorded)) {

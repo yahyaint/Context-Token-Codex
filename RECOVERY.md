@@ -92,3 +92,63 @@ CTC requires known idle lifecycle records. Incomplete data block the restart.
 Select **Cancel restart** to remove a waiting request.
 After all chats stop, quit Codex fully. Open it again. Check the next context record.
 Do not force-stop a running chat to apply a limit.
+
+## A limit save fails or overwrites an earlier change
+
+Select **Undo** to load the newest file values. Enter the changes again.
+CTC rejects a save if another editor changed the file after the form opened.
+If the file contains invalid settings, correct the file through Codex. Select **Undo** again.
+Check file permissions and open file locks when a valid save fails.
+Run the tests in [LIMITS-VERIFICATION.md](LIMITS-VERIFICATION.md).
+Keep real chat records intact. Use fixture folders for save tests.
+
+## Weekly quota after sign-in
+
+CTC must show the windows from the current account response.
+A weekly-only response must show one 7d bar. Do not add a 5h bar with a zero value.
+Run Tests/test_account_quota.ps1 and Tests/test_overlay.ps1 in PowerShell 5.1 and 7.
+PowerShell 5.1 does not give a single PSCustomObject a Count property.
+Keep quota windows in an array outside an if expression.
+
+CTC checks auth-file metadata to detect a sign-in change. It does not read credentials.
+The helper must reject a response if the metadata changed during its request.
+Keep the account identifier hashed. Keep quota estimate files separate by account.
+Unknown historical readings must not replace an empty current account response.
+
+## Limits queue and restart
+
+Open Queue beside Limits. Restart controls stay above the scrollable change list.
+The local limits-queue.json file stores the latest saved change for each settings file.
+It is separate from the Codex message queue. Keep it outside the repository.
+Run Tests/test_limits_queue.ps1 and Tests/test_restart.ps1 before a queue repair.
+Cancel restart cancels the waiting request. It does not undo saved settings.
+
+If a saved entry and the settings file differ, open Limits. Select Undo to read the file.
+Save the required values again. The latest save replaces that scope's queue entry.
+An unknown queue format is preserved. Keep a copy before you repair it.
+After a safe restart, resume the chat. Check its next context record.
+A matching window does not confirm the compaction threshold.
+
+For a live display check, start Overlay.ps1 with -DiagnosticReport and a local output path.
+The report includes displayed quota labels, startup visibility, background opacity and provider errors.
+It contains no account ID, credentials, chat text or tool arguments.
+Keep diagnostic reports outside Git. Allow one provider request to complete.
+
+## Exec details
+
+Run Tests/test_exec_activity.ps1 in both PowerShell runtimes.
+Check response_item function_call, custom_tool_call and their output records.
+Output can be a string, a metadata object, or text blocks.
+Accept text, input_text and output_text blocks. Keep unknown block types unknown.
+Correlate results by call ID. Exclude duplicate outputs and unrelated tool output.
+
+Script tools come from direct tools.name(...) references.
+Do not convert reference counts to execution counts.
+Keep strings and comments outside the reference scan.
+Mark dynamic calls, template expressions, oversized code and incomplete records.
+
+Keep command categories and numeric result metadata only.
+Do not store commands, arguments or stdout in activity summaries.
+Keep large-output reads bounded. Keep the quick context scan ahead of the full activity backfill.
+If results stay unknown, check the native block type before changing counter logic.
+Do not copy real rollout records into a public test fixture.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+﻿# SPDX-License-Identifier: MIT
 # One lightweight watcher per Windows user; never reads task contents.
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Monitor.Data.ps1')
@@ -18,7 +18,7 @@ try {
         try {
             $current=@(Get-TargetAppInstances $prefs.Target)
             if (Get-WatcherLaunchAction $launchState $current (Test-OverlayReady)) {
-                Start-Process -FilePath (Join-Path $PSScriptRoot 'ContextWidget.exe') -WindowStyle Hidden -ErrorAction Stop
+                Start-Process -FilePath (Join-Path $PSScriptRoot 'ContextWidget.exe') -ArgumentList '/auto' -WindowStyle Hidden -ErrorAction Stop
             }
         } catch {
             # Retry transient launch/detection failures. Do not lose the startup watcher.

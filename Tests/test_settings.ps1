@@ -13,7 +13,7 @@ foreach ($name in @('Get-TomlStatements', 'Get-TomlRootSettings', 'Set-ContextLi
         'Get-TopLevelContextWindow', 'Set-TopLevelContextWindow',
         'Get-TopLevelAutoCompactScope', 'ConvertTo-TokenLimit',
         'Get-ModelCatalogInfo', 'Get-ModelWindow',
-        'Get-SavedWindowStatus')) {
+        'Get-SavedWindowStatus', 'Get-ContextConfigPaths', 'Get-ContextSettingsVersion')) {
     $function = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name }, $true)
     if (-not $function) { throw "Missing function: $name" }
     . ([scriptblock]::Create($function.Extent.Text))

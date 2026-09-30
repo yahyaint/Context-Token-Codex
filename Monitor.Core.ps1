@@ -88,7 +88,7 @@ function Get-TomlRootSettings([string]$content, [switch]$Strict) {
 function Get-ConfiguredSqliteHome([string]$configFile) {
     if (-not (Test-Path -LiteralPath $configFile -PathType Leaf)) { return '' }
     $content = [System.IO.File]::ReadAllText($configFile)
-    $entry=@(Get-TomlRootSettings $content | Where-Object Key -eq 'sqlite_home' | Select-Object -Last 1)
+    $entry=@(Get-TomlRootSettings $content | Where-Object Key -ceq 'sqlite_home' | Select-Object -Last 1)
     if (-not $entry.Count) {return ''}
     $match=[regex]::Match($entry[0].Value,'^(["''])(.*?)\1\s*(?:#.*)?$')
     if (-not $match.Success) {return ''}
@@ -143,10 +143,8 @@ $script:modelInfoCacheWrite = [DateTime]::MinValue
 function Get-TopLevelModel([string]$path) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return '' }
     $content = [System.IO.File]::ReadAllText($path)
-    $section = [regex]::Match($content, '(?m)^\s*\[')
-    if ($section.Success) { $content = $content.Substring(0, $section.Index) }
-    $match = [regex]::Match($content, '(?m)^\s*model\s*=\s*["'']([^"'']+)["'']')
-    if ($match.Success) { return $match.Groups[1].Value }
+    $entry=@(Get-TomlRootSettings $content | Where-Object Key -ceq 'model' | Select-Object -Last 1)
+    if ($entry.Count -and $entry[0].Value -match '^["'']([^"'']+)["'']\s*(?:#[^\r\n]*)?\s*$') {return $Matches[1]}
     return ''
 }
 
@@ -197,13 +195,13 @@ function ConvertTo-TokenLimit([string]$inputText, $window) {
     $number = $value -replace '[,_ ]', ''
     if ($number -match '^(\d+(?:\.\d+)?)%$') {
         if ($null -eq $window) { throw 'Enter a number for the context window first. Example: 200k. Or enter Compact at in tokens.' }
-        $percent = [double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture)
+        $percent = [decimal]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture)
         if ($percent -le 0 -or $percent -gt 100) { throw 'Enter a percentage above 0 and at most 100.' }
-        $tokens = [long][Math]::Round([double]$window * $percent / 100)
+        $tokens = [long][Math]::Round([decimal]$window * $percent / 100)
     }
     elseif ($number -match '^(\d+(?:\.\d+)?)k$') {
         $tokens = [long][Math]::Round(
-            [double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture) * 1000)
+            [decimal]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture) * 1000)
     }
     elseif ($number -match '^\d+$') {
         $tokens = 0L
@@ -216,15 +214,50 @@ function ConvertTo-TokenLimit([string]$inputText, $window) {
 
 # Editor baselines are scoped configuration or observed metadata, never a promise
 # that the provider supports the requested capacity. No model-name allowlist.
+function Get-ContextConfigPaths([string]$cwd) {
+    # Codex loads project layers from a repository root through the chat cwd.
+    # Outside a repository, only cwd settings are part of the project scope.
+    $paths=New-Object 'Collections.Generic.List[string]'
+    if ($cwd -and [IO.Directory]::Exists($cwd)) {
+        $directory=[IO.DirectoryInfo]::new([IO.Path]::GetFullPath($cwd))
+        $foundRoot=$false
+        while ($directory) {
+            $paths.Add((Join-Path $directory.FullName '.codex/config.toml'))
+            $git=Join-Path $directory.FullName '.git'
+            if ([IO.File]::Exists($git) -or [IO.File]::Exists((Join-Path $git 'HEAD'))) { $foundRoot=$true; break }
+            $directory=$directory.Parent
+        }
+        if (-not $foundRoot -and $paths.Count -gt 1) {$paths.RemoveRange(1,$paths.Count-1)}
+    }
+    if ($script:configPath -and -not $paths.Contains($script:configPath)) {$paths.Add($script:configPath)}
+    return $paths.ToArray()
+}
+
+function Get-ContextSettingsVersion([string]$path) {
+    if (-not [IO.File]::Exists($path)) {return 'missing'}
+    $hash=[Security.Cryptography.SHA256]::Create()
+    try { return [Convert]::ToBase64String($hash.ComputeHash([IO.File]::ReadAllBytes($path))) }
+    finally { $hash.Dispose() }
+}
+
 function Get-LimitEditorBaseline([string]$path, $card) {
     $saved = Get-TopLevelContextWindow $path
     $compact = Get-TopLevelAutoCompactLimit $path
+    $fallbacks=@($script:configPath)
+    $folder=Split-Path $path -Parent
+    if ((Split-Path $folder -Leaf) -eq '.codex') {
+        $fallbacks=@(Get-ContextConfigPaths (Split-Path $folder -Parent) | Where-Object {$_ -ne $path})
+    }
     $model = if ($card) { [string]$card.Model } else { Get-TopLevelModel $path }
-    if (-not $model) { $model = Get-TopLevelModel $script:configPath }
+    if (-not $model) {foreach($fallback in $fallbacks){$model=Get-TopLevelModel $fallback;if($model){break}}}
     $catalog = Get-ModelCatalogInfo $model
     $base = $saved; $source = 'saved window'
     if ($null -eq $base -and $path -ne $script:configPath) {
-        $base = Get-TopLevelContextWindow $script:configPath; $source = 'global fallback'
+        foreach($fallback in $fallbacks) {
+            $base = Get-TopLevelContextWindow $fallback
+            $source = if($fallback -eq $script:configPath){'global fallback'}else{'parent project fallback'}
+            if($null -ne $base){break}
+        }
     }
     if ($null -eq $base -and $catalog -and $catalog.Window -gt 0) {
         $base = $catalog.Window; $source = 'local model catalog'
@@ -270,10 +303,10 @@ function Get-ScaledContextDraft($base, [int]$multiplier, [string]$windowText, [s
 }
 
 function Get-TopLevelNumericSetting([string]$path, [string]$key) {
-    if ($key -notin @('model_auto_compact_token_limit', 'model_context_window')) { throw 'CTC cannot change this setting.' }
+    if ($key -cnotin @('model_auto_compact_token_limit', 'model_context_window')) { throw 'CTC cannot change this setting.' }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
     $content = [System.IO.File]::ReadAllText($path)
-    $settings=@(Get-TomlRootSettings $content | Where-Object Key -eq $key)
+    $settings=@(Get-TomlRootSettings $content | Where-Object Key -ceq $key)
     if ($settings.Count -gt 1) { throw "The TOML setting occurs twice: $key." }
     if (-not $settings.Count) { return $null }
     if ($settings[0].Value -notmatch '^\+?(\d(?:_?\d)*)\s*(?:#[^\r\n]*)?\s*$') { throw "The setting must contain a whole number: $key." }
@@ -283,15 +316,23 @@ function Get-TopLevelNumericSetting([string]$path, [string]$key) {
 function Get-TopLevelAutoCompactScope([string]$path) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return '' }
     $content = [System.IO.File]::ReadAllText($path)
-    $entry=@(Get-TomlRootSettings $content | Where-Object Key -eq 'model_auto_compact_token_limit_scope' | Select-Object -Last 1)
+    $entry=@(Get-TomlRootSettings $content | Where-Object Key -ceq 'model_auto_compact_token_limit_scope' | Select-Object -Last 1)
     if (-not $entry.Count -or $entry[0].Value -notmatch '^["''](total|body_after_prefix)["'']\s*(?:#.*)?$') {return ''}
     return $Matches[1]
 }
 
-function Set-ContextLimits([string]$path, [hashtable]$changes) {
+function Set-ContextLimits([string]$path, [hashtable]$changes, [string]$ExpectedVersion='') {
+    if ($ExpectedVersion -and (Get-ContextSettingsVersion $path) -cne $ExpectedVersion) {
+        throw 'The settings file changed. Select Undo to load the new values. Enter your changes again.'
+    }
     foreach ($key in $changes.Keys) {
-        if ($key -notin @('model_auto_compact_token_limit','model_context_window')) { throw 'CTC cannot change this setting.' }
-        if ($null -ne $changes[$key] -and [long]$changes[$key] -lt 1) { throw 'Enter at least 1 token.' }
+        if ($key -cnotin @('model_auto_compact_token_limit','model_context_window')) { throw 'CTC cannot change this setting.' }
+        if ($null -ne $changes[$key]) {
+            $tokens=0L
+            if ([string]$changes[$key] -notmatch '^\d+$' -or -not [long]::TryParse([string]$changes[$key],[ref]$tokens) -or $tokens -lt 1) {
+                throw 'Enter a whole number of at least 1 token.'
+            }
+        }
     }
     $folder = Split-Path -Path $path -Parent
     if ((Split-Path $folder -Leaf) -eq '.codex' -and -not [IO.Directory]::Exists((Split-Path $folder -Parent))) {throw 'The project folder is unavailable. Restore it before you save limits.'}
@@ -299,17 +340,31 @@ function Set-ContextLimits([string]$path, [hashtable]$changes) {
         [void](New-Item -ItemType Directory -Path $folder -Force)
     }
     $existed=Test-Path -LiteralPath $path -PathType Leaf
-    $originalBytes=if ($existed) {[IO.File]::ReadAllBytes($path)} else {@()}
+    [byte[]]$originalBytes=@()
+    if ($existed) {$originalBytes=[IO.File]::ReadAllBytes($path)}
+    if ($ExpectedVersion -and (Get-ContextSettingsVersion $path) -cne $ExpectedVersion) {
+        throw 'The settings file changed. Select Undo to load the new values. Enter your changes again.'
+    }
     $content = if ($existed) {
         [System.IO.File]::ReadAllText($path)
     } else { '' }
     $newline = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
     $root=@(Get-TomlRootSettings $content -Strict)
     $updated=$content
+    $different=$false
     foreach ($key in $changes.Keys) {
-        if (@($root|Where-Object Key -eq $key).Count -gt 1) { throw "The TOML setting occurs twice: $key. CTC did not change settings." }
+        $entries=@($root|Where-Object Key -ceq $key)
+        if ($entries.Count -gt 1) { throw "The TOML setting occurs twice: $key. CTC did not change settings." }
+        if ($null -eq $changes[$key]) {if($entries.Count){$different=$true}}
+        elseif (-not $entries.Count) {$different=$true}
+        else {
+            $existing=0L
+            if ($entries[0].Value -notmatch '^\+?(\d(?:_?\d)*)\s*(?:#[^\r\n]*)?\s*$' -or
+                -not [long]::TryParse($Matches[1].Replace('_',''),[ref]$existing) -or $existing -ne [long]$changes[$key]) {$different=$true}
+        }
     }
-    foreach ($entry in @($root|Where-Object {$changes.ContainsKey($_.Key)}|Sort-Object Start -Descending)) {
+    if (-not $different) {return $false}
+    foreach ($entry in @($root|Where-Object {@($changes.Keys) -ccontains $_.Key}|Sort-Object Start -Descending)) {
         $updated=$updated.Remove($entry.Start,$entry.Length)
     }
     $prefix=''
@@ -324,7 +379,7 @@ function Set-ContextLimits([string]$path, [hashtable]$changes) {
         if ($existed) {
             # Permit rename, but exclude concurrent writers while checking/replacing.
             $guard=[IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::Read -bor [IO.FileShare]::Delete))
-            $current=New-Object byte[] $guard.Length; $offset=0
+            [byte[]]$current=[byte[]]::new($guard.Length); $offset=0
             while ($offset -lt $current.Length) { $n=$guard.Read($current,$offset,$current.Length-$offset); if ($n -eq 0) {break}; $offset+=$n }
             if ([Convert]::ToBase64String($current) -cne [Convert]::ToBase64String([byte[]]$originalBytes)) { throw 'The settings file changed. Reload the form. Try again.' }
             $backup="$path.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss-fff')-$([guid]::NewGuid().ToString('N').Substring(0,6))"
@@ -361,14 +416,12 @@ function Get-SavedWindowStatus($state) {
     $source = ''
     $requested = $null
     try {
-        if ($state.Cwd) {
-            $projectConfig = Join-Path (Join-Path $state.Cwd '.codex') 'config.toml'
-            $requested = Get-TopLevelContextWindow $projectConfig
-            if ($null -ne $requested) { $source = 'project' }
-        }
-        if ($null -eq $requested) {
-            $requested = Get-TopLevelContextWindow $script:configPath
-            if ($null -ne $requested) { $source = 'global' }
+        foreach($candidate in @(Get-ContextConfigPaths $state.Cwd)) {
+            $requested = Get-TopLevelContextWindow $candidate
+            if ($null -ne $requested) {
+                $source=if($candidate -eq $script:configPath){'global'}else{'project'}
+                break
+            }
         }
     }
     catch { return [pscustomobject]@{ Error = $_.Exception.Message } }
@@ -382,7 +435,7 @@ function Get-SavedWindowStatus($state) {
         }
         $expected = [long][Math]::Floor($resolved * [double]$catalog.EffectivePercent / 100)
     }
-    return [pscustomobject]@{ Source = $source; Requested = [long]$requested;
+    return [pscustomobject]@{ Source = $source; Path = $candidate; Requested = [long]$requested;
         Expected = $expected; Error = ''; Status = $(if ($null -eq $expected) {'Unverified'} elseif ($state.ContextWindow -eq $expected) {'Confirmed'} else {'Pending'});
         Message = $(if ($null -eq $expected) {'CTC cannot verify the usable window for this model.'} elseif ($state.ContextWindow -eq $expected) {'The recorded window matches the saved value.'} else {'Saved settings do not match this chat. After all chats stop, quit Codex. Open Codex again. Resume this chat.'}) }
 }
@@ -411,6 +464,7 @@ function New-RolloutState($file) {
         ServiceTier = ''
         ToolCounts = @{}
         SeenCalls = @{}
+        ExecActivity = @{Results=0L;Success=0L;Errors=0L;UnknownStatus=0L;Timed=0L;Seconds=0.0;Spans=0L;SpanSeconds=0.0;Kinds=@{};ScriptKinds=@{};ScriptTools=@{};ReferencesPartial=$false;Shell=@{Results=0L;Success=0L;Errors=0L;Running=0L;Timed=0L;Seconds=0.0;ExitCodes=@{};Partial=$false};SeenShellResults=@{}}
         ActivityPartial = $false
         HasMetadata = $false
         LifecycleKnown = $false
@@ -444,10 +498,180 @@ function Get-UsageInteger($value) {
     if ($null -ne $value -and [long]::TryParse([string]$value,[ref]$number) -and $number -ge 0) { return $number }
     return $null
 }
+function Test-RecordedExecName([string]$Name){return $Name -match '(^|[.])(?:exec|exec_command|write_stdin|wait)$'}
+function Get-ScriptToolReferences([string]$Code) {
+    # Mask strings and comments. Never execute code. A reference is not proof
+    # of execution: loops and conditional branches can change call counts.
+    if($Code.Length -gt 65536){return [pscustomobject]@{Tools=@();Partial=$true}}
+    if(-not ('CTCActivityScanner' -as [type])){
+        try{[void][Reflection.Assembly]::Load([IO.File]::ReadAllBytes((Join-Path $PSScriptRoot 'ContextWidget.exe')))}catch{}
+    }
+    $mask=$Code.ToCharArray();$quote='';$comment='';$escaped=$false;$partial=$false
+    $native=if('CTCActivityScanner' -as [type]){[CTCActivityScanner]::Mask($Code)}else{$null}
+    if($native){$text=$native.Text;$partial=$native.Partial}else{
+    for($i=0;$i -lt $mask.Length;$i++){
+        $ch=$Code[$i];$next=if($i+1 -lt $mask.Length){$Code[$i+1]}else{[char]0}
+        if($comment -eq 'line'){$mask[$i]=' ';if($ch -eq "`n"){$comment=''};continue}
+        if($comment -eq 'block'){$mask[$i]=' ';if($ch -eq '*' -and $next -eq '/'){$mask[++$i]=' ';$comment=''};continue}
+        if($quote){$mask[$i]=' ';if($escaped){$escaped=$false}elseif($ch -eq '\'){$escaped=$true}elseif($ch -eq $quote){$quote=''};continue}
+        if($ch -eq '/' -and $next -in @('/','*')){$comment=if($next -eq '/'){'line'}else{'block'};$mask[$i]=' ';$mask[++$i]=' ';continue}
+        if($ch -in @('"',"'",'`')){$quote=[string]$ch;$mask[$i]=' ';if($ch -eq '`'){$partial=$true};continue}
+    }
+    $text=-join $mask
+    }
+    $matches=@([regex]::Matches($text,'\btools\.([A-Za-z_][A-Za-z_0-9]{0,99})\s*\('))
+    $tools=@($matches|ForEach-Object {$_.Groups[1].Value})
+    $commandKinds=@{}
+    foreach($call in @($matches|Where-Object {$_.Groups[1].Value -eq 'exec_command'})){
+        $tail=$Code.Substring($call.Index,[Math]::Min(8192,$Code.Length-$call.Index))
+        $pattern='\bcmd\s*:\s*("(?:[^"\\]|\\.)*")'
+        $literal=[regex]::Match($tail,$pattern)
+        if($literal.Success -and $text.Substring($call.Index+$literal.Index,3) -eq 'cmd'){
+            try{
+                $command=$literal.Groups[1].Value|ConvertFrom-Json -ErrorAction Stop
+                foreach($kind in @(Get-ExecCommandKinds $command)){$commandKinds[$kind]=1L+[long]$commandKinds[$kind]}
+            }catch{$partial=$true}
+        }else{$partial=$true}
+    }
+    if($text -match '\btools\s*\[' -or $quote -or $comment -eq 'block'){$partial=$true}
+    return [pscustomobject]@{Tools=$tools;CommandKinds=$commandKinds;Partial=$partial}
+}
+function Get-ExecCommandKinds([string]$Command) {
+    if(-not $Command -or $Command.Length -gt 65536){return @('Other commands')}
+    $errors=$null;$tokens=$null
+    $ast=[Management.Automation.Language.Parser]::ParseInput($Command,[ref]$tokens,[ref]$errors)
+    $kinds=@{}
+    foreach($node in @($ast.FindAll({param($n)$n -is [Management.Automation.Language.CommandAst]},$true))){
+        $name=$node.GetCommandName();if(-not $name){$kinds['Other commands']=$true;continue}
+        $leaf=[IO.Path]::GetFileName($name).ToLowerInvariant()
+        $kind=switch -Regex ($leaf){
+            '^(rg|grep|findstr)(\.exe)?$' {'Search';break}
+            '^(get-content|cat|type|get-item|get-childitem|ls|dir|test-path|get-filehash)$' {'Read files';break}
+            '^(set-content|add-content|out-file|copy-item|move-item|remove-item|new-item|mkdir|cp|mv|rm)$' {'Change files';break}
+            '^git(\.exe)?$' {'Git';break}
+            '^(pytest|jest|vitest|test_.+\.ps1)(\.exe)?$' {'Tests';break}
+            '^(npm|pnpm|yarn|dotnet|msbuild|cmake|make)(\.exe)?$' {'Build tools';break}
+            '^(python[0-9.]*|node|pwsh|powershell)(\.exe)?$|\.(ps1|py|js)$' {'Scripts';break}
+            default {'Other commands'}
+        }
+        $kinds[$kind]=$true
+    }
+    if(-not $kinds.Count){$kinds['Other commands']=$true}
+    return @($kinds.Keys)
+}
+function Add-ExecRequest($state,$payload,[string]$name,$when,[string]$id) {
+    $a=$state.ExecActivity
+    $requestArgs=$null;$raw=if($payload.arguments -is [string]){$payload.arguments}elseif($payload.input -is [string]){$payload.input}else{''}
+    if($raw.Length -le 65536 -and $raw.TrimStart().StartsWith('{')){try{$requestArgs=$raw|ConvertFrom-Json -ErrorAction Stop}catch{}}
+    $kinds=@('Scripts')
+    if($name -match '(^|[.])exec_command$'){$kinds=@(Get-ExecCommandKinds ([string]$requestArgs.cmd))}
+    elseif($name -match '(^|[.])write_stdin$'){$kinds=@($(if($requestArgs -and [string]$requestArgs.chars){'Process input'}else{'Process checks'}))}
+    elseif($name -match '(^|[.])wait$'){$kinds=@('Script checks')}
+    else{
+        $code=if($requestArgs.code -is [string]){$requestArgs.code}else{$raw}
+        $refs=Get-ScriptToolReferences $code
+        $a.ReferencesPartial=$a.ReferencesPartial -or $refs.Partial
+        foreach($kind in $refs.CommandKinds.Keys){$a.ScriptKinds[$kind]=[long]$a.ScriptKinds[$kind]+[long]$refs.CommandKinds[$kind]}
+        foreach($tool in $refs.Tools){
+            if($a.ScriptTools.Count -ge 64 -and -not $a.ScriptTools.ContainsKey($tool)){$tool='Other script tools'}
+            $a.ScriptTools[$tool]=1L+[long]$a.ScriptTools[$tool]
+        }
+    }
+    foreach($kind in $kinds){$a.Kinds[$kind]=1L+[long]$a.Kinds[$kind]}
+    # Only safe derived fields survive. Never retain arguments or command text.
+    $state.SeenCalls[$id]=@{Exec=$true;At=$when;Completed=$false}
+}
+function Add-ExecResult($state,$payload,$when) {
+    $id=[string]$payload.call_id
+    if(-not $id -or -not $state.SeenCalls.ContainsKey($id)){return}
+    $call=$state.SeenCalls[$id]
+    if($call -isnot [hashtable] -or -not $call.Exec -or $call.Completed){return}
+    $call.Completed=$true;$a=$state.ExecActivity;$a.Results++
+    if($call.At -ne [DateTimeOffset]::MinValue -and $when -ge $call.At){$a.Spans++;$a.SpanSeconds+=($when-$call.At).TotalSeconds}
+    $exit=$null;$seconds=$null
+    $output=$payload.output
+    $blocks=@()
+    if($output -is [array]){$blocks=@($output)}elseif($output -and $output.PSObject.Properties['content']){$blocks=@($output.content)}
+    if($blocks.Count){
+        $output=if($blocks[0].type -in @('text','input_text','output_text')){$blocks[0].text}else{$null}
+        foreach($block in @($blocks|Select-Object -First 64)){
+            if($block.type -notin @('text','input_text','output_text') -or $block.text -isnot [string]){continue}
+            if($block.text.Length -gt 65536){$a.Shell.Partial=$true;continue}
+            if(-not $block.text.TrimStart().StartsWith('{')){continue}
+            try{$nested=$block.text|ConvertFrom-Json -ErrorAction Stop}catch{continue}
+            # Shell helper records have stable typed metadata. No stdout is kept.
+            if([string]$nested.chunk_id -notmatch '^[a-fA-F0-9]{6,32}$' -or -not $nested.PSObject.Properties['wall_time_seconds']){continue}
+            $duration=0.0
+            if(-not [double]::TryParse([string]$nested.wall_time_seconds,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$duration) -or $duration -lt 0 -or [double]::IsInfinity($duration) -or [double]::IsNaN($duration)){continue}
+            if($a.SeenShellResults.ContainsKey([string]$nested.chunk_id)){continue}
+            if($a.SeenShellResults.Count -ge 8192){$a.Shell.Partial=$true;continue}
+            $code=0L;$hasCode=$null -ne $nested.exit_code -and [long]::TryParse([string]$nested.exit_code,[ref]$code)
+            $hasSession=$null -ne $nested.session_id -and [long]::TryParse([string]$nested.session_id,[ref]$code)
+            if(-not $hasCode -and -not $hasSession){continue}
+            $a.SeenShellResults[[string]$nested.chunk_id]=$true;$a.Shell.Results++;$a.Shell.Timed++;$a.Shell.Seconds+=$duration
+            if($hasCode){
+                $code=[long]$nested.exit_code
+                if($code -eq 0){$a.Shell.Success++}else{$a.Shell.Errors++}
+                $key=[string]$code;if($a.Shell.ExitCodes.Count -ge 64 -and -not $a.Shell.ExitCodes.ContainsKey($key)){$key='Other codes'}
+                $a.Shell.ExitCodes[$key]=1L+[long]$a.Shell.ExitCodes[$key]
+            }else{$a.Shell.Running++}
+        }
+        if($blocks.Count -gt 64){$a.Shell.Partial=$true}
+    }
+    # Only parse a bounded metadata header. Final output and command stdout
+    # must not supply status or timing values.
+    if($output -is [string]){
+        $header=$output.Substring(0,[Math]::Min(1024,$output.Length))
+        $cut=[regex]::Match($header,'(?m)^(?:Final output:|Output:)');if($cut.Success){$header=$header.Substring(0,$cut.Index)}
+        if($header -match '(?m)^Process exited with code (-?\d+)\s*$'){$exit=[long]$Matches[1]}
+        elseif($header -match '^Script completed\s*(?:\r?\n|$)'){$exit=0L}
+        elseif($header -match '^Script (?:failed|error)\b'){$exit=1L}
+        if($header -match '(?m)^Wall (?:time|time_seconds):\s*([0-9]+(?:\.[0-9]+)?)\s*(?:seconds)?\s*$'){$seconds=[double]::Parse($Matches[1],[Globalization.CultureInfo]::InvariantCulture)}
+        if($output.Length -le 65536 -and $output.TrimStart().StartsWith('{')){try{$output=$output|ConvertFrom-Json -ErrorAction Stop}catch{$output=$null}}
+        else{$output=$null}
+    }
+    if($output -and $output -isnot [string]){
+        $value=$output.exit_code;$parsed=0L
+        if($null -ne $value -and [long]::TryParse([string]$value,[ref]$parsed)){$exit=$parsed}
+        $value=$output.wall_time_seconds;$parsedSeconds=0.0
+        if($null -ne $value -and [double]::TryParse([string]$value,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$parsedSeconds) -and $parsedSeconds -ge 0 -and -not [double]::IsInfinity($parsedSeconds)){$seconds=$parsedSeconds}
+    }
+    if($null -eq $exit){$a.UnknownStatus++}elseif($exit -eq 0){$a.Success++}else{$a.Errors++}
+    if($null -ne $seconds -and $seconds -ge 0){$a.Timed++;$a.Seconds+=$seconds}
+}
+function Get-JsonStringPrefix([string]$Line,[string]$Key,[int]$Limit=4096) {
+    $match=[regex]::Match($Line,'"'+[regex]::Escape($Key)+'"\s*:\s*"')
+    if(-not $match.Success){return $null}
+    $start=$match.Index+$match.Length;$end=$start
+    while($end -lt $Line.Length -and $end-$start -lt $Limit){
+        if($Line[$end] -eq '"'){break}
+        if($Line[$end] -eq '\'){
+            $step=if($end+1 -lt $Line.Length -and $Line[$end+1] -eq 'u'){6}else{2}
+            if($end+$step -gt $Line.Length -or $end+$step-$start -gt $Limit){break}
+            $end+=$step
+        }else{$end++}
+    }
+    try{return (('"'+$Line.Substring($start,$end-$start)+'"')|ConvertFrom-Json -ErrorAction Stop)}catch{return $null}
+}
 function Read-RolloutLine($state, [string]$line) {
     # Borrowed method from Codex Monitor HUD: reject irrelevant records before JSON parsing.
     if ($line -notmatch '"type"\s*:\s*"(session_meta|turn_context|event_msg|token_usage_record|compacted|response_item)"') { return }
-    if ($line -match '"type"\s*:\s*"response_item"' -and $line -notmatch '"type"\s*:\s*"(function_call|custom_tool_call|web_search_call)"') {return}
+    if ($line -match '"type"\s*:\s*"response_item"' -and $line -notmatch '"type"\s*:\s*"(function_call|custom_tool_call|web_search_call|function_call_output|custom_tool_call_output)"') {return}
+    if($line -match '"type"\s*:\s*"(?:function_call_output|custom_tool_call_output)"'){
+        $id=Get-JsonStringPrefix $line 'call_id' 512
+        if(-not $id -or -not $state.SeenCalls.ContainsKey($id) -or $state.SeenCalls[$id] -isnot [hashtable] -or -not $state.SeenCalls[$id].Exec){return}
+        if($line.Length -gt 128KB){
+            # Large stdout must not delay live monitoring or allocate another
+            # full copy. Only a metadata prefix is needed for status and time.
+            $prefix=Get-JsonStringPrefix $line 'output'
+            if($null -eq $prefix -and $line -match '"output"\s*:\s*\['){$prefix=@([pscustomobject]@{type='text';text=(Get-JsonStringPrefix $line 'text')});$state.ExecActivity.Shell.Partial=$true}
+            $payload=[pscustomobject]@{call_id=$id;output=$prefix}
+            $when=Get-EventTime (Get-JsonStringPrefix $line 'timestamp' 128)
+            Add-ExecResult $state $payload $when
+            if($when -gt $state.LastEventAt){$state.LastEventAt=$when}
+            return
+        }
+    }
     # Most event messages are prose/tool progress. Keep their timestamp without
     # allocating a full PowerShell JSON object for each historical message.
     if ($line -match '"type"\s*:\s*"event_msg"' -and
@@ -470,6 +694,7 @@ function Read-RolloutLine($state, [string]$line) {
 
     switch ($record.type) {
         'response_item' {
+            if($payload.type -in @('function_call_output','custom_tool_call_output')){Add-ExecResult $state $payload $when;return}
             if ($payload.type -notin @('function_call','custom_tool_call','web_search_call')) {return}
             $id=if ($payload.call_id) {[string]$payload.call_id} elseif ($payload.id) {[string]$payload.id} else {''}
             if (-not $id -or $id.Length -gt 256) {$state.ActivityPartial=$true;return}
@@ -481,6 +706,7 @@ function Read-RolloutLine($state, [string]$line) {
             if ($name.Length -gt 100) {$name=$name.Substring(0,100)}
             if ($state.ToolCounts.Count -ge 64 -and -not $state.ToolCounts.ContainsKey($name)) {$name='Other tools'}
             $state.ToolCounts[$name]=1+[long]$state.ToolCounts[$name]
+            if(Test-RecordedExecName $name){Add-ExecRequest $state $payload $name $when $id}
         }
         'session_meta' {
             $state.HasMetadata=$true
@@ -517,7 +743,11 @@ function Read-RolloutLine($state, [string]$line) {
                         $state.RateLimitAt = $when
                     }
                     if ($info) {
-                        if ((Get-UsageInteger $info.model_context_window) -gt 0) { $state.ContextWindow = Get-UsageInteger $info.model_context_window }
+                        if ((Get-UsageInteger $info.model_context_window) -gt 0) {
+                            $nextWindow=Get-UsageInteger $info.model_context_window
+                            if ($state.ContextWindow -ne $nextWindow) {$state.ContextInput=$null;$state.CachedInput=$null;$state.OutputTokens=$null;$state.UsageAt=[DateTimeOffset]::MinValue}
+                            $state.ContextWindow=$nextWindow
+                        }
                         if ($info.last_token_usage) {
                             $state.ContextInput = Get-UsageInteger $info.last_token_usage.input_tokens
                             $state.CachedInput = Get-UsageInteger $info.last_token_usage.cached_input_tokens

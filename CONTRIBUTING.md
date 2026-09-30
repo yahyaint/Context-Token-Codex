@@ -44,3 +44,10 @@ Run Tests/test_theme.ps1 in an STA PowerShell process to verify the CTC scope dr
 ## Context editor checks
 
 Run `Tests/test_context_editor.ps1` in Windows PowerShell 5.1 and PowerShell 7. Run `Tests/test_overlay.ps1` on an interactive Windows desktop for compact/expanded editing, draft retention, scope changes, presets, reset controls, and warnings. The UI test writes only to a marked disposable fixture. Do not use real project settings as test data.
+
+## Activity and queue checks
+
+Run test_limits_matrix.ps1, test_limits_queue.ps1, test_account_quota.ps1 and test_exec_activity.ps1 in both shells.
+Run test_overlay.ps1 for the full-width tool tile, nested Exec details and Queue controls.
+See LIMITS-VERIFICATION.md for the optional local native-engine tests.
+Use synthetic input_text blocks for new parser tests. Keep real tool arguments and output out of fixtures.

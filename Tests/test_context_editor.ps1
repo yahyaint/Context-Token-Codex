@@ -2,7 +2,7 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'Monitor.Core.ps1'),[ref]$null,[ref]$null)
-foreach ($name in @('Get-TomlStatements','Get-TomlRootSettings','Get-TopLevelNumericSetting','Get-TopLevelContextWindow','Get-TopLevelAutoCompactLimit','Get-TopLevelModel','Get-ModelCatalogInfo','ConvertTo-TokenLimit','Get-LimitEditorBaseline','ConvertTo-ContextDraft','Get-ScaledContextDraft')) {
+foreach ($name in @('Get-TomlStatements','Get-TomlRootSettings','Get-TopLevelNumericSetting','Get-TopLevelContextWindow','Get-TopLevelAutoCompactLimit','Get-TopLevelModel','Get-ModelCatalogInfo','ConvertTo-TokenLimit','Get-LimitEditorBaseline','ConvertTo-ContextDraft','Get-ScaledContextDraft','Get-ContextConfigPaths')) {
     $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true)
     . ([scriptblock]::Create($fn.Extent.Text))
 }

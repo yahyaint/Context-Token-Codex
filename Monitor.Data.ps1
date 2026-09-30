@@ -7,7 +7,7 @@ function Read-WidgetPreferences([string]$Path, [hashtable]$Defaults) {
     try {$loaded=[IO.File]::ReadAllText($Path)|ConvertFrom-Json -ErrorAction Stop} catch {$loaded=$null; $invalid=$true}
     foreach ($key in $Defaults.Keys) {
         $value=$loaded.$key; if ($null -eq $value) {continue}
-        if ($key -in @('AutoOpen','Topmost','Compact')) {if ($value -is [bool]) {$result[$key]=$value};continue}
+        if ($key -in @('AutoOpen','Topmost','Compact','StartParked')) {if ($value -is [bool]) {$result[$key]=$value};continue}
         $choices=switch($key){'Mode'{@('Context','Tokens')};'Target'{@('Either','Codex','ChatGPT')};'Corner'{@('Free','TopLeft','TopRight','BottomLeft','BottomRight')}}
         if ($choices) {if ($value -in $choices) {$result[$key]=[string]$value};continue}
         $number=0.0

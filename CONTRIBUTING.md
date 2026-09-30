@@ -19,9 +19,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_repository.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_usage.ps1
 .\Tests\test_estimator.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_compatibility.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_startup.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_watcher.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_transport.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_overlay.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_install.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_bootstrap.ps1
 ```
 
 The overlay, installer and theme tests open temporary Windows UI and need a desktop session. Repeat with pwsh.exe to test PowerShell 7, including its own WPF child processes. Tests use disposable fixtures and leave diagnostic results in the temporary directory. Do not use real conversation transcripts as test fixtures. CI runs all noninteractive tests on Windows 2022/2025 with both shells; desktop UI tests remain a local release check. See COMPATIBILITY.md for actual coverage and limitations.

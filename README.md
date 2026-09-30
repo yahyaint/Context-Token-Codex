@@ -1,4 +1,4 @@
-# Context-Token Codex 6.5.0
+# Context-Token Codex 6.6.0
 
 A Windows widget for local Codex context, token counts and subscription usage.
 
@@ -24,12 +24,14 @@ You can also launch from an extracted folder. **Default auto-open creates a Star
 
 ## Views
 
-- **Context:** active chats, measured context percentage, compaction state and side-by-side 5h/7d quota bars. Details holds secondary readings.
+- **Context:** active chats, measured context percentage and compaction state. Details holds secondary readings.
 - **Tokens:** active-chat cumulative totals, input, output, cache, uncached input and reasoning; loaded-chat totals and subscription readings.
 - **Limits:** global and project defaults, including saved idle projects. Applies to all models in the chosen scope.
 - **Collapsed:** one selected active chat. Previous/next changes the chat. **Edit context limits** expands that chat's project editor.
 
 Current chat names come from local desktop state or the session index. Initial text is a tooltip fallback. Missing data stays unknown rather than being invented.
+
+Small account quota bars stay below the tabs in every view, including Limits and Widget settings. Bars show remaining allowance; hover for used percentage, plan, observation time and reset time. Refresh sits beside the bars.
 
 Context is the latest recorded request, not a continuous measurement inside Codex. Token counters update when new local records arrive. Changed model windows clear incompatible old context readings. Compaction completion comes from session events; live compaction-start indicators need compatible SQLite logs.
 
@@ -45,24 +47,28 @@ These are project/global defaults, **not persistent per-chat or per-model overri
 
 Drag the header to move; drop near a corner to snap. Expand shows all active chats; Collapse shows the mini card. Expanded views have a 520-unit minimum height where the screen permits it.
 
+Compact Context and Tokens views use the same 370 by 480 layout, with room for quota bars and the context edit button.
+
 - **Background:** live background opacity, 40–100%; text and controls stay opaque.
 - **Pinned:** always on top.
 - **Corner:** move to a screen corner.
-- **Tray:** hide; restore with the CTC icon beside the Windows clock, possibly inside the overflow menu.
-- **Park:** show a small restore tab at the screen edge.
+- **Tray:** beside Expand; hide and restore with the CTC icon beside the Windows clock, possibly inside the overflow menu.
+- **Park tab:** show a small restore tab at the screen edge.
 - **Minus:** minimize to the taskbar. **Close:** exit the widget.
 
 The footer includes the author and website. Opening the launcher again restores an existing hidden widget.
 
 ## Startup
 
-Widget settings chooses Codex, ChatGPT or Either. Auto-open adds a per-user Startup shortcut and a watcher. The watcher polls visible app instances every five seconds; identities include the process/window and do not pin a package version. CTC stays open after the watched app closes. Exit stays respected until another app launch or manual launch.
+Widget settings chooses Codex, ChatGPT or Either. Auto-open adds a per-user Startup shortcut and a watcher. The watcher polls visible app instances every 1.5 seconds; identities include the process/window and do not pin a package version. If a new app launch fails to produce a ready CTC window, the watcher retries every 15 seconds while the app remains open. CTC stays open after the watched app closes. Once readiness is acknowledged, Exit stays respected until another app launch or manual launch.
+
+On startup, the reader scans complete session lines but parses only the newest state records from large histories. It publishes current context, cumulative tokens and recorded quota first. Detailed token event history is reconstructed on the following background pass. Long running chats are detected from the whole file, rather than only a tail fragment. First data does not wait for the network quota refresh.
 
 The watched application controls when CTC opens. **ChatGPT conversations are not monitored**; data comes from local Codex files.
 
 ## Quotas and token totals
 
-Tokens mode asks the installed, signed-in Codex CLI for subscription readings, roughly once a minute after a refresh finishes. Refresh allows an earlier request. Requests run off the UI thread with a 45-second bound; errors identify initialization versus subscription-response timeout.
+Every view asks the installed, signed-in Codex CLI for subscription readings, roughly once a minute after a refresh finishes. Refresh allows an earlier request. Requests run off the UI thread with a 45-second bound; errors identify initialization versus subscription-response timeout.
 
 The newest observation wins for each quota window. Other available buckets remain visible; older readings are marked with `*`. Hover shows observation/reset times and source. Retry indicates a failed refresh. Missing readings are not treated as zero.
 

@@ -39,6 +39,7 @@ jobs:
           .\Tests\test_compatibility.ps1
           .\Tests\test_transport.ps1
           .\Tests\test_watcher.ps1
+          .\Tests\test_startup.ps1
       - name: Create release ZIP and checksum
         run: .\Build\package.ps1
       - name: Verify release installation helper

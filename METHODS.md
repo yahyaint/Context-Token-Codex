@@ -16,7 +16,9 @@ The first read favors complete compaction history over HUD's faster bounded tail
 The monitor reads private Codex storage formats, which may change. The task index and quota rows have a visible fallback or unavailable state. The settings editor uses [official OpenAI configuration keys](https://learn.chatgpt.com/docs/config-file/config-reference) for context window and automatic compaction, but a saved value is not proof that an already-loaded Desktop task adopted it.
 # Overlay 4.0 interface
 
-This edition preserves the console monitor's incremental session reader. Native WPF controls replace console rows. The reader runs in a separate runspace and passes completed snapshots to the UI; controls are retained between updates. A separate, optional Windows sign-in watcher detects application launches every five seconds. No HUD rendering code was copied.
+This edition preserves the console monitor's incremental session reader. Native WPF controls replace console rows. The reader runs in a separate runspace and passes completed snapshots to the UI; controls are retained between updates. A separate, optional Windows sign-in watcher detects application launches every 1.5 seconds, with readiness checks and 15-second retries for failed initial launches. No HUD rendering code was copied.
+
+Version 6.6 adds an original startup scan: it scans all complete lines of large rollouts, retains the latest records for independent state fields, and deserializes those records in file order. It keeps start/end events and compaction counts across the whole history. The next pass rebuilds detailed token deltas, after publishing the first current-state snapshot. This differs from a fixed tail read, which could miss an old task_started event for a chat that is still running. Fixture tests compare quick and full state, quota-only records, partial appends and changed windows.
 
 | Method | Console edition | Overlay edition |
 |---|---|---|

@@ -20,3 +20,12 @@ Assert (@(Get-TargetAppInstances ChatGPT @($chat)).Count -eq 0) 'Background proc
 Assert (@(Get-NewAppInstances $old @()).Count -eq 1) 'Watcher start with app already open failed.'
 Assert (@(Get-TargetAppInstances Either @((App 4 ''),(App 5 'C:\tools\codex.exe' 0))).Count -eq 0) 'Unavailable paths or CLI helper detected.'
 'PASS: independent app launches, process/window replacement, changed package version, background exclusion, duplicate suppression.'
+$now=[DateTimeOffset]::Now
+$state=@{Previous=@();Pending=$false;Next=[DateTimeOffset]::MinValue}
+Assert (Get-WatcherLaunchAction $state $old $false $now) 'Initial app should request a launch'
+Assert (-not (Get-WatcherLaunchAction $state $old $false $now.AddSeconds(2))) 'Launch retried before its deadline'
+Assert (Get-WatcherLaunchAction $state $old $false $now.AddSeconds(16)) 'Failed first launch was not retried'
+Assert (-not (Get-WatcherLaunchAction $state $old $true $now.AddSeconds(17))) 'Ready overlay should settle launch tracking'
+Assert (-not (Get-WatcherLaunchAction $state $old $false $now.AddSeconds(35))) 'Intentional close reopened without a new app instance'
+Assert (Get-WatcherLaunchAction $state $both $true $now.AddSeconds(36)) 'New app should restore an existing hidden overlay'
+'PASS: launch readiness, delayed retry, intentional close and existing-window restore.'

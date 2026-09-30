@@ -45,9 +45,9 @@ function Get-KnownProjectPaths {
     $script:projectPathsAt=[DateTime]::UtcNow
     return $script:projectPaths
 }
-function Get-MonitorSnapshot {
+function Get-MonitorSnapshot([switch]$QuickStart) {
     Refresh-DatabasePaths
-    foreach ($file in @(Get-RolloutFiles)) { Update-Rollout $file }
+    foreach ($file in @(Get-RolloutFiles)) { Update-Rollout $file -QuickStart:$QuickStart }
     Remove-ExpiredRolloutStates
     Update-IndexTitles
     if ($script:sqlite) {
@@ -103,6 +103,18 @@ function Get-TargetAppInstances([string]$target, $Processes=$null) {
 function Test-TargetApp([string]$target) { return @(Get-TargetAppInstances $target).Count -gt 0 }
 function Get-NewAppInstances($Current,$Previous) {
     @($Current|Where-Object {$_ -notin @($Previous)})
+}
+function Test-OverlayReady {
+    try {$ready=[Threading.EventWaitHandle]::OpenExisting('Local\CodexContextOverlayReady-'+[Environment]::UserName);try{return $ready.WaitOne(0)}finally{$ready.Dispose()}}catch [Threading.WaitHandleCannotBeOpenedException]{return $false}
+}
+function Get-WatcherLaunchAction($state,$current,[bool]$ready,$now=[DateTimeOffset]::Now) {
+    if(@(Get-NewAppInstances $current $state.Previous).Count -gt 0){
+        $state.Pending=-not $ready;$state.Next=$now.AddSeconds(15);$state.Previous=@($current);return $true
+    }
+    $state.Previous=@($current)
+    if($state.Pending -and $ready){$state.Pending=$false;return $false}
+    if($state.Pending -and @($current).Count -gt 0 -and $now -ge $state.Next){$state.Next=$now.AddSeconds(15);return $true}
+    return $false
 }
 function Get-StartupShortcut { Join-Path ([Environment]::GetFolderPath('Startup')) 'Context-Token Codex.lnk' }
 function Set-OverlayStartup([bool]$enabled, [string]$folder) {

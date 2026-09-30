@@ -1,3 +1,12 @@
+# Compatibility and release checks — 6.6.0
+
+## 30 September 2026 startup repair
+
+Relevant reader, watcher, estimator, install and release tests passed under Windows PowerShell 5.1 and PowerShell 7. WPF overlay tests passed under both shells, including the precompiled taskbar identity bridge and shared quotas. Quick/full state parity includes large reordered records and partial appends. ZIP paths are canonical across both packaging runtimes.
+
+The installed updated Codex package (OpenAI.Codex 26.928.2636.0) was detected, and starting the watcher opened CTC with local data and live account quotas. Changed package versions and replaced process/window identities are also fixture-tested. Actual Windows sign-in/reboot and a future unknown app schema are not claimed. See AUDIT.md for timings and test limits.
+
+---
 # Compatibility and release checks — 6.4.0
 
 ## 22 September 2026 repair status

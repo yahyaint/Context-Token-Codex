@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.6.0 - startup recovery and shared quotas
+
+- Retry failed initial launches until the overlay acknowledges a ready window. Detect visible app instances every 1.5 seconds without caching an app package version.
+- Publish current context and cumulative tokens from a lightweight whole-file scan, then rebuild detailed history in the background.
+- Load the precompiled taskbar identity bridge from the launcher instead of compiling C# during every widget launch.
+- Create ZIP entries with canonical forward-slash paths under both PowerShell versions, preserving strict installer path checks.
+- Show account quota bars and Refresh below the tabs in every view. Keep network reads separate from local startup.
+- Move Tray beside Expand, label the edge-tab action Park tab, and remove the duplicate context settings icon.
+- Use a consistent 370 by 480 compact layout. Check the actual content viewport for clipping.
+- Add quick/full parity tests and startup checks to Windows CI. Previous versions remain in update backups.
+
 ## 6.5.0 - quota share and compact details
 
 - Fix arrow/counter spacing, including large chat counts.

@@ -16,8 +16,21 @@ Copy-Item -LiteralPath (Join-Path $root 'Tests') -Destination $payload -Recurse
 Copy-Item -LiteralPath (Join-Path $root 'CONTRIBUTING.md') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $root 'COMPATIBILITY.md') -Destination $payload
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
-$zip=Join-Path $OutputDirectory 'Context-Token-Codex-Windows-v6.5.0.zip'
-Compress-Archive -LiteralPath $payload -DestinationPath $zip -Force
+$zip=Join-Path $OutputDirectory 'Context-Token-Codex-Windows-v6.6.0.zip'
+# Windows PowerShell 5.1 Compress-Archive can emit backslash paths. Use
+# canonical ZIP separators on every runtime so strict installer checks agree.
+Add-Type -AssemblyName System.IO.Compression,System.IO.Compression.FileSystem
+$zipStream=[IO.File]::Create($zip)
+$archive=[IO.Compression.ZipArchive]::new($zipStream,[IO.Compression.ZipArchiveMode]::Create)
+try {
+    $prefix=[IO.Path]::GetFullPath($payload).TrimEnd('\')+'\'
+    foreach($file in @(Get-ChildItem -LiteralPath $payload -File -Recurse)) {
+        $relative=$file.FullName.Substring($prefix.Length).Replace('\','/')
+        $entry=$archive.CreateEntry('ContextWidget/'+$relative,[IO.Compression.CompressionLevel]::Optimal)
+        $inputStream=[IO.File]::OpenRead($file.FullName);$outputStream=$entry.Open()
+        try {$inputStream.CopyTo($outputStream)} finally {$outputStream.Dispose();$inputStream.Dispose()}
+    }
+} finally {$archive.Dispose();$zipStream.Dispose()}
 $hash=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText(($zip+'.sha256'),$hash+'  '+[IO.Path]::GetFileName($zip)+"`n",[Text.UTF8Encoding]::new($false))
 Write-Output "Package: $zip"

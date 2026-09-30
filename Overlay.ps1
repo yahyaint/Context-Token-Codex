@@ -3,7 +3,8 @@ param([switch]$Watch, [string]$CodexHome='', [string]$PreferencesPath='', [int]$
 $ErrorActionPreference = 'Stop'
 if ($TestSettings -and ($TestSeconds -lt 1 -or -not $CodexHome -or -not (Test-Path -LiteralPath (Join-Path $CodexHome '.overlay-test-fixture')))) { throw 'Settings test requires a marked disposable fixture and TestSeconds.' }
 Add-Type -AssemblyName PresentationFramework,PresentationCore,WindowsBase,System.Windows.Forms,System.Drawing
-Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public static class WidgetIdentity { [DllImport("shell32.dll", CharSet=CharSet.Unicode)] public static extern int SetCurrentProcessExplicitAppUserModelID(string id); }'
+# Load bytes so the identity bridge does not keep the launcher locked on disk.
+[void][Reflection.Assembly]::Load([IO.File]::ReadAllBytes((Join-Path $PSScriptRoot 'ContextWidget.exe')))
 [void][WidgetIdentity]::SetCurrentProcessExplicitAppUserModelID('Community.ContextWidget')
 $script:folder = $PSScriptRoot
 if (-not $PreferencesPath) { $PreferencesPath = Join-Path $env:LOCALAPPDATA 'CodexContextMonitor\overlay.json' }
@@ -27,6 +28,8 @@ if (-not $owned) {
     $mutex.Dispose(); exit
 }
 $showEvent = New-Object Threading.EventWaitHandle($false, [Threading.EventResetMode]::AutoReset, "Local\CodexContextOverlayShow-$suffix")
+$readyEvent=New-Object Threading.EventWaitHandle($false,[Threading.EventResetMode]::ManualReset,"Local\CodexContextOverlayReady-$suffix")
+$readyEvent.Reset() | Out-Null
 $script:shared = [hashtable]::Synchronized(@{ Stop=$false; Latest=$null; Error=''; Scans=0; Mode=$prefs.Mode; LiveQuota=$null; QuotaError=''; RefreshQuota=$false; Fetching=$false })
 $worker = [PowerShell]::Create()
 [void]$worker.AddScript({
@@ -36,7 +39,7 @@ $worker = [PowerShell]::Create()
         . (Join-Path $folder 'Monitor.Data.ps1')
         . (Join-Path $folder 'Usage.Provider.ps1')
         while (-not $shared.Stop) {
-            try { $snapshot=Get-MonitorSnapshot; Update-SnapshotQuota $snapshot $shared.LiveQuota $CodexHome; $shared.Latest=$snapshot; $shared.Error=''; $shared.Scans++ }
+            try { $snapshot=Get-MonitorSnapshot -QuickStart:($shared.Scans -eq 0); Update-SnapshotQuota $snapshot $shared.LiveQuota $CodexHome; $shared.Latest=$snapshot; $shared.Error=''; $shared.Scans++ }
             catch { $shared.Error=$_.Exception.Message }
             for ($i=0; $i -lt 5 -and -not $shared.Stop; $i++) { Start-Sleep -Milliseconds 200 }
         }
@@ -49,7 +52,7 @@ $quotaWorker=[PowerShell]::Create()
     . (Join-Path $folder 'Usage.Provider.ps1')
     $last=[DateTime]::MinValue
     while (-not $shared.Stop) {
-        if (-not $testing -and $shared.Mode -eq 'Tokens' -and ($shared.RefreshQuota -or ([DateTime]::UtcNow-$last).TotalSeconds -ge 60)) {
+        if (-not $testing -and ($shared.RefreshQuota -or ([DateTime]::UtcNow-$last).TotalSeconds -ge 60)) {
             $shared.RefreshQuota=$false; $shared.Fetching=$true
             try { $shared.LiveQuota=Get-CodexRateLimits $homePath; $shared.QuotaError='' } catch { $shared.QuotaError=$_.Exception.Message }
             finally { $shared.Fetching=$false; $last=[DateTime]::UtcNow }
@@ -70,18 +73,18 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
  <Border BorderBrush="#778DA9" BorderThickness="1" CornerRadius="18" Padding="16">
  <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#0D1B2A" Offset="0"/><GradientStop Color="#0D1B2A" Offset="1"/></LinearGradientBrush></Border.Background>
  <Grid>
- <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+ <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
  <Grid x:Name="DragHandle" Background="Transparent" Margin="0,0,0,9" Cursor="SizeAll" ToolTip="Drag to move. Drop near a corner to snap.">
   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
   <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image x:Name="BrandIcon" Width="22" Height="22" Margin="0,0,7,0"/><TextBlock Text="CTC" FontSize="11" Foreground="#778DA9" FontWeight="SemiBold"/></StackPanel>
   <StackPanel Grid.Column="1" Orientation="Horizontal">
    <Button x:Name="ToggleButton" Content="Expand" Padding="7,3" Margin="0,0,5,0" FontSize="11" ToolTip="Switch between mini card and full view"/>
-   <Button x:Name="QuickContext" Width="28" Height="28" Padding="0" Margin="0,0,5,0" ToolTip="Context limits"><Viewbox Width="12" Height="12"><Canvas Width="16" Height="16"><Path Data="M1,4 L15,4 M1,12 L15,12" Stroke="#E0E1DD" StrokeThickness="1.5"/><Ellipse Canvas.Left="4" Canvas.Top="1" Width="5" Height="5" Fill="#778DA9"/><Ellipse Canvas.Left="9" Canvas.Top="9" Width="5" Height="5" Fill="#778DA9"/></Canvas></Viewbox></Button><Button x:Name="QuickSettings" Width="28" Height="28" FontSize="12" FontFamily="Segoe MDL2 Assets" Content="&#xE713;" Padding="0" Margin="0,0,5,0" ToolTip="Widget settings"/>
+   <Button x:Name="DirectTray" Content="Tray" Padding="7,3" Margin="0,0,5,0" FontSize="11" ToolTip="Hide to the Windows notification area. Restore from the CTC icon beside the clock."/><Button x:Name="QuickSettings" Width="28" Height="28" FontSize="12" FontFamily="Segoe MDL2 Assets" Content="&#xE713;" Padding="0" Margin="0,0,5,0" ToolTip="Widget settings"/>
    <Button x:Name="MinimizeButton" Width="28" Height="28" Padding="0" Margin="0,0,5,0" ToolTip="Minimize to taskbar"><Path Data="M0,5 L10,5" Width="10" Height="10" Stroke="#E0E1DD" StrokeThickness="1.5"/></Button>
    <Button x:Name="CloseButton" Width="28" Height="28" Padding="0" Margin="0" ToolTip="Exit CTC"><Path Data="M1,1 L9,9 M1,9 L9,1" Width="10" Height="10" Stroke="#E0E1DD" StrokeThickness="1.5"/></Button>
   </StackPanel>
  </Grid>
- <WrapPanel Grid.Row="1" Margin="0,0,0,12"><Button x:Name="ContextMode" Content="Context" Padding="12,5" Margin="0,0,6,0"/><Button x:Name="TokenMode" Content="Tokens" Padding="12,5" Margin="0,0,6,0"/><Button x:Name="LimitsMode" Content="Limits" Padding="12,5" ToolTip="Edit context settings"/></WrapPanel><Grid Grid.Row="2">
+ <WrapPanel Grid.Row="1" Margin="0,0,0,12"><Button x:Name="ContextMode" Content="Context" Padding="12,5" Margin="0,0,6,0"/><Button x:Name="TokenMode" Content="Tokens" Padding="12,5" Margin="0,0,6,0"/><Button x:Name="LimitsMode" Content="Limits" Padding="12,5" ToolTip="Edit context settings"/></WrapPanel><DockPanel Grid.Row="2" Margin="0,0,0,10"><Button x:Name="RefreshUsage" DockPanel.Dock="Right" Content="&#xE72C;" FontFamily="Segoe MDL2 Assets" Width="28" Height="28" Padding="0" Margin="4,0,0,0" ToolTip="Refresh account quotas"/><UniformGrid x:Name="ContextQuotaBars" Columns="2"/></DockPanel><Grid Grid.Row="3">
  <StackPanel x:Name="MiniPanel" Background="Transparent">
   <TextBlock x:Name="MiniTitle" Text="Waiting for active chats" FontSize="17" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Cursor="Hand" ToolTip="Click chat name to expand"/>
   <TextBlock x:Name="MiniStatus" Text="Connecting..." FontSize="11" Foreground="#E0E1DD" Margin="0,5,0,6" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
@@ -99,8 +102,7 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
   <TextBlock x:Name="TokenBreakdown" FontSize="10" Opacity="0.75" Margin="0,0,0,8"/>
   <UniformGrid x:Name="TokenMetrics" Columns="3" Margin="0,0,0,8"/>
   </StackPanel></Expander><Expander Header="Other chat details" Foreground="#E0E1DD" Margin="0,0,0,8"><StackPanel x:Name="TokenTasks"/></Expander>
-  <DockPanel Margin="0,4,0,8"><Button x:Name="RefreshUsage" Content="Refresh" DockPanel.Dock="Right" FontSize="10" Padding="8,3"/><TextBlock x:Name="SubscriptionHeading" Text="Account quota used" FontSize="10" Foreground="#778DA9" VerticalAlignment="Center"/></DockPanel>
-  <UniformGrid x:Name="QuotaCards" Columns="2"/>
+
   <Expander Header="Reading status" Margin="0,4,0,4"><TextBlock x:Name="TokenSource" Text="Reading subscription usage..." FontSize="10" Margin="0,4,0,6"/></Expander>
   <Expander Header="How counts work" Foreground="#E0E1DD"><TextBlock x:Name="TokenCoverage" FontSize="10" Opacity="0.85" Margin="0,6,0,0"/></Expander>
  </StackPanel></ScrollViewer>
@@ -111,18 +113,18 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
    <TextBlock x:Name="Health" Text="Connecting to local Codex data..." Foreground="#E0E1DD" FontSize="10" Margin="0,0,0,10"/>
   </StackPanel>
   <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-   <UniformGrid x:Name="ContextQuotaBars" Columns="2"/>
+
    <TextBlock Text="Latest recorded context" ToolTip="Updates arrive after responses. Local Codex chats only." FontSize="10" Foreground="#778DA9" Margin="0,5,0,0"/>
   </StackPanel>
   <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="Cards"/></ScrollViewer>
  </DockPanel>
  </Grid>
- <StackPanel Grid.Row="3" Margin="0,12,0,0"><TextBlock x:Name="AuthorLine" Text="By Yahya Nabil" FontSize="10" Opacity="0.75" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+ <StackPanel Grid.Row="4" Margin="0,12,0,0"><TextBlock x:Name="AuthorLine" Text="By Yahya Nabil" FontSize="10" Opacity="0.75" HorizontalAlignment="Center" Margin="0,0,0,8"/>
   <Border Height="1" Background="#0D1B2A" Margin="0,0,0,10"/>
   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Background" FontSize="11" Foreground="#E0E1DD" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider x:Name="LiveOpacity" Grid.Column="1" Minimum="40" Maximum="100" SmallChange="1" LargeChange="5" VerticalAlignment="Center" ToolTip="Drag to change background opacity live"/><TextBlock x:Name="LiveOpacityLabel" Grid.Column="2" Width="38" TextAlignment="Right" FontSize="11" VerticalAlignment="Center"/></Grid>
-  <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="1" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"><Hyperlink x:Name="UserWebsite" NavigateUri="https://yahyanabil.com" Foreground="#778DA9">yahyanabil.com</Hyperlink></TextBlock><StackPanel Orientation="Horizontal"><Button x:Name="QuickPin" Content="Pinned" FontSize="10" Padding="7,4" ToolTip="Toggle always on top"/><Button x:Name="QuickCorner" Content="Corner" FontSize="10" Padding="7,4" Margin="5,0,0,0" ToolTip="Choose a screen corner"/></StackPanel><StackPanel Grid.Column="2" Orientation="Horizontal"><Button x:Name="DirectTray" Content="Tray" FontSize="10" Padding="7,4" ToolTip="Hide here; restore with the CTC icon beside the Windows clock."/><Button x:Name="ParkButton" Content="Park" FontSize="10" Padding="8,4" Margin="5,0,0,0" ToolTip="Shrink to a visible restore tab. Click tab to return."/></StackPanel></Grid>
+  <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="1" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"><Hyperlink x:Name="UserWebsite" NavigateUri="https://yahyanabil.com" Foreground="#778DA9">yahyanabil.com</Hyperlink></TextBlock><StackPanel Orientation="Horizontal"><Button x:Name="QuickPin" Content="Pinned" FontSize="10" Padding="7,4" ToolTip="Toggle always on top"/><Button x:Name="QuickCorner" Content="Corner" FontSize="10" Padding="7,4" Margin="5,0,0,0" ToolTip="Choose a screen corner"/></StackPanel><StackPanel Grid.Column="2" Orientation="Horizontal"><Button x:Name="ParkButton" Content="Park tab" FontSize="10" Padding="8,4" Margin="5,0,0,0" ToolTip="Shrink to a visible restore tab. Click tab to return."/></StackPanel></Grid>
  </StackPanel>
- <Thumb x:Name="ResizeGrip" Grid.Row="2" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Visibility="Collapsed" ToolTip="Drag to resize">
+ <Thumb x:Name="ResizeGrip" Grid.Row="3" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Visibility="Collapsed" ToolTip="Drag to resize">
   <Thumb.Template><ControlTemplate TargetType="Thumb"><TextBlock Text="&#x25E2;" Foreground="#E0E1DD" Background="Transparent"/></ControlTemplate></Thumb.Template>
  </Thumb>
  </Grid>
@@ -130,6 +132,7 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
 </Window>
 '@
 $script:window = [Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($xaml))
+$window.Add_ContentRendered({[void]$readyEvent.Set()})
 $script:theme=New-Object Windows.ResourceDictionary
 $theme.set_Source([Uri]::new((Join-Path $PSScriptRoot 'Theme.xaml')))
 $window.Resources.MergedDictionaries.Add($theme)
@@ -161,7 +164,7 @@ function Apply-WidgetTheme($element) {
 }
 Apply-WidgetTheme $window
 $iconDecoder=[Windows.Media.Imaging.BitmapDecoder]::Create([Uri]::new((Join-Path $PSScriptRoot 'Context.ico')),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad); $window.Icon=$iconDecoder.Frames[$iconDecoder.Frames.Count-1]; $window.FindName('BrandIcon').Source=$window.Icon
-foreach ($name in @('MiniEditContext','SettingsButton','TrayButton','Pin','Health','ContextQuotaBars','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','QuickContext','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','QuotaCards','TokenSource','SubscriptionHeading','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
+foreach ($name in @('MiniEditContext','SettingsButton','TrayButton','Pin','Health','ContextQuotaBars','Cards','DragHandle','ToggleButton','QuickSettings','MinimizeButton','CloseButton','MiniPanel','FullPanel','MiniTitle','MiniStatus','MiniBar','MiniUsage','ResizeGrip','MiniPercent','MiniRemaining','MiniCompactions','MiniCached','MiniUpdated','PreviousTask','NextTask','TaskPosition','LiveOpacity','LiveOpacityLabel','QuickPin','QuickCorner','ParkButton','DirectTray','SettingsHost','ContextMode','TokenMode','LimitsMode','TokensPanel','TokenTotal','TokenLive','TokenMetrics','TokenTasks','ActiveTokenTasks','ActiveTokenHeading','TokenSummary','TokenBreakdown','TokenCoverage','TokenSource','RefreshUsage','AuthorLine','UserWebsite')) { Set-Variable -Name $name -Value $window.FindName($name) -Scope Script }
 $window.Width=[Math]::Max(360,[double]$prefs.Width); $window.Height=[Math]::Max(300,[double]$prefs.Height)
 $area=[Windows.SystemParameters]::WorkArea
 $hasSavedPosition=($prefs.Left -ne -1 -or $prefs.Top -ne -1)
@@ -242,7 +245,7 @@ function Set-WidgetCompact([bool]$compact) {
     $TokenMode.Tag=if ($prefs.Mode -eq 'Tokens') {'Selected'} else {''}
     if ($compact) {
         $FullPanel.Visibility='Collapsed'; $MiniPanel.Visibility='Visible'; $ResizeGrip.Visibility='Collapsed'
-        $window.Width=370; $window.Height=440; $ToggleButton.Content='Expand'
+        $window.Width=370; $window.Height=480; $ToggleButton.Content='Expand'
     } else {
         $FullPanel.Visibility='Visible'; $MiniPanel.Visibility='Collapsed'; $ResizeGrip.Visibility='Visible'
         $workArea=Get-WidgetWorkArea
@@ -254,7 +257,6 @@ function Set-WidgetCompact([bool]$compact) {
     $TokensPanel.Visibility='Collapsed'
     if ($prefs.Mode -eq 'Tokens') {
         $MiniPanel.Visibility='Collapsed'; $FullPanel.Visibility='Collapsed'; $TokensPanel.Visibility='Visible'
-        if ($compact) { $window.Height=470 }
     }
     Position-Widget
 }
@@ -272,11 +274,15 @@ $UserWebsite.Add_RequestNavigate({ param($sender,$eventArgs)
     $launch=New-Object Diagnostics.ProcessStartInfo('https://yahyanabil.com'); $launch.UseShellExecute=$true
     [void][Diagnostics.Process]::Start($launch); $eventArgs.Handled=$true
 })
-$script:quotaRows=@{}
 $script:contextQuotaRows=@{}
 function Update-ContextQuotaBars {
     $quota=Select-FreshQuota $shared.LiveQuota $shared.Latest.Tokens.Quota
     $entries=if ($quota) {@($quota.Windows)} else {@()}
+    if(-not $entries.Count){$entries=@([pscustomobject]@{Name='5h';Minutes=300;Remaining=$null},[pscustomobject]@{Name='7d';Minutes=10080;Remaining=$null})}
+    $RefreshUsage.Content=if($shared.Fetching){'...'}else{[char]0xE72C}
+    $RefreshUsage.FontFamily=if($shared.Fetching){'Segoe UI'}else{'Segoe MDL2 Assets'}
+    $RefreshUsage.IsEnabled=-not $shared.Fetching
+    $RefreshUsage.ToolTip=if($shared.QuotaError){$shared.QuotaError}else{'Refresh account quotas. Bars show remaining allowance; hover for used percentage and reset time.'}
     $keys=@()
     foreach ($entry in $entries) {
         $key=$entry.Name; $keys+=$key
@@ -290,10 +296,11 @@ function Update-ContextQuotaBars {
         }
         $row=$script:contextQuotaRows[$key]
         $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}
+        if($null -eq $entry.Remaining){$row.Label.Text="$period | --";$row.Bar.Value=0;$row.Panel.ToolTip='Waiting for an account quota reading';continue}
         $observed=if ($entry.Observed) {$entry.Observed} else {$quota.Observed}; $stale=([DateTimeOffset]::Now-$observed).TotalMinutes -gt 2
-        $row.Label.Text=('{0} | {1:N0}% used{2}' -f $period,(100-$entry.Remaining),$(if($stale){' *'}else{''}))
+        $row.Label.Text=('{0} | {1:N0}% left{2}' -f $period,$entry.Remaining,$(if($stale){' *'}else{''}))
         $row.Bar.Value=$entry.Remaining
-        $row.Panel.ToolTip="$($entry.Name)`n$(Format-QuotaReset $entry.Reset)`nObserved $($observed.ToLocalTime().ToString('MMM d HH:mm:ss'))$(if($stale){' (older reading)'})`n$($quota.Source)"
+        $row.Panel.ToolTip="$($entry.Name) | $($quota.Plan)`n$('{0:N0}% used' -f (100-$entry.Remaining))`n$(Format-QuotaReset $entry.Reset)`nObserved $($observed.ToLocalTime().ToString('MMM d HH:mm:ss'))$(if($stale){' (older reading)'})`n$($quota.Source)"
     }
     foreach ($key in @($script:contextQuotaRows.Keys)) {
         if ($key -notin $keys) { [void]$ContextQuotaBars.Children.Remove($script:contextQuotaRows[$key].Panel); $script:contextQuotaRows.Remove($key) }
@@ -364,29 +371,13 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
     foreach ($key in @($script:tokenTaskRows.Keys)) { if ($key -notin $keys) { [void]$script:tokenTaskRows[$key].Panel.Parent.Children.Remove($script:tokenTaskRows[$key].Panel); $script:tokenTaskRows.Remove($key) } }
     $quota=Select-FreshQuota $shared.LiveQuota $tokens.Quota
     $entries=@(); if ($quota) { $entries=@($quota.Windows) }
-    $keys=@()
-    $index=0
-    foreach ($entry in $entries) {
-        $key="$index/$($entry.Name)"; $keys+=$key; $index++
-        if (-not $script:quotaRows.ContainsKey($key)) {
-            $panel=New-Object Windows.Controls.StackPanel; $panel.Margin='0,4,10,8'
-            $label=New-Label '' 12 '#E0E1DD'; $bar=New-Object Windows.Controls.ProgressBar; $bar.Height=5; $bar.Maximum=100; $bar.Foreground='#778DA9'; $bar.Background='#415A77'
-            $reset=New-Label '' 10 '#E0E1DD'
-            [void]$panel.Children.Add($label); [void]$panel.Children.Add($bar); [void]$panel.Children.Add($reset)
-            [void]$QuotaCards.Children.Add($panel); $script:quotaRows[$key]=@{Panel=$panel;Label=$label;Bar=$bar;Reset=$reset}
-        }
-        $row=$script:quotaRows[$key]; $observed=if ($entry.Observed) {$entry.Observed} else {$quota.Observed}; $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}; $row.Label.Text=('{0} | {1:N0}% used{2}' -f $period,(100-$entry.Remaining),$(if(([DateTimeOffset]::Now-$observed).TotalMinutes -gt 2){' *'}else{''})); $row.Bar.Value=100-$entry.Remaining; $row.Reset.Text=Format-QuotaReset $entry.Reset; $row.Reset.Visibility='Collapsed'; $row.Panel.ToolTip=$entry.Name+"`n"+$row.Reset.Text+"`nObserved $($observed.ToLocalTime().ToString('MMM d HH:mm:ss')) | $($quota.Source)"
-    }
-    foreach ($key in @($script:quotaRows.Keys)) { if ($key -notin $keys) { [void]$QuotaCards.Children.Remove($script:quotaRows[$key].Panel); $script:quotaRows.Remove($key) } }
-    $SubscriptionHeading.Text=if ($quota.Plan) {"Account quota used | $($quota.Plan)"} else {'Account quota used'}
     $TokenSource.Text=if ($quota) { "$($quota.Source) | $($quota.Plan) | checked $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))" } else { 'No quota reading yet. Codex subscription sign-in required.' }
     if ($quota -and -not $entries.Count) { $TokenSource.Text+=' | No quota windows supplied.' }
     if ($quota -and $null -ne $quota.ResetCredits) { $TokenSource.Text+="`nAvailable reset credits: $($quota.ResetCredits) (read only)" }
     if ($shared.Fetching) { $TokenSource.Text+=' | Refreshing...' }
     elseif ($shared.QuotaError) { $TokenSource.Text+="`n$($shared.QuotaError)" }
     if ($quota -and ([DateTimeOffset]::Now-$quota.Observed).TotalMinutes -gt 2) { $TokenSource.Text+=' | STALE' }
-    $RefreshUsage.Content=if ($shared.Fetching) {'Reading...'} elseif ($shared.QuotaError) {'Retry'} else {'Refresh'}; $RefreshUsage.ToolTip=if ($shared.QuotaError) {$shared.QuotaError} else {'Read current subscription limits'}
-    $RefreshUsage.IsEnabled=-not $shared.Fetching
+
 }
 $window.Add_SourceInitialized({ Set-WidgetCompact ([bool]$prefs.Compact) })
 $DragHandle.Add_MouseLeftButtonDown({
@@ -729,7 +720,7 @@ $exitItem=$menu.Items.Add('Exit'); $exitItem.Add_Click({ $window.Close() })
 $tray.ContextMenuStrip=$menu
 $tray.Add_MouseClick({ param($sender,$eventArgs) if ($eventArgs.Button -eq [Windows.Forms.MouseButtons]::Left) { Show-Overlay } })
 $DirectTray.Add_Click({ Hide-Overlay $false }); $TrayButton.Add_Click({ Hide-Overlay $true }); $ParkButton.Add_Click({ Hide-Overlay $true }); $SettingsButton.Add_Click({ Show-Settings })
-$QuickSettings.Add_Click({ Show-Settings 'Widget' }); $QuickContext.Add_Click({ Show-Settings 'Context' })
+$QuickSettings.Add_Click({ Show-Settings 'Widget' })
 $Pin.Add_Click({ $window.Topmost=[bool]$Pin.IsChecked; $prefs.Topmost=[bool]$Pin.IsChecked; Sync-Pin; Save-Preferences })
 $script:lastSnapshot=$null
 $timer=New-Object Windows.Threading.DispatcherTimer; $timer.Interval=[TimeSpan]::FromMilliseconds(500)
@@ -805,8 +796,9 @@ $timer.Add_Tick({
             $window.UpdateLayout()
             $LiveOpacity.Value=55
             $directOpacityPassed=($window.Opacity -eq 1 -and [Math]::Abs($window.Content.Background.Opacity-0.55) -lt 0.001 -and $LiveOpacityLabel.Text -eq '55%'); $window.UpdateLayout()
-            $buttonBottom=$MiniEditContext.TranslatePoint([Windows.Point]::new(0,$MiniEditContext.ActualHeight),$MiniPanel).Y
-            if ($buttonBottom -gt $MiniPanel.ActualHeight) { throw 'Mini context button is clipped.' }
+            $miniViewport=$MiniPanel.Parent
+            $buttonBottom=$MiniEditContext.TranslatePoint([Windows.Point]::new(0,$MiniEditContext.ActualHeight),$miniViewport).Y
+            if ($buttonBottom -gt $miniViewport.ActualHeight) { throw 'Mini context button is clipped by the content viewport.' }
             foreach ($counter in @('2 / 2','128 / 128')) {
                 $TaskPosition.Text=$counter; $window.UpdateLayout()
                 $left=$PreviousTask.TranslatePoint([Windows.Point]::new($PreviousTask.ActualWidth,0),$MiniPanel).X
@@ -850,7 +842,7 @@ $timer.Add_Tick({
             }
             Update-ContextQuotaBars
             if ($script:contextQuotaRows.Count -ne 2 -or @($script:contextQuotaRows.Values | Where-Object {$_.Bar.Value -eq 65}).Count -ne 1) { throw 'Context quota bars failed.' }
-            if ($TokensPanel.Visibility -ne 'Visible' -or $prefs.Mode -ne 'Tokens' -or $script:quotaRows.Count -ne 2) { throw 'Tokens mode switch or quota rendering failed.' }
+            if ($TokensPanel.Visibility -ne 'Visible' -or $prefs.Mode -ne 'Tokens' -or $script:contextQuotaRows.Count -ne 2) { throw 'Tokens mode switch or quota rendering failed.' }
             $window.UpdateLayout()
             if ($TestReport) {
                 $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
@@ -905,7 +897,7 @@ try {
     $timer.Start(); [void]$app.Run($window)
 } finally {
     $timer.Stop(); $opacitySaveTimer.Stop(); $restoreTab.Close(); $tray.Visible=$false; $tray.Dispose(); $script:trayIcon.Dispose(); $menu.Dispose()
-    $shared.Stop=$true; $worker.Stop(); $worker.Dispose(); $quotaWorker.Stop(); $quotaWorker.Dispose(); $showEvent.Dispose()
+    $shared.Stop=$true; $worker.Stop(); $worker.Dispose(); $quotaWorker.Stop(); $quotaWorker.Dispose(); $showEvent.Dispose();$readyEvent.Dispose()
     if ($owned) { $mutex.ReleaseMutex() }; $mutex.Dispose()
 }
 if ($TestSeconds -gt 0 -and -not $script:testPassed) { exit 1 }

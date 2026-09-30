@@ -2,6 +2,11 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
+// Precompiled identity bridge avoids compiling C# on each widget startup.
+public static class WidgetIdentity {
+ [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet=System.Runtime.InteropServices.CharSet.Unicode)]
+ public static extern int SetCurrentProcessExplicitAppUserModelID(string id);
+}
 static class Launcher {
  [STAThread] static void Main(string[] args) {
   try {

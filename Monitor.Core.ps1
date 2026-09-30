@@ -346,6 +346,7 @@ function New-RolloutState($file) {
     return [pscustomobject]@{
         Path = $file.FullName
         Offset = 0L
+        NeedsBackfill = $false
         Partial = ''
         ThreadId = ''
         IsSubagent = $false
@@ -384,6 +385,20 @@ function Get-UsageInteger($value) {
 function Read-RolloutLine($state, [string]$line) {
     # Borrowed method from Codex Monitor HUD: reject irrelevant records before JSON parsing.
     if ($line -notmatch '"type"\s*:\s*"(session_meta|turn_context|event_msg|token_usage_record|compacted)"') { return }
+    # Most event messages are prose/tool progress. Keep their timestamp without
+    # allocating a full PowerShell JSON object for each historical message.
+    if ($line -match '"type"\s*:\s*"event_msg"' -and
+        $line -notmatch '"type"\s*:\s*"(task_started|task_complete|turn_aborted|token_count)"') {
+        if ($line -match '^\s*\{\s*"timestamp"\s*:\s*"([^"]+)"') {
+            $eventAt=Get-EventTime $Matches[1]
+            if ($eventAt -gt $state.LastEventAt) {$state.LastEventAt=$eventAt}
+        } else {
+            # Preserve reordered JSON compatibility. Normal Codex records put
+            # timestamp first; uncommon layouts take the conservative path.
+            try {$progress=$line|ConvertFrom-Json -ErrorAction Stop;$eventAt=Get-EventTime $progress.timestamp;if($eventAt -gt $state.LastEventAt){$state.LastEventAt=$eventAt}}catch{}
+        }
+        return
+    }
     try { $record = $line | ConvertFrom-Json -ErrorAction Stop }
     catch { return }
     $payload = $record.payload
@@ -476,12 +491,16 @@ function Read-RolloutLine($state, [string]$line) {
     }
 }
 
-function Update-Rollout($file) {
+function Update-Rollout($file, [switch]$QuickStart) {
     $key = $file.FullName
     if (-not $script:rollouts.ContainsKey($key)) {
         $script:rollouts[$key] = New-RolloutState $file
     }
     $state = $script:rollouts[$key]
+    if ($state.NeedsBackfill -and -not $QuickStart) {
+        $script:rollouts[$key]=New-RolloutState $file
+        $state=$script:rollouts[$key]
+    }
     if ($file.Length -lt $state.Offset -or $file.CreationTimeUtc -ne $state.CreatedAt) {
         $script:rollouts[$key] = New-RolloutState $file
         $state = $script:rollouts[$key]
@@ -501,6 +520,8 @@ function Update-Rollout($file) {
         $hasFinalNewline = $stream.ReadByte() -eq 10
         [void]$stream.Seek($state.Offset, [System.IO.SeekOrigin]::Begin)
         $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::UTF8, $false)
+        $quick=$QuickStart -and $state.Offset -eq 0 -and $file.Length -gt 256KB
+        $latest=@{}; $sequence=0; $compactCount=0; $lastProgressLine=$null
         $firstLine = $true
         while ($null -ne ($line = $reader.ReadLine())) {
             if ($firstLine) {
@@ -512,7 +533,47 @@ function Update-Rollout($file) {
                 try { $null = ConvertFrom-Json -InputObject $line -ErrorAction Stop }
                 catch { $state.Partial = $line; break }
             }
-            Read-RolloutLine $state $line
+            if ($quick) {
+                # Only deserialize the last record of each state-bearing category.
+                # Lifecycle records are scanned across the whole file so a long
+                # running turn is not mistaken for an idle chat by a tail read.
+                $sequence++
+                $head=$line.Substring(0,[Math]::Min(512,$line.Length))
+                if($head -notmatch '"type"\s*:\s*"(session_meta|turn_context|event_msg|token_usage_record|compacted)"') {
+                    # A producer may move the root type after a large payload.
+                    # Search the complete line before rejecting that layout.
+                    if($line -notmatch '"type"\s*:\s*"(session_meta|turn_context|event_msg|token_usage_record|compacted)"'){continue}
+                    $head=$line
+                }
+                $categories=@()
+                if ($head -match '"type"\s*:\s*"(session_meta|turn_context|compacted)"') {
+                    $categories=@($Matches[1])
+                    if($categories[0] -eq 'compacted'){$compactCount++}
+                } elseif ($head -match '"type"\s*:\s*"(event_msg|token_usage_record)"') {
+                    $kind=$Matches[1]
+                    $lastProgressLine=$line
+                    if ($kind -eq 'token_usage_record') {
+                        if($line -match '"usage"\s*:\s*\{'){$categories+='recordUsage'}
+                        if($line -match '"thread_token_usage"\s*:\s*\{'){$categories+='recordTotal'}
+                    } elseif ($line -match '"type"\s*:\s*"task_started"') {$categories=@('start')}
+                    elseif ($line -match '"type"\s*:\s*"(task_complete|turn_aborted)"') {$categories=@('end')}
+                    elseif ($line -match '"type"\s*:\s*"token_count"') {
+                        if($line -match '"last_token_usage"\s*:\s*\{'){$categories+='tokensUsage'}
+                        if($line -match '"total_token_usage"\s*:\s*\{'){$categories+='tokensTotal'}
+                        if($line -match '"model_context_window"\s*:'){$categories+='tokensWindow'}
+                        if($line -match '"rate_limits"\s*:\s*\{'){$categories+='quota'}
+                    }
+                }
+                foreach($category in $categories){$latest[$category]=[pscustomobject]@{Order=$sequence;Line=$line}}
+            } else { Read-RolloutLine $state $line }
+        }
+        if($quick){
+            foreach($record in @($latest.Values|Sort-Object Order -Unique)){Read-RolloutLine $state $record.Line}
+            $progressAt=[DateTimeOffset]::MinValue
+            if($lastProgressLine){try{$progressAt=Get-EventTime (($lastProgressLine|ConvertFrom-Json -ErrorAction Stop).timestamp)}catch{}}
+            if($progressAt -gt $state.LastEventAt){$state.LastEventAt=$progressAt}
+            $state.CompactCount=$compactCount
+            $state.NeedsBackfill=$true
         }
         $state.Offset = $stream.Position
         $state.ReadError = ''

@@ -85,6 +85,12 @@ Do not edit recorded usage to make the values match.
 
 ## Limits of these tests
 
+Real records checked on 30 September 2026 now show 516800 for the original Sol and Astra chats.
+This matches the earlier 544000 setting at 95% usable capacity.
+The Astra project and global overrides were later removed outside this audit.
+Those changes are preserved. Its last record confirms the earlier setting, not the later reset to default.
+No full desktop restart is needed to repeat the original confirmation.
+
 The checks ran on this Windows device with PowerShell 5.1 and PowerShell 7.
 The real active desktop chats were not restarted during the audit.
 Other devices, remote provider capacity, and automatic compaction at a large threshold need separate checks.

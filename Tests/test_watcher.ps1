@@ -13,6 +13,10 @@ Assert (@(Get-NewAppInstances $both $both).Count -eq 0) 'Repeated poll launches 
 Assert (@(Get-TargetAppInstances ChatGPT @($codex,$chat)).Count -eq 1) 'ChatGPT selection includes Codex.'
 $new=App 3 'C:\Program Files\WindowsApps\OpenAI.Codex_99.999.0_x64__family\app\ChatGPT.exe'
 Assert (@(Get-NewAppInstances @(Get-TargetAppInstances Either @($new,$chat)) $both).Count -eq 1) 'App update/restart missed.'
+$renamed=App 9 'C:\Program Files\WindowsApps\OpenAI.Codex_100.001_x64__family\app\RenamedDesktop.exe'
+Assert (@(Get-TargetAppInstances Codex @($renamed)).Count -eq 1) 'Renamed desktop executable was missed.'
+$helper=App 10 'C:\Program Files\WindowsApps\OpenAI.Codex_100.001_x64__family\app\resources\node.exe'
+Assert (@(Get-TargetAppInstances Either @($helper)).Count -eq 0) 'Bundled helper window triggered desktop startup.'
 $chat.MainWindowHandle=200
 Assert (@(Get-NewAppInstances @(Get-TargetAppInstances Either @($codex,$chat)) $both).Count -eq 1) 'Reopened window in existing process missed.'
 $chat.MainWindowHandle=0

@@ -15,7 +15,7 @@ if($testMode){
 }
 function Get-RestartDesktopProcesses {
     if($testMode){return @(Get-Process -Name CTCTestCodex -ErrorAction SilentlyContinue|Where-Object {$_.Path -eq $TestExecutable})}
-    return @(Get-Process -Name Codex -ErrorAction SilentlyContinue|Where-Object {$_.Path -match 'OpenAI[.\\]Codex|\\Codex\\|\\Codex\.exe$'})
+    return @(Select-CodexDesktopProcesses @(Get-Process -ErrorAction SilentlyContinue))
 }
 $mutex=New-Object Threading.Mutex($false,('Local\CTC-Restart-'+$(if($testMode){'Test-'+$PID}else{[Environment]::UserName})))
 $owned=$false
@@ -39,7 +39,7 @@ try {
         }
         if(-not $idleSince){$idleSince=[DateTime]::UtcNow}
         if(([DateTime]::UtcNow-$idleSince).TotalSeconds -lt 10){Start-Sleep -Seconds 2;continue}
-        # Identify visible Codex windows. Never close ChatGPT, CLI, or helper processes.
+        # Identify visible Codex windows. Ordinary ChatGPT and CLI helpers are excluded.
         $roots=@(Get-RestartDesktopProcesses|Where-Object {$_.MainWindowHandle -ne 0})
         if(-not $roots.Count){Write-RestartStatus $StatusPath 'Blocked' 'No Codex desktop window is available. Open Codex manually.';exit}
         $path=$roots[0].Path

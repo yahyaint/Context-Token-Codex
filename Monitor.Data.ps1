@@ -78,20 +78,21 @@ function Get-MonitorSnapshot([switch]$QuickStart) {
             LastEvent=$state.LastEventAt.ToLocalTime().ToString('HH:mm:ss'); Saved=(Get-SavedWindowStatus $state);
             Error=$state.ReadError }
     })
-    $tokens=if (Get-Command Get-RecordedTokenSummary -ErrorAction SilentlyContinue) { Get-RecordedTokenSummary } else { $null }
+    $tokens=if (Test-Path Function:\Get-RecordedTokenSummary) { Get-RecordedTokenSummary } else { $null }
     [pscustomobject]@{ Updated=[DateTimeOffset]::Now; Cards=$cards; Projects=@(Get-KnownProjectPaths); Quota=(Get-QuotaLine); Tokens=$tokens;
-        Restart=$(if(Get-Command Get-RestartReadiness -ErrorAction SilentlyContinue){Get-RestartReadiness @($script:rollouts.Values) $MaxRecentRollouts}else{$null}); Discovery=$script:discoveryMode; Warning=$script:discoveryWarning; Compaction=$script:logStatus }
+        Restart=$(if(Test-Path Function:\Get-RestartReadiness){Get-RestartReadiness @($script:rollouts.Values) $MaxRecentRollouts}else{$null}); Discovery=$script:discoveryMode; Warning=$script:discoveryWarning; Compaction=$script:logStatus }
 }
 
 function Get-TargetAppInstances([string]$target, $Processes=$null) {
     if ($target -notin @('Codex','ChatGPT','Either')) {$target='Either'}
-    if ($null -eq $Processes) {$Processes=@(Get-Process -Name ChatGPT,Codex -ErrorAction SilentlyContinue)}
+    if ($null -eq $Processes) {$Processes=@(Get-Process -ErrorAction SilentlyContinue)}
     foreach ($process in $Processes) {
         try {
+            if([long]$process.MainWindowHandle -eq 0){continue}
             $path=[string]$process.Path
-            if (-not $path -or ([long]$process.MainWindowHandle -eq 0)) {continue}
-            $isCodex=$path -match 'OpenAI[.\\]Codex|\\Codex\\|\\Codex\.exe$'
-            $isChatGPT=$path -match 'OpenAI[.\\]ChatGPT|\\ChatGPT\\|\\ChatGPT\.exe$'
+            if (-not $path) {continue}
+            $isCodex=$path -match '\\OpenAI\.Codex_[^\\]+\\app\\[^\\]+\.exe$|\\(?:OpenAI[.\\])?Codex\\(?:app\\)?(?:Codex|ChatGPT)\.exe$'
+            $isChatGPT=$path -match '\\OpenAI\.ChatGPT[^\\]*\\app\\[^\\]+\.exe$|\\(?:OpenAI[.\\])?ChatGPT\\(?:app\\)?ChatGPT\.exe$'
             if (-not $isCodex -and -not $isChatGPT) {continue}
             $kind=if ($isCodex) {'Codex'} else {'ChatGPT'}
             if ($target -ne 'Either' -and $target -ne $kind) {continue}

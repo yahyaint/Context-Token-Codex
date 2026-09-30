@@ -42,7 +42,7 @@ $worker = [PowerShell]::Create()
         . (Join-Path $folder 'Restart.Core.ps1')
         . (Join-Path $folder 'Usage.Provider.ps1')
         while (-not $shared.Stop) {
-            try { $snapshot=Get-MonitorSnapshot -QuickStart:($shared.Scans -eq 0); Update-SnapshotQuota $snapshot $shared.LiveQuota $CodexHome; $shared.Latest=$snapshot; $shared.Error=''; $shared.Scans++ }
+            try { $snapshot=Get-MonitorSnapshot -QuickStart:($shared.Scans -eq 0); Update-SnapshotQuota $snapshot $shared.LiveQuota $CodexHome; $shared.Latest=$snapshot; $shared.Error=''; $shared.Scans++; $shared.ReaderErrors=$Error.Count; $shared.TypeNamesMax=($script:rollouts.Values|ForEach-Object {$_.PSTypeNames.Count}|Measure-Object -Maximum).Maximum }
             catch { $shared.Error=$_.Exception.Message }
             for ($i=0; $i -lt 5 -and -not $shared.Stop; $i++) { Start-Sleep -Milliseconds 200 }
         }
@@ -307,11 +307,28 @@ function Save-QuotaDiagnostic {
     if(-not $DiagnosticReport -or ([DateTime]::UtcNow-$script:diagnosticAt).TotalSeconds -lt 5){return}
     $script:diagnosticAt=[DateTime]::UtcNow
     try {
+        # Optional diagnostic request: measure retained managed memory, not just allocations.
+        $collectPath=$DiagnosticReport+'.collect'
+        if([IO.File]::Exists($collectPath)){
+            [IO.File]::Delete($collectPath)
+            $script:diagnosticBeforeGC=[GC]::GetTotalMemory($false)/1MB
+            [GC]::Collect();[GC]::WaitForPendingFinalizers();[GC]::Collect()
+            $script:diagnosticAfterGC=[GC]::GetTotalMemory($false)/1MB
+        }
         $quota=Get-WidgetQuota
         $data=@{CheckedAt=[DateTimeOffset]::Now.ToString('o');Fetching=$shared.Fetching;IdentityPending=$shared.QuotaIdentityPending;Error=$shared.QuotaError;Source=$quota.Source;Plan=$quota.Plan;Windows=@($quota.Windows|Select-Object Minutes,Remaining);Labels=@($script:contextQuotaRows.Values|ForEach-Object {$_.Label.Text});ParkQuota=$script:parkQuota.Text;WindowVisible=$window.IsVisible;ParkVisible=$restoreTab.IsVisible;BackgroundOpacity=$restoreTab.Content.Background.Opacity;Columns=$ContextQuotaBars.Columns}
         $data.ManagedMB=[Math]::Round([GC]::GetTotalMemory($false)/1MB,1)
         $data.WorkingMB=[Math]::Round([Diagnostics.Process]::GetCurrentProcess().WorkingSet64/1MB,1)
         $data.CardControls=$script:cardControls.Count;$data.TokenControls=$script:tokenTaskRows.Count
+        $data.WorkerErrors=$worker.Streams.Error.Count;$data.QuotaErrors=$quotaWorker.Streams.Error.Count
+        $data.UIErrors=$Error.Count;$data.Scans=$shared.Scans
+        $data.WorkerState=[string]$worker.InvocationStateInfo.State
+        $data.ReaderErrors=$shared.ReaderErrors
+        $data.ProcessId=$PID;$data.CPUSeconds=[Diagnostics.Process]::GetCurrentProcess().TotalProcessorTime.TotalSeconds
+        $data.TypeNamesMax=$shared.TypeNamesMax
+        $assemblies=@([AppDomain]::CurrentDomain.GetAssemblies());$data.Assemblies=$assemblies.Count
+        $data.WidgetAssemblies=@($assemblies|Where-Object {$_.GetName().Name -eq 'ContextWidget'}).Count
+        $data.BeforeGCMB=$script:diagnosticBeforeGC;$data.AfterGCMB=$script:diagnosticAfterGC
         [void][IO.Directory]::CreateDirectory((Split-Path ([IO.Path]::GetFullPath($DiagnosticReport)) -Parent))
         [IO.File]::WriteAllText($DiagnosticReport,($data|ConvertTo-Json -Depth 5),[Text.UTF8Encoding]::new($false))
     }catch{}
@@ -462,10 +479,10 @@ function Update-TokenDetailPanel($view,$chat) {
     $view.ActivityCount.ToolTip=if($a.Ready){"$(Format-TokenValue $a.Calls) recorded calls"}else{'No complete call record is available.'}
     $lines=@()
     if($a.Ready){
-        $top=@($a.Tools|Where-Object {-not (Test-ExecToolName $_.Name)}|Select-Object -First 6)
-        foreach($tool in $top){$lines+="$($tool.Name)   $(Format-TokenValue $tool.Count)"}
-        if(@($a.Tools|Where-Object {-not (Test-ExecToolName $_.Name)}).Count -gt 6){$rest=($a.Tools|Where-Object {-not (Test-ExecToolName $_.Name)}|Select-Object -Skip 6|Measure-Object Count -Sum).Sum;$lines+="Other calls   $(Format-TokenValue $rest)"}
-        if(-not $top.Count -and -not $a.Calls){$lines+='No tool calls are in this record.'}
+        $eligible=@($a.Tools|Where-Object {-not (Test-ExecToolName $_.Name)})
+        for($i=0;$i -lt [Math]::Min(6,$eligible.Count);$i++){$tool=$eligible[$i];$lines+="$($tool.Name)   $(Format-TokenValue $tool.Count)"}
+        if($eligible.Count -gt 6){$rest=0L;for($i=6;$i -lt $eligible.Count;$i++){$rest+=$eligible[$i].Count};$lines+="Other calls   $(Format-TokenValue $rest)"}
+        if(-not $eligible.Count -and -not $a.Calls){$lines+='No tool calls are in this record.'}
     }else{$lines+='No complete call record is available.'}
     if($a.Partial){$lines+='* Some calls lack an ID or exceed the scan limit.'}
     $view.Activity.ToolTip='Recorded calls in this rollout. Counts do not measure token cost. Tool and automation token counters are unavailable.'
@@ -716,12 +733,12 @@ function Update-Cards($snapshot) {
 function Update-ParkedBar {
     if(-not $script:restoreTab){return}
     $snapshot=$shared.Latest;$chats=@($snapshot.Cards)
-    $chat=@($chats|Where-Object Id -eq $script:displayedTask|Select-Object -First 1)
+    $chat=@($chats|Where-Object Id -eq $script:displayedTask)
     $lead=if($chat.Count){$chat[0]}elseif($chats.Count){$chats[0]}else{$null}
     $script:parkTitle.Text=if($lead){$lead.Title}else{'No active chats'};$script:parkTitle.ToolTip=$script:parkTitle.Text
     $script:parkContext.Text=if($lead -and $null -ne $lead.Percent){'Context {0:N1}%' -f $lead.Percent}else{'Context --'}
     $script:parkContext.ToolTip=if($lead){"$(Format-TokenValue $lead.Input) / $(Format-TokenValue $lead.Window) tokens"}else{$null}
-    $tokens=@($snapshot.Tokens.Rows|Where-Object Id -eq $lead.Id|Select-Object -First 1)
+    $tokens=@($snapshot.Tokens.Rows|Where-Object Id -eq $lead.Id)
     $total=if($tokens.Count){$tokens[0].Total}else{$null}
     $script:parkTokens.Text="Tokens $(Format-ShortTokenValue $total)";$script:parkTokens.ToolTip="$(Format-TokenValue $total) tokens"
     $quota=Get-WidgetQuota
@@ -1197,7 +1214,7 @@ $timer.Add_Tick({
         Save-QuotaDiagnostic
         Update-LimitRestartControls
         if($QueueMode.Tag -eq 'Selected'){Update-QueuePage}
-        if ($prefs.Mode -eq 'Tokens') { Update-TokenPanel }
+        if ($prefs.Mode -eq 'Tokens' -and $window.IsVisible -and $TokensPanel.Visibility -eq 'Visible') { Update-TokenPanel }
         if ($script:shared.Error) { $Health.Text='Data unavailable: '+$script:shared.Error; $MiniStatus.Text='Data unavailable - open for details' }
         $snapshot=$script:shared.Latest
         if ($snapshot -and -not [object]::ReferenceEquals($snapshot,$script:lastSnapshot)) {

@@ -54,18 +54,40 @@ Use STE for app text. Preserve earlier versions and settings. Keep GitHub public
    - Keep the MIT license and existing attribution.
    - Check staged files for private data. Commit locally. Keep the GitHub push on hold.
 
-## Pending real-session check
+## Final queue - complete
 
-Two live chats still record 258400 after saving 544000.
-The native fixture confirms that a fresh engine and resumed chat can use 516800 with the current 95% catalog value.
-The real desktop chats still need a safe restart and a new usage record.
-Do not force-close running chats. Keep this item pending until a real record confirms it.
+9. [x] Finish the longer actual-widget memory test.
+   - A parked Tokens run showed continued RAM growth.
+   - Stop updates to hidden token panels. Keep the parked bar and data collector live.
+   - Run a new bounded soak after the repair. Record errors, stale data, memory and CPU.
+   - Fix growing Selected type names in persistent PowerShell objects. Add repeated-read regression checks.
+   - Final 30-minute run: 120 samples, no errors or stale readings, one process, and two source type names.
+   - Peak working set: 377.6 MiB. See AUDIT.md for scope and CPU.
+10. [x] Finish update-safe desktop restart identity.
+   - Select the OpenAI.Codex desktop path even when its file name is ChatGPT.exe.
+   - Exclude ordinary ChatGPT, CLI binaries and bundled helpers.
+   - Keep the idle gate and normal close. Test the fixture close/reopen in both shells.
+   - Package-version, renamed-file and helper exclusion fixtures pass in both shells.
+   - The real primary OpenAI.Codex path is recognized. Real Codex was not closed.
+11. [x] Install the repairs and prepare the final local release.
+   - Refresh the open CTC. Keep earlier versions and current settings.
+   - Update test evidence, docs, source archive and local Git. Keep publication held.
+
+## Real-session result
+
+- [x] This chat now records 516800. Its saved544000 value and the current95% catalog value match.
+- [x] The earlier Astra chat also records516800 in its latest usage record.
+Its project and global overrides are now absent. That external settings change is preserved.
+The Astra record confirms the earlier544000 setting, not a later reset to default.
+Do not restore or change those settings without a user request.
+A full app restart is no longer needed to prove that the earlier window update was adopted.
+Do not force-close running chats.
 
 ## Resume packet
 
 Working source: `work/context-widget`.
 The canonical publication checkout and installed runtime are recorded in the private workspace resume file.
-Version 6.8.4 is the current visual update. The latest widget is restored after tested UI changes.
+Version 6.8.5 is the current repair. The latest widget is restored after tested UI changes.
 Weekly-only WPF fixtures pass in PowerShell 5.1 and 7 after the array repair.
 Weekly-only quota, parked startup, Queue, token layout, tool tile, Exec results, command types and script references are implemented.
 Final package, runtime alignment, local commit and source archive are prepared. Publication remains held.

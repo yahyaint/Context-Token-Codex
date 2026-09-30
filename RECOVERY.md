@@ -23,7 +23,7 @@
 | CTC rejects TOML syntax | Edit the file through Codex. Keep multiline strings. Run test_regressions.ps1 before you install a reader change. |
 | Quota refresh is slow | Allow up to 45 seconds. Check CLI initialization, account response, sign-in, and network access. |
 | Quota data are old | Read the record time. Select Refresh. Keep the last reading marked as old. |
-| Widget is hidden | Select the ctc tray icon or edge tab. Or open ContextWidget.exe again. |
+| Widget is hidden | Select the ctc tray icon or Restore on the parked bar. Or open ContextWidget.exe again. |
 | Auto-open fails | Check Auto-open, Target, Windows Startup apps, shortcut path, and watcher process. Run test_watcher.ps1. |
 | Local startup is slow | Check session sizes and data status. Run test_startup.ps1. Keep the complete lifecycle scan. |
 | Preferences are incorrect | Compare overlay.json with overlay.json.invalid-*.bak. Keep the backup until recovery is complete. |
@@ -152,3 +152,30 @@ Do not store commands, arguments or stdout in activity summaries.
 Keep large-output reads bounded. Keep the quick context scan ahead of the full activity backfill.
 If results stay unknown, check the native block type before changing counter logic.
 Do not copy real rollout records into a public test fixture.
+
+## Desktop executable names
+
+Some Codex packages use app/ChatGPT.exe. The file name alone does not identify the app.
+Check the OpenAI.Codex package path. Exclude app/resources helpers and Codex/bin CLI files.
+Run test_restart.ps1 and test_watcher.ps1 after a process identity repair.
+Run test_restart_flow.ps1 only with its marked fixture. It must not close real Codex windows.
+Do not use a process-name kill to repair the desktop restart.
+
+## RAM grows during polling
+
+Run test_usage.ps1 and test_context_editor.ps1 in both shells.
+Repeated reads must keep source object type names unchanged.
+Check Select-Object without -Property on objects that remain in a cache.
+In PowerShell 5.1, each selection can add a Selected type name to the same object.
+Use an array index to read a selected item. Keep the source object's metadata unchanged.
+Keep the parsed-settings cache bounded. Compare file contents before you reuse parsed data.
+
+For a live check, exit CTC from its tray menu. Start Overlay.ps1 with -DiagnosticReport and a private file path.
+Check ManagedMB, WorkingMB, Scans, ProcessId, CPUSeconds, and TypeNamesMax over at least 30 minutes.
+Keep the same process during the test. Check visible Tokens and the parked bar.
+Do not clear the working set to hide growth.
+
+The optional diagnostic request is a file named `<report-path>.collect`.
+CTC consumes this file and records BeforeGCMB and AfterGCMB after garbage collection.
+Use this request outside the stability test. It changes memory measurements.
+Diagnostic reports and heap data must stay outside the public repository.

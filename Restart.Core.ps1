@@ -1,5 +1,17 @@
 ﻿# SPDX-License-Identifier: MIT
 # This gate uses recorded lifecycle data. Unknown data always block a restart.
+function Select-CodexDesktopProcesses($Processes) {
+    foreach($process in @($Processes)){
+        try {
+            $path=[string]$process.Path
+            # New desktop builds can use ChatGPT.exe inside OpenAI.Codex.
+            # Identity comes from the app path, not the process display name.
+            $packageMain='\\OpenAI\.Codex_[^\\]+\\app\\[^\\]+\.exe$'
+            $legacyMain='\\(?:OpenAI[.\\])?Codex\\(?:app\\)?(?:Codex|ChatGPT)\.exe$'
+            if($path -and ($path -match $packageMain -or $path -match $legacyMain)){$process}
+        }catch{continue}
+    }
+}
 function Get-RestartReadiness($States,[int]$FileLimit=1024) {
     $all=@($States)
     if(-not $all.Count){return [pscustomobject]@{Ready=$false;Active=$null;Reason='No chat state is available.'}}

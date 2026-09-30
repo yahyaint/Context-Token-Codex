@@ -50,7 +50,7 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
         $startedProcess=$true
         # Drain diagnostics but never display them: CLI output can contain local paths.
         $stderr=$process.StandardError.ReadToEndAsync()
-        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.8.4"}}}')
+        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.8.5"}}}')
         $process.StandardInput.Flush()
         $phase='CLI initialization'; $deadline=[DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         while ([DateTime]::UtcNow -lt $deadline) {
@@ -153,7 +153,9 @@ function Get-RecordedTokenSummary {
         $title=if ($identity.UiName) {$identity.UiName} else {$state.ThreadId}
         $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$true;Total=$null;Input=$null;Cached=$null;Uncached=$null;Output=$null;Reasoning=$null;Observed=$null;LastInput=$null;LastCached=$null;LastOutput=$null;Compactions=$state.CompactCount;QuotaObserved=$state.RateLimitAt;Activity=(Get-RecordedToolActivity $state)}
     }
-    $latest=$script:rollouts.Values | Where-Object {$_.RateLimits} | Sort-Object RateLimitAt -Descending | Select-Object -First 1
+    # Do not let Select-Object add type names to the persistent rollout object.
+    $latestRows=@($script:rollouts.Values | Where-Object {$_.RateLimits} | Sort-Object RateLimitAt -Descending)
+    $latest=if($latestRows.Count){$latestRows[0]}else{$null}
     $quota=$null
     if ($latest) {
         $r=$latest.RateLimits
@@ -244,5 +246,5 @@ function Select-FreshQuota($live,$recorded) {
     }
     $windows=@($byName.Values|Sort-Object Name)
     $newest=if($recorded.Observed -gt $live.Observed){$recorded}else{$live}
-    [pscustomobject]@{Windows=$windows;Observed=($windows|Sort-Object Observed|Select-Object -First 1).Observed;Source=(@($windows|ForEach-Object Source|Select-Object -Unique)-join ' + ');Plan=$(if($newest.Plan){$newest.Plan}elseif($live.Plan){$live.Plan}else{$recorded.Plan});ResetCredits=$live.ResetCredits;Credits=$newest.Credits}
+    [pscustomobject]@{Windows=$windows;Observed=@($windows|Sort-Object Observed)[0].Observed;Source=(@($windows|ForEach-Object Source|Select-Object -Unique)-join ' + ');Plan=$(if($newest.Plan){$newest.Plan}elseif($live.Plan){$live.Plan}else{$recorded.Plan});ResetCredits=$live.ResetCredits;Credits=$newest.Credits}
 }

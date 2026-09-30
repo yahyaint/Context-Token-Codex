@@ -1,3 +1,54 @@
+# Version 6.8.5 repair checks - 30 September 2026
+
+The audit found a retained-memory fault in Windows PowerShell 5.1.
+Repeated Select-Object calls added Selected type names to persistent rollout objects.
+PowerShell cached the growing combined type-name strings. Their total size increased with each poll.
+The repair indexes sorted arrays. It keeps the original object's type names unchanged.
+The quota and cached-editor checks repeat reads in both shells.
+
+Microsoft [ClrMD](https://github.com/microsoft/clrmd) identified the retained type-cache strings.
+The diagnostic library is not included in CTC. No transcript strings were exported for this check.
+Before the repair, 400 collector scans retained about 41.3 MiB after garbage collection.
+After the repair, scans 200 through 400 stayed near 24.4 MiB.
+These collector checks are separate from the actual-window memory test.
+The final 30-minute window test passed on this host.
+It used one installed process with three token panels. It covered visible Tokens, the parked bar, and restore.
+There were 120 samples, no stale readings, and no quota errors.
+Source type names stayed at two. No manual garbage collection ran during this test.
+
+| Measure | Actual-window result |
+|---|---:|
+| Peak working set | 377.6 MiB |
+| Peak managed memory | 187.7 MiB |
+| Final-five-minute mean working set increase over minutes 5-10 | 14.3 MiB |
+| CPU after warmup, one-core basis | 10.5% |
+
+CPU is processor-time change divided by wall time. It is not whole-machine CPU use.
+These values cover the widget, not the watcher or separate quota helper.
+The earlier 6.8.4 parked run peaked at 1053 MiB. Its retained metadata fault was confirmed and repaired.
+The runs used different visible states. They are not a controlled performance comparison.
+Thirty minutes on this host does not prove indefinite stability on every Windows system.
+
+The settings reader also caches parsed root settings. It compares content on every read.
+The cache contains at most 32 entries. Large files are not cached.
+Tests cover same-size and same-time edits, deletion, duplicate keys, and unchanged type metadata.
+On this host, 200 repeated settings reads took 4.06 seconds before caching and 0.38 seconds after caching.
+
+Fifteen backend suites and the actual WPF controls pass in PowerShell 5.1 and 7.
+The context matrix has 85 cases per shell. Earlier native Sol and Astra checks passed 24 cases.
+Real usage records now confirm 516800 for the original 544000 settings at 95% usable capacity.
+The later Astra project/global reset is preserved. Its last record confirms the earlier setting.
+No real Codex chat was closed.
+
+Desktop identity uses the primary OpenAI.Codex app path. It accepts the package's ChatGPT.exe name.
+Version changes and renamed primary files pass. Ordinary ChatGPT, CLI files, and resource helpers are excluded.
+Normal close and reopen passed with the marked fixture app in both shells.
+The updater reported no eligible desktop update. An actual update cycle could not be tested.
+Hosted CI, another Windows machine, ARM, and a real Windows sign-in remain unverified.
+Publication remains held.
+
+---
+
 # Version 6.8.4 visual check - 30 September 2026
 
 Tool calls now uses the token tile label color, value color and font sizes.

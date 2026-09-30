@@ -1,9 +1,9 @@
-# Context-Token Codex 6.8.4
+# Context-Token Codex 6.8.5
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
 CTC is a Windows widget for Codex context, token counts, and account quotas.
-Created by **Yahya Nabil** â€” [yahyanabil.com](https://yahyanabil.com).
+Created by **Yahya Nabil** | [yahyanabil.com](https://yahyanabil.com).
 
 **Windows 10/11 | MIT | Independent community project**
 
@@ -43,7 +43,9 @@ After the move, enable Auto-open from the new location.
 | Context | Active chats, recorded context percentage, and compaction status. |
 | Tokens | Recorded chat totals, input, output, cached input, and reasoning. |
 | Limits | Global and project context settings. Includes saved idle projects. |
+| Queue | Saved limit changes, recorded confirmation, and safe restart controls. |
 | Compact | One selected active chat. Use the arrows to select another chat. |
+| Parked bar | Selected chat context, tokens, navigation, and account quotas. |
 
 The quota bars appear in every view.
 They show the remaining account quota.
@@ -102,8 +104,8 @@ A percentage needs an entered numeric window.
 CTC saves the percentage as tokens.
 It does not change automatically with later window settings.
 
-Use **Ã—1 / Ã—2 / Ã—3** to multiply the displayed base value.
-If you select Ã—2 then Ã—3, the results are twice then three times the same base.
+Use **x1 / x2 / x3** to multiply the displayed base value.
+If you select x2 then x3, the results are twice then three times the same base.
 Numeric compaction thresholds keep their percentage.
 Percentage input stays a percentage. `default` stays `default`.
 If no base value is available, enter a numeric window first.

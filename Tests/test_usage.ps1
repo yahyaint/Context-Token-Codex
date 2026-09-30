@@ -51,3 +51,17 @@ $b=ConvertTo-QuotaSnapshot ([pscustomobject]@{rateLimits=[pscustomobject]@{limit
 $merged=Select-FreshQuota $a $b
 Assert (@($merged.Windows).Count -eq 1 -and $merged.Windows[0].Remaining -eq 80) 'Quota identity depends on display names.'
 'PASS: stable quota identity across source labels.'
+
+# The quota helpers poll the same rollout. Its type metadata must stay unchanged.
+# PS 5.1 Select-Object without -Property appends a Selected type name on every call.
+$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'Monitor.Core.ps1'),[ref]$null,[ref]$null)
+foreach($name in @('Format-RateWindow','Get-QuotaLine')){
+    $fn=$ast.Find({param($n)$n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true)
+    . ([scriptblock]::Create($fn.Extent.Text))
+}
+$new.RateLimits=[pscustomobject]@{plan_type='plus';primary=[pscustomobject]@{used_percent=20;window_minutes=300;resets_at=$now.AddHours(1).ToUnixTimeSeconds()}}
+$new|Add-Member RateLimitAt $now -Force
+$names=@($new.PSTypeNames)
+foreach($i in 1..300){$null=Get-RecordedTokenSummary;$null=Get-QuotaLine}
+Assert (($new.PSTypeNames -join '|') -ceq ($names -join '|')) 'Quota polling grows persistent type names and ETS cache keys.'
+'PASS: repeated quota polling preserves persistent object type metadata.'

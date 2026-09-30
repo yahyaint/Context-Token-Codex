@@ -96,6 +96,21 @@ function Get-ConfiguredSqliteHome([string]$configFile) {
     if ($match.Groups[1].Value -eq '"') {$value=$value.Replace('\\','\')}
     return $value
 }
+
+function Get-CachedRootSettings([string]$path) {
+    # Read and compare contents on every poll. Timestamp/length alone can miss edits.
+    # Keep the writer's strict parsing and stale-save checks independent of this cache.
+    $content=[IO.File]::ReadAllText($path)
+    if(-not $script:rootSettingsCache){$script:rootSettingsCache=@{}}
+    $prior=$script:rootSettingsCache[$path]
+    if($prior -and [string]::Equals($prior.Content,$content,[StringComparison]::Ordinal)){return $prior.Entries}
+    $entries=@(Get-TomlRootSettings $content)
+    if($content.Length -le 262144){
+        if($script:rootSettingsCache.Count -ge 32 -and -not $script:rootSettingsCache.ContainsKey($path)){$script:rootSettingsCache.Clear()}
+        $script:rootSettingsCache[$path]=@{Content=$content;Entries=$entries}
+    }elseif($prior){$script:rootSettingsCache.Remove($path)}
+    return $entries
+}
 if (-not $SqliteHome) {
     $SqliteHome = Get-ConfiguredSqliteHome (Join-Path $CodexHome 'config.toml')
     if (-not $SqliteHome) { $SqliteHome = $env:CODEX_SQLITE_HOME }
@@ -142,8 +157,8 @@ $script:modelInfoCacheWrite = [DateTime]::MinValue
 
 function Get-TopLevelModel([string]$path) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return '' }
-    $content = [System.IO.File]::ReadAllText($path)
-    $entry=@(Get-TomlRootSettings $content | Where-Object Key -ceq 'model' | Select-Object -Last 1)
+    $entry=@(Get-CachedRootSettings $path | Where-Object Key -ceq 'model')
+    if($entry.Count){$entry=@($entry[-1])}
     if ($entry.Count -and $entry[0].Value -match '^["'']([^"'']+)["'']\s*(?:#[^\r\n]*)?\s*$') {return $Matches[1]}
     return ''
 }
@@ -305,8 +320,7 @@ function Get-ScaledContextDraft($base, [int]$multiplier, [string]$windowText, [s
 function Get-TopLevelNumericSetting([string]$path, [string]$key) {
     if ($key -cnotin @('model_auto_compact_token_limit', 'model_context_window')) { throw 'CTC cannot change this setting.' }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
-    $content = [System.IO.File]::ReadAllText($path)
-    $settings=@(Get-TomlRootSettings $content | Where-Object Key -ceq $key)
+    $settings=@(Get-CachedRootSettings $path | Where-Object Key -ceq $key)
     if ($settings.Count -gt 1) { throw "The TOML setting occurs twice: $key." }
     if (-not $settings.Count) { return $null }
     if ($settings[0].Value -notmatch '^\+?(\d(?:_?\d)*)\s*(?:#[^\r\n]*)?\s*$') { throw "The setting must contain a whole number: $key." }
@@ -315,8 +329,8 @@ function Get-TopLevelNumericSetting([string]$path, [string]$key) {
 
 function Get-TopLevelAutoCompactScope([string]$path) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return '' }
-    $content = [System.IO.File]::ReadAllText($path)
-    $entry=@(Get-TomlRootSettings $content | Where-Object Key -ceq 'model_auto_compact_token_limit_scope' | Select-Object -Last 1)
+    $entry=@(Get-CachedRootSettings $path | Where-Object Key -ceq 'model_auto_compact_token_limit_scope')
+    if($entry.Count){$entry=@($entry[-1])}
     if (-not $entry.Count -or $entry[0].Value -notmatch '^["''](total|body_after_prefix)["'']\s*(?:#.*)?$') {return ''}
     return $Matches[1]
 }
@@ -1087,9 +1101,11 @@ function Format-RateWindow($window) {
 }
 
 function Get-QuotaLine {
-    $latest = $script:rollouts.Values | Where-Object { $_.RateLimits } |
-        Sort-Object RateLimitAt -Descending | Select-Object -First 1
-    if (-not $latest) { return '' }
+    # Select-Object without -Property mutates persistent objects' type names in PS 5.1.
+    # Repeated selection creates ever-larger ETS cache keys. Index a sorted array instead.
+    $latestRows = @($script:rollouts.Values | Where-Object { $_.RateLimits } | Sort-Object RateLimitAt -Descending)
+    if (-not $latestRows.Count) { return '' }
+    $latest=$latestRows[0]
     $parts = @()
     foreach ($window in @($latest.RateLimits.primary, $latest.RateLimits.secondary)) {
         $part = Format-RateWindow $window

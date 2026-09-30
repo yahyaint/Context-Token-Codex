@@ -1,5 +1,19 @@
 # Changelog
 
+## 6.8.5 - 30 September 2026
+
+- Fix growing PowerShell type metadata during repeated quota reads. Use array indexes for persistent objects.
+- Keep type names unchanged in quota, cached settings, parked chat, and token detail reads.
+- Add repeated-read regression checks in both shells.
+- Do not update hidden token panels. Keep parked context, tokens and quotas live.
+- Cache parsed root settings. Compare file contents on each read. Keep at most 32 entries.
+- Test same-size and same-time edits, duplicate keys, deletion, and cache limits.
+- Correct unreadable symbols in the README. Add Queue and Parked bar to its view table.
+- Find Codex desktop by its primary app path. Support ChatGPT.exe inside OpenAI.Codex.
+- Exclude ordinary ChatGPT, CLI binaries and bundled helpers from restart targets.
+- Detect visible desktop apps without a fixed executable-name list.
+- Test package versions, renamed desktop files, excluded helpers and normal fixture close/reopen.
+
 ## 6.8.4 - 30 September 2026
 
 - Match the Tool calls label and value to the token metric tiles.

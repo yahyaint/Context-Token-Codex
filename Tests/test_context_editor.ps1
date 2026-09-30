@@ -2,7 +2,7 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'Monitor.Core.ps1'),[ref]$null,[ref]$null)
-foreach ($name in @('Get-TomlStatements','Get-TomlRootSettings','Get-TopLevelNumericSetting','Get-TopLevelContextWindow','Get-TopLevelAutoCompactLimit','Get-TopLevelModel','Get-ModelCatalogInfo','ConvertTo-TokenLimit','Get-LimitEditorBaseline','ConvertTo-ContextDraft','Get-ScaledContextDraft','Get-ContextConfigPaths')) {
+foreach ($name in @('Get-TomlStatements','Get-TomlRootSettings','Get-CachedRootSettings','Get-TopLevelNumericSetting','Get-TopLevelContextWindow','Get-TopLevelAutoCompactLimit','Get-TopLevelAutoCompactScope','Get-TopLevelModel','Get-ModelCatalogInfo','ConvertTo-TokenLimit','Get-LimitEditorBaseline','ConvertTo-ContextDraft','Get-ScaledContextDraft','Get-ContextConfigPaths')) {
     $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true)
     . ([scriptblock]::Create($fn.Extent.Text))
 }
@@ -39,4 +39,22 @@ $script:configPath=Join-Path $fixture 'missing.toml'
 $script:modelCachePath=Join-Path $fixture 'missing-cache.json'
 Assert ((Get-LimitEditorBaseline (Join-Path $fixture 'missing-project.toml') ([pscustomobject]@{Model='future-model';Window=123456})).Source -eq 'live usable window') 'Unknown model should use labeled live fallback.'
 Assert ($null -eq (Get-LimitEditorBaseline (Join-Path $fixture 'missing-project.toml') $null).Base) 'Idle unknown model must stay unknown.'
+$cacheFile=Join-Path $fixture 'cache.toml'
+[IO.File]::WriteAllText($cacheFile,"model_context_window = 200000`n")
+Assert ((Get-TopLevelContextWindow $cacheFile) -eq 200000) 'Initial cached value is incorrect.'
+$mtime=[IO.File]::GetLastWriteTimeUtc($cacheFile)
+[IO.File]::WriteAllText($cacheFile,"model_context_window = 300000`n")
+[IO.File]::SetLastWriteTimeUtc($cacheFile,$mtime)
+Assert ((Get-TopLevelContextWindow $cacheFile) -eq 300000) 'Equal length and timestamp hid an external edit.'
+[IO.File]::WriteAllText($cacheFile,"model_context_window = 300000`nmodel_context_window = 400000`n")
+Reject {Get-TopLevelContextWindow $cacheFile} 'Cached duplicate keys were accepted.'
+[IO.File]::Delete($cacheFile)
+Assert ($null -eq (Get-TopLevelContextWindow $cacheFile)) 'Deleted settings returned a cached value.'
+foreach($i in 1..40){$p=Join-Path $fixture "cache-$i.toml";[IO.File]::WriteAllText($p,'model_context_window = 200000');$null=Get-TopLevelContextWindow $p}
+Assert ($script:rootSettingsCache.Count -le 32) 'Settings cache exceeded its bound.'
+[IO.File]::WriteAllText($cacheFile,"model = 'fixture-model'`nmodel_auto_compact_token_limit_scope = 'total'`n")
+$entries=@(Get-CachedRootSettings $cacheFile)
+$typeCounts=@($entries|ForEach-Object {$_.PSTypeNames.Count})
+foreach($i in 1..200){$null=Get-TopLevelModel $cacheFile;$null=Get-TopLevelAutoCompactScope $cacheFile}
+Assert ((@($entries|ForEach-Object {$_.PSTypeNames.Count}) -join ',') -ceq ($typeCounts -join ',')) 'Editor reads mutate cached type metadata.'
 'PASS: editor scope precedence, unknown-model fallbacks, anchored multipliers, preserved compaction ratio, percentages, invalid limits and overflow.'

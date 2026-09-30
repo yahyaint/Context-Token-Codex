@@ -74,7 +74,7 @@ Keep historical evidence exact. Use STE for new text around that evidence.
 | Select | Choose a button, menu item, or option. |
 | Drag | Move a control while you hold the mouse button. |
 | Expand / Collapse | Change the widget or details size. |
-| Minimize | Move the widget to the taskbar. |
+| Minimize | Show the parked bar at the same corner. |
 | Refresh | Read the newest account quota values. |
 | Reload | Load the chat settings again in Codex. |
 | Reset | Return a setting or quota window to its specified start state. |

@@ -1,3 +1,15 @@
+# 6.8.5 checks - 30 September 2026
+
+Fifteen backend suites pass in PowerShell 5.1 and 7 on this Windows host.
+The WPF controls pass in both shells. The quota-polling and editor checks keep cached type metadata unchanged.
+The desktop selector supports changed package versions and primary file names.
+Normal close/reopen uses a marked fixture. Real Codex was not closed.
+The actual-window 30-minute test passed in one installed process. See AUDIT.md for measured memory and CPU.
+Hosted CI, ARM, another Windows machine, and real Windows sign-in remain unverified.
+No eligible desktop update was available for an actual update-cycle test.
+
+---
+
 # STE text - 6.7.1
 
 The app uses short instructions and defined software terms.

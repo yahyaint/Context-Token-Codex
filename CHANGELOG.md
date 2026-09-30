@@ -7,6 +7,7 @@
 - Show external file changes beside the original queued values.
 - Reject malformed queue paths and limits. Clear misleading rows after a queue read error.
 - Preserve restart request expiry during helper maintenance. Test expired requests without closing the fixture.
+- Keep cancelled requests cancelled during helper maintenance.
 - Refresh the owner's outdated waiting helper with the memory repair. Keep its request and idle gate.
 - Add QUEUE-VERIFICATION.md and exact runtime bytes to the release receipt.
 

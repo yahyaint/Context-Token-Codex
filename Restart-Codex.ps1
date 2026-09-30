@@ -22,6 +22,12 @@ $owned=$false
 try {
     try{$owned=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$owned=$true}
     if(-not $owned){exit}
+    if($RequestExpiresAt){
+        # Maintenance must not revive a request that the user cancelled meanwhile.
+        if(-not [IO.File]::Exists($StatusPath)){exit}
+        $existing=[IO.File]::ReadAllText($StatusPath)|ConvertFrom-Json
+        if($existing.Status -ne 'Waiting'){exit}
+    }
     . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome -LookbackHours 168 -MaxRecentRollouts 256 -ReconcileSeconds 5
     . (Join-Path $PSScriptRoot 'Monitor.Data.ps1')
     # Scan user and agent records through the folder path for restart checks.

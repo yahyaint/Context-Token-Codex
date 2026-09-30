@@ -29,7 +29,7 @@ Checkboxes alone do not prove completion. Historical checks retain their origina
 3. Malformed version-1 queue entries could pass the reader. The reader now rejects invalid paths and limits without overwriting the file.
 4. A corrupt queue could leave old rows visible. The view now clears those rows and shows the error.
 5. A waiting restart helper still used code loaded before the memory repair. The old process used 3623.5 MiB working memory.
-6. Helper maintenance could reset the request's 24-hour expiry. The helper now accepts and preserves the original expiry.
+6. Helper maintenance could reset expiry or revive a cancelled request. It now preserves expiry and resumes only a waiting request.
 7. The release receipt claimed exact runtime bytes but did not include that field. The receipt now records the byte count.
 
 The existing waiting request was preserved. Its repaired helper retains the idle gate and original expiry.

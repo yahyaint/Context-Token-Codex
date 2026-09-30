@@ -1,4 +1,4 @@
-# Codex Context Monitor - shared reader for Windows overlay 4.0
+﻿# Codex Context Monitor - shared reader for Windows overlay 4.0
 # SPDX-License-Identifier: MIT
 # Reads local Codex session/state files. Config helpers write only selected config.toml files.
 param(
@@ -53,7 +53,7 @@ function Get-TomlStatements([string]$content) {
                     while ($i+1 -lt $content.Length -and $content[$i+1] -eq $quote) { $i++ }
                     $quote=''; $multi=$false
                 }
-            } elseif (-not $multi -and $ch -eq "`n") { throw 'Unclosed TOML string. No settings were changed.' }
+            } elseif (-not $multi -and $ch -eq "`n") { throw 'The TOML string is not closed. CTC did not change settings.' }
             continue
         }
         elseif ($ch -eq '#') { $comment=$true; continue }
@@ -63,13 +63,13 @@ function Get-TomlStatements([string]$content) {
             if ($multi) { $i+=2 }; continue
         }
         elseif ($ch -eq '[' -or $ch -eq '{') { $depth++ }
-        elseif ($ch -eq ']' -or $ch -eq '}') { $depth--; if ($depth -lt 0) { throw 'Unbalanced TOML. No settings were changed.' } }
+        elseif ($ch -eq ']' -or $ch -eq '}') { $depth--; if ($depth -lt 0) { throw 'The TOML brackets do not match. CTC did not change settings.' } }
         if ($ch -eq "`n" -and $depth -eq 0) {
             [pscustomobject]@{Start=$start;Length=$i+1-$start;Text=$content.Substring($start,$i+1-$start)}
             $start=$i+1
         }
     }
-    if ($quote -or $depth -ne 0) { throw 'Incomplete TOML. No settings were changed.' }
+    if ($quote -or $depth -ne 0) { throw 'The TOML data are incomplete. CTC did not change settings.' }
     if ($start -lt $content.Length) { [pscustomobject]@{Start=$start;Length=$content.Length-$start;Text=$content.Substring($start)} }
 }
 
@@ -79,7 +79,7 @@ function Get-TomlRootSettings([string]$content, [switch]$Strict) {
         if ($text.StartsWith('[')) { break }
         if (-not $text -or $text.StartsWith('#')) { continue }
         $match=[regex]::Match($text,'^(?:([A-Za-z0-9_-]+)|"([^"\\]+)"|''([^'']+)'')\s*=\s*([\s\S]*)$')
-        if (-not $match.Success) { if ($Strict) { throw 'Unsupported TOML root key syntax. Edit this file in Codex; no settings were changed.' }; continue }
+        if (-not $match.Success) { if ($Strict) { throw 'CTC cannot use this TOML key format. Edit the file through Codex. CTC did not change settings.' }; continue }
         $key=if ($match.Groups[1].Success) {$match.Groups[1].Value} elseif ($match.Groups[2].Success) {$match.Groups[2].Value} else {$match.Groups[3].Value}
         [pscustomobject]@{Key=$key;Value=$match.Groups[4].Value;Start=$statement.Start;Length=$statement.Length}
     }
@@ -196,9 +196,9 @@ function ConvertTo-TokenLimit([string]$inputText, $window) {
     if ($value -eq 'default') { return [pscustomobject]@{ IsDefault = $true; Limit = $null } }
     $number = $value -replace '[,_ ]', ''
     if ($number -match '^(\d+(?:\.\d+)?)%$') {
-        if ($null -eq $window) { throw 'Enter a numeric context window first (e.g. 200k), or enter Compact at in tokens.' }
+        if ($null -eq $window) { throw 'Enter a number for the context window first. Example: 200k. Or enter Compact at in tokens.' }
         $percent = [double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture)
-        if ($percent -le 0 -or $percent -gt 100) { throw 'Percent must be above 0 and at most 100.' }
+        if ($percent -le 0 -or $percent -gt 100) { throw 'Enter a percentage above 0 and at most 100.' }
         $tokens = [long][Math]::Round([double]$window * $percent / 100)
     }
     elseif ($number -match '^(\d+(?:\.\d+)?)k$') {
@@ -210,7 +210,7 @@ function ConvertTo-TokenLimit([string]$inputText, $window) {
         if (-not [long]::TryParse($number, [ref]$tokens)) { throw 'Number is too large.' }
     }
     else { throw 'Use 180000, 180,000, 180k, 70%, or default.' }
-    if ($tokens -lt 1) { throw 'Limit must be at least 1 token.' }
+    if ($tokens -lt 1) { throw 'Enter at least 1 token.' }
     return [pscustomobject]@{ IsDefault = $false; Limit = $tokens }
 }
 
@@ -243,21 +243,21 @@ function ConvertTo-ContextDraft([string]$windowText, [string]$compactText) {
     $w = ConvertTo-TokenLimit $windowText $null
     $c = ConvertTo-TokenLimit $compactText $w.Limit
     if ($null -ne $w.Limit -and $null -ne $c.Limit -and $c.Limit -gt $w.Limit) {
-        throw 'Compact at must not exceed the entered context window.'
+        throw 'Compact at must be at most the entered context window.'
     }
     return [pscustomobject]@{Window=$w.Limit; Compact=$c.Limit}
 }
 
 function Get-ScaledContextDraft($base, [int]$multiplier, [string]$windowText, [string]$compactText) {
-    if ($null -eq $base -or $base -lt 1) { throw 'No window recorded. Enter a numeric context window first.' }
+    if ($null -eq $base -or $base -lt 1) { throw 'No base value is available. Enter a number for the context window first.' }
     if ($multiplier -lt 1 -or $multiplier -gt 3) { throw 'Choose 1x, 2x or 3x.' }
     $scaled = [decimal]$base * $multiplier
-    if ($scaled -gt [long]::MaxValue) { throw 'Scaled window is too large.' }
+    if ($scaled -gt [long]::MaxValue) { throw 'The multiplied window is too large.' }
     $previous = ConvertTo-TokenLimit $windowText $null
     $denominator = if ($null -ne $previous.Limit) { $previous.Limit } else { $base }
     $threshold = ConvertTo-TokenLimit $compactText $denominator
     if ($null -ne $threshold.Limit -and $threshold.Limit -gt $denominator) {
-        throw 'Compact at must not exceed the current window before scaling.'
+        throw 'Before you multiply the window, Compact at must be at most the current window.'
     }
     $nextCompact = 'default'
     if ($null -ne $threshold.Limit) {
@@ -270,13 +270,13 @@ function Get-ScaledContextDraft($base, [int]$multiplier, [string]$windowText, [s
 }
 
 function Get-TopLevelNumericSetting([string]$path, [string]$key) {
-    if ($key -notin @('model_auto_compact_token_limit', 'model_context_window')) { throw 'Unsupported setting.' }
+    if ($key -notin @('model_auto_compact_token_limit', 'model_context_window')) { throw 'CTC cannot change this setting.' }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
     $content = [System.IO.File]::ReadAllText($path)
     $settings=@(Get-TomlRootSettings $content | Where-Object Key -eq $key)
-    if ($settings.Count -gt 1) { throw "Duplicate TOML setting: $key" }
+    if ($settings.Count -gt 1) { throw "The TOML setting occurs twice: $key." }
     if (-not $settings.Count) { return $null }
-    if ($settings[0].Value -notmatch '^\+?(\d(?:_?\d)*)\s*(?:#[^\r\n]*)?\s*$') { throw "Invalid numeric setting: $key" }
+    if ($settings[0].Value -notmatch '^\+?(\d(?:_?\d)*)\s*(?:#[^\r\n]*)?\s*$') { throw "The setting must contain a whole number: $key." }
     return [long]($Matches[1].Replace('_',''))
 }
 
@@ -290,11 +290,11 @@ function Get-TopLevelAutoCompactScope([string]$path) {
 
 function Set-ContextLimits([string]$path, [hashtable]$changes) {
     foreach ($key in $changes.Keys) {
-        if ($key -notin @('model_auto_compact_token_limit','model_context_window')) { throw 'Unsupported setting.' }
-        if ($null -ne $changes[$key] -and [long]$changes[$key] -lt 1) { throw 'Limit must be at least 1 token.' }
+        if ($key -notin @('model_auto_compact_token_limit','model_context_window')) { throw 'CTC cannot change this setting.' }
+        if ($null -ne $changes[$key] -and [long]$changes[$key] -lt 1) { throw 'Enter at least 1 token.' }
     }
     $folder = Split-Path -Path $path -Parent
-    if ((Split-Path $folder -Leaf) -eq '.codex' -and -not [IO.Directory]::Exists((Split-Path $folder -Parent))) {throw 'Project folder is unavailable. Restore it before saving limits.'}
+    if ((Split-Path $folder -Leaf) -eq '.codex' -and -not [IO.Directory]::Exists((Split-Path $folder -Parent))) {throw 'The project folder is unavailable. Restore it before you save limits.'}
     if (-not (Test-Path -LiteralPath $folder -PathType Container)) {
         [void](New-Item -ItemType Directory -Path $folder -Force)
     }
@@ -307,7 +307,7 @@ function Set-ContextLimits([string]$path, [hashtable]$changes) {
     $root=@(Get-TomlRootSettings $content -Strict)
     $updated=$content
     foreach ($key in $changes.Keys) {
-        if (@($root|Where-Object Key -eq $key).Count -gt 1) { throw "Duplicate TOML setting: $key. No settings were changed." }
+        if (@($root|Where-Object Key -eq $key).Count -gt 1) { throw "The TOML setting occurs twice: $key. CTC did not change settings." }
     }
     foreach ($entry in @($root|Where-Object {$changes.ContainsKey($_.Key)}|Sort-Object Start -Descending)) {
         $updated=$updated.Remove($entry.Start,$entry.Length)
@@ -326,7 +326,7 @@ function Set-ContextLimits([string]$path, [hashtable]$changes) {
             $guard=[IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::Read -bor [IO.FileShare]::Delete))
             $current=New-Object byte[] $guard.Length; $offset=0
             while ($offset -lt $current.Length) { $n=$guard.Read($current,$offset,$current.Length-$offset); if ($n -eq 0) {break}; $offset+=$n }
-            if ([Convert]::ToBase64String($current) -cne [Convert]::ToBase64String([byte[]]$originalBytes)) { throw 'Configuration changed during editing. Reload the form and retry.' }
+            if ([Convert]::ToBase64String($current) -cne [Convert]::ToBase64String([byte[]]$originalBytes)) { throw 'The settings file changed. Reload the form. Try again.' }
             $backup="$path.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss-fff')-$([guid]::NewGuid().ToString('N').Substring(0,6))"
             [IO.File]::Replace($temporary,$path,$backup)
         } else { [IO.File]::Move($temporary,$path) }
@@ -383,7 +383,8 @@ function Get-SavedWindowStatus($state) {
         $expected = [long][Math]::Floor($resolved * [double]$catalog.EffectivePercent / 100)
     }
     return [pscustomobject]@{ Source = $source; Requested = [long]$requested;
-        Expected = $expected; Error = '' }
+        Expected = $expected; Error = ''; Status = $(if ($null -eq $expected) {'Unverified'} elseif ($state.ContextWindow -eq $expected) {'Confirmed'} else {'Pending'});
+        Message = $(if ($null -eq $expected) {'CTC cannot verify the usable window for this model.'} elseif ($state.ContextWindow -eq $expected) {'The recorded window matches the saved value.'} else {'Saved settings do not match this chat. After all chats stop, quit Codex. Open Codex again. Resume this chat.'}) }
 }
 
 
@@ -408,6 +409,12 @@ function New-RolloutState($file) {
         Cwd = ''
         Model = ''
         ServiceTier = ''
+        ToolCounts = @{}
+        SeenCalls = @{}
+        ActivityPartial = $false
+        HasMetadata = $false
+        LifecycleKnown = $false
+        Originator = ''
         TokenEvents = (New-Object 'Collections.Generic.List[object]')
         Active = $false
         StartedAt = [DateTimeOffset]::MinValue
@@ -439,7 +446,8 @@ function Get-UsageInteger($value) {
 }
 function Read-RolloutLine($state, [string]$line) {
     # Borrowed method from Codex Monitor HUD: reject irrelevant records before JSON parsing.
-    if ($line -notmatch '"type"\s*:\s*"(session_meta|turn_context|event_msg|token_usage_record|compacted)"') { return }
+    if ($line -notmatch '"type"\s*:\s*"(session_meta|turn_context|event_msg|token_usage_record|compacted|response_item)"') { return }
+    if ($line -match '"type"\s*:\s*"response_item"' -and $line -notmatch '"type"\s*:\s*"(function_call|custom_tool_call|web_search_call)"') {return}
     # Most event messages are prose/tool progress. Keep their timestamp without
     # allocating a full PowerShell JSON object for each historical message.
     if ($line -match '"type"\s*:\s*"event_msg"' -and
@@ -461,7 +469,22 @@ function Read-RolloutLine($state, [string]$line) {
     if ($when -gt $state.LastEventAt) { $state.LastEventAt = $when }
 
     switch ($record.type) {
+        'response_item' {
+            if ($payload.type -notin @('function_call','custom_tool_call','web_search_call')) {return}
+            $id=if ($payload.call_id) {[string]$payload.call_id} elseif ($payload.id) {[string]$payload.id} else {''}
+            if (-not $id -or $id.Length -gt 256) {$state.ActivityPartial=$true;return}
+            if ($state.SeenCalls.ContainsKey($id)) {return}
+            if ($state.SeenCalls.Count -ge 8192) {$state.ActivityPartial=$true;return}
+            $state.SeenCalls[$id]=$true
+            $name=if ($payload.name) {[string]$payload.name} else {[string]$payload.type}
+            $name=($name -replace '[\x00-\x1f]',' ').Trim()
+            if ($name.Length -gt 100) {$name=$name.Substring(0,100)}
+            if ($state.ToolCounts.Count -ge 64 -and -not $state.ToolCounts.ContainsKey($name)) {$name='Other tools'}
+            $state.ToolCounts[$name]=1+[long]$state.ToolCounts[$name]
+        }
         'session_meta' {
+            $state.HasMetadata=$true
+            if ($payload.originator -is [string]) {$state.Originator=([string]$payload.originator).Substring(0,[Math]::Min(100,$payload.originator.Length))}
             if ($payload.id) { $state.ThreadId = [string]$payload.id; if (-not $script:titleCache.ContainsKey($state.ThreadId)) {$script:lastIndexWrite=[DateTime]::MinValue} }
             if ($payload.cwd) { $state.Cwd = [string]$payload.cwd }
             if ($payload.source -and $payload.source -isnot [string] -and
@@ -475,6 +498,7 @@ function Read-RolloutLine($state, [string]$line) {
         'event_msg' {
             switch ($payload.type) {
                 'task_started' {
+                    $state.LifecycleKnown = $true
                     $state.Active = $true
                     $state.StartedAt = $when
                     $state.CompactingAt = [DateTimeOffset]::MinValue
@@ -484,8 +508,8 @@ function Read-RolloutLine($state, [string]$line) {
                         $state.ContextWindow=$nextWindow
                     }
                 }
-                'task_complete' { $state.Active = $false; $state.CompactingAt = [DateTimeOffset]::MinValue }
-                'turn_aborted' { $state.Active = $false; $state.CompactingAt = [DateTimeOffset]::MinValue }
+                'task_complete' { $state.LifecycleKnown = $true; $state.Active = $false; $state.CompactingAt = [DateTimeOffset]::MinValue }
+                'turn_aborted' { $state.LifecycleKnown = $true; $state.Active = $false; $state.CompactingAt = [DateTimeOffset]::MinValue }
                 'token_count' {
                     $info = $payload.info
                     if ($payload.rate_limits) {
@@ -657,7 +681,7 @@ function Invoke-Sqlite([string]$query, [string]$database = $LogDatabase) {
 
 function Get-RolloutFiles {
     if (-not (Test-Path -LiteralPath $SessionRoot -PathType Container)) {
-        $script:discoveryMode = 'waiting for first local task'
+        $script:discoveryMode = 'no local chat record'
         $script:discoveryWarning = ''
         return @()
     }
@@ -690,7 +714,7 @@ function Get-RolloutFiles {
         foreach ($file in $recent) { $paths[$file.FullName] = $file.FullName }
         $script:lastReconcile = $now
         $script:discoveryMode = 'folder fallback'
-        $script:discoveryWarning = 'thread index unavailable; background files may appear'
+        $script:discoveryWarning = 'The chat index is unavailable. CTC can show background records.'
     }
     elseif ($indexed) {
         $script:discoveryMode = 'thread index'

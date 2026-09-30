@@ -42,3 +42,12 @@ The following sources informed this review. Their source and license were checke
 | [Codexometer](https://github.com/merefield/codexometer), merefield | `5c0fd8446f8c95ea6f9c4ed3c7bc7e6a05f0b379` | Honest quota estimates and reset/baseline checks remain useful for token mode; no quota changes in this editor release. |
 
 Code reuse policy: if code is copied later, record upstream URL, full commit, source and destination paths, local changes, copyright, and complete license in THIRD_PARTY_NOTICES.md. Preserve required notices in distributed source and binaries. Git commit trailers may add `Inspired-by:` / `Source:` links; do not name upstream authors as co-authors when they did not author the CTC commit.
+
+## Token detail design - 30 September 2026
+
+[ClaudeCodeUsage](https://github.com/ClaudeCodeUsage/ClaudeCodeUsage/tree/a871da2b970433cc42a56185f32428c21d0c4e36),
+GrowthJack and contributors, informed the compact values and grouped detail view.
+Reviewed revision: `a871da2b970433cc42a56185f32428c21d0c4e36`.
+License: [MIT](https://github.com/ClaudeCodeUsage/ClaudeCodeUsage/blob/a871da2b970433cc42a56185f32428c21d0c4e36/LICENSE).
+CTC's code is original. No upstream code, images, or tokenizer are included.
+CTC shows recorded call counts. It does not present content estimates as exact tool token charges.

@@ -37,6 +37,7 @@ $worker = [PowerShell]::Create()
     try {
         . (Join-Path $folder 'Monitor.Core.ps1') -CodexHome $homePath
         . (Join-Path $folder 'Monitor.Data.ps1')
+        . (Join-Path $folder 'Restart.Core.ps1')
         . (Join-Path $folder 'Usage.Provider.ps1')
         while (-not $shared.Stop) {
             try { $snapshot=Get-MonitorSnapshot -QuickStart:($shared.Scans -eq 0); Update-SnapshotQuota $snapshot $shared.LiveQuota $CodexHome; $shared.Latest=$snapshot; $shared.Error=''; $shared.Scans++ }
@@ -63,7 +64,7 @@ $quotaWorker=[PowerShell]::Create()
 $quotaTask=$quotaWorker.BeginInvoke()
 # Settings run on the UI thread; only the worker reads rollout files.
 $script:coreError = ''
-try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } catch { $script:coreError=$_.Exception.Message }
+try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome; . (Join-Path $PSScriptRoot 'Restart.Core.ps1') } catch { $script:coreError=$_.Exception.Message }
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Context-Token Codex" Width="460" Height="620" MinWidth="300" MinHeight="150" Background="Transparent" Foreground="#E0E1DD" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize" WindowStartupLocation="Manual">
  <Window.Resources>
@@ -74,36 +75,36 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
  <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#0D1B2A" Offset="0"/><GradientStop Color="#0D1B2A" Offset="1"/></LinearGradientBrush></Border.Background>
  <Grid>
  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
- <Grid x:Name="DragHandle" Background="Transparent" Margin="0,0,0,9" Cursor="SizeAll" ToolTip="Drag to move. Drop near a corner to snap.">
+ <Grid x:Name="DragHandle" Background="Transparent" Margin="0,0,0,9" Cursor="SizeAll" ToolTip="Drag the header to move the widget. Release near a corner to set its position.">
   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
   <Image x:Name="BrandIcon" Width="32" Height="32" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="Context-Token Codex"/>
   <StackPanel Grid.Column="1" Orientation="Horizontal">
-   <Button x:Name="ToggleButton" Content="Expand" Padding="7,3" Margin="0,0,5,0" FontSize="11" ToolTip="Switch between mini card and full view"/>
-   <Button x:Name="DirectTray" Content="Tray" Padding="7,3" Margin="0,0,5,0" FontSize="11" ToolTip="Hide to the Windows notification area. Restore from the CTC icon beside the clock."/><Button x:Name="QuickSettings" Width="28" Height="28" FontSize="12" FontFamily="Segoe MDL2 Assets" Content="&#xE713;" Padding="0" Margin="0,0,5,0" ToolTip="Widget settings"/>
+   <Button x:Name="ToggleButton" Content="Expand" Padding="7,3" Margin="0,0,5,0" FontSize="11" ToolTip="Change between the compact view and expanded view."/>
+   <Button x:Name="DirectTray" Content="Tray" Padding="7,3" Margin="0,0,5,0" FontSize="11" ToolTip="Hide the widget in the tray. To restore the widget, select the ctc icon beside the clock."/><Button x:Name="QuickSettings" Width="28" Height="28" FontSize="12" FontFamily="Segoe MDL2 Assets" Content="&#xE713;" Padding="0" Margin="0,0,5,0" ToolTip="Widget settings"/>
    <Button x:Name="MinimizeButton" Width="28" Height="28" Padding="0" Margin="0,0,5,0" ToolTip="Minimize to taskbar"><Path Data="M0,5 L10,5" Width="10" Height="10" Stroke="#E0E1DD" StrokeThickness="1.5"/></Button>
    <Button x:Name="CloseButton" Width="28" Height="28" Padding="0" Margin="0" ToolTip="Exit CTC"><Path Data="M1,1 L9,9 M1,9 L9,1" Width="10" Height="10" Stroke="#E0E1DD" StrokeThickness="1.5"/></Button>
   </StackPanel>
  </Grid>
  <WrapPanel Grid.Row="1" Margin="0,0,0,12"><Button x:Name="ContextMode" Content="Context" Padding="12,5" Margin="0,0,6,0"/><Button x:Name="TokenMode" Content="Tokens" Padding="12,5" Margin="0,0,6,0"/><Button x:Name="LimitsMode" Content="Limits" Padding="12,5" ToolTip="Edit context settings"/></WrapPanel><DockPanel Grid.Row="2" Margin="0,0,0,10"><Button x:Name="RefreshUsage" DockPanel.Dock="Right" Content="&#xE72C;" FontFamily="Segoe MDL2 Assets" Width="28" Height="28" Padding="0" Margin="4,0,0,0" ToolTip="Refresh account quotas"/><UniformGrid x:Name="ContextQuotaBars" Columns="2"/></DockPanel><Grid Grid.Row="3">
  <StackPanel x:Name="MiniPanel" Background="Transparent">
-  <TextBlock x:Name="MiniTitle" Text="Waiting for active chats" FontSize="17" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Cursor="Hand" ToolTip="Click chat name to expand"/>
-  <TextBlock x:Name="MiniStatus" Text="Connecting..." FontSize="11" Foreground="#E0E1DD" Margin="0,5,0,6" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
-  <Grid Margin="0,2,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="MiniPercent" Text="--" FontSize="30" FontWeight="SemiBold" Foreground="#778DA9"/><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="CONTEXT USED" FontSize="9" Foreground="#E0E1DD" HorizontalAlignment="Right"/><TextBlock x:Name="MiniUsage" Text="Waiting for usage" FontSize="11" Foreground="#E0E1DD" HorizontalAlignment="Right"/></StackPanel></Grid>
+  <TextBlock x:Name="MiniTitle" Text="No active chats" FontSize="17" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Cursor="Hand" ToolTip="Select the chat name to expand the widget."/>
+  <TextBlock x:Name="MiniStatus" Text="Data check" FontSize="11" Foreground="#E0E1DD" Margin="0,5,0,6" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+  <Grid Margin="0,2,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="MiniPercent" Text="--" FontSize="30" FontWeight="SemiBold" Foreground="#778DA9"/><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="CONTEXT USED" FontSize="9" Foreground="#E0E1DD" HorizontalAlignment="Right"/><TextBlock x:Name="MiniUsage" Text="No usage record" FontSize="11" Foreground="#E0E1DD" HorizontalAlignment="Right"/></StackPanel></Grid>
   <ProgressBar x:Name="MiniBar" Height="6" Minimum="0" Maximum="100" Background="#0D1B2A" Foreground="#778DA9"/>
   <UniformGrid Columns="3" Margin="0,12,0,8">
    <StackPanel><TextBlock Text="REMAINING" FontSize="9" Foreground="#E0E1DD"/><TextBlock x:Name="MiniRemaining" Text="--" FontSize="15" Margin="0,3,0,0"/></StackPanel>
    <StackPanel><TextBlock Text="COMPACTIONS" FontSize="9" Foreground="#E0E1DD"/><TextBlock x:Name="MiniCompactions" Text="--" FontSize="15" Margin="0,3,0,0"/></StackPanel>
    <StackPanel><TextBlock Text="CACHED INPUT" FontSize="9" Foreground="#E0E1DD"/><TextBlock x:Name="MiniCached" Text="--" FontSize="15" Margin="0,3,0,0"/></StackPanel>
   </UniformGrid>
-  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="MiniUpdated" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Text="Waiting for data" FontSize="10" Foreground="#E0E1DD" VerticalAlignment="Center"/><Grid Grid.Column="1" Margin="8,0,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="28"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="28"/></Grid.ColumnDefinitions><Button x:Name="PreviousTask" Grid.Column="0" Content="&#x2039;" Width="28" Height="28" Padding="0" Margin="0" ToolTip="Previous active chat"/><TextBlock x:Name="TaskPosition" Grid.Column="1" Text="0 / 0" MinWidth="40" TextAlignment="Center" FontSize="10" VerticalAlignment="Center" Margin="8,0"/><Button x:Name="NextTask" Grid.Column="2" Content="&#x203A;" Width="28" Height="28" Padding="0" Margin="0" ToolTip="Next active chat"/></Grid></Grid>
-  <Button x:Name="MiniEditContext" Content="Edit context limits" FontSize="11" Padding="10,3" HorizontalAlignment="Left" Margin="0,8,0,0" IsEnabled="False" ToolTip="Open the displayed chat project context editor. Applies to all models in that project."/><!-- mini shortcut --></StackPanel><ScrollViewer x:Name="TokensPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed"><StackPanel Margin="0,0,8,0"><TextBlock x:Name="ActiveTokenHeading" Text="Active chats" FontSize="10" Foreground="#778DA9" Margin="0,0,0,6"/><StackPanel x:Name="ActiveTokenTasks"/><Expander x:Name="TokenSummary" Header="All loaded chats" Foreground="#E0E1DD" IsExpanded="True" Margin="0,0,0,8"><StackPanel>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="MiniUpdated" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Text="No data record" FontSize="10" Foreground="#E0E1DD" VerticalAlignment="Center"/><Grid Grid.Column="1" Margin="8,0,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="28"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="28"/></Grid.ColumnDefinitions><Button x:Name="PreviousTask" Grid.Column="0" Content="&#x2039;" Width="28" Height="28" Padding="0" Margin="0" ToolTip="Previous active chat"/><TextBlock x:Name="TaskPosition" Grid.Column="1" Text="0 / 0" MinWidth="40" TextAlignment="Center" FontSize="10" VerticalAlignment="Center" Margin="8,0"/><Button x:Name="NextTask" Grid.Column="2" Content="&#x203A;" Width="28" Height="28" Padding="0" Margin="0" ToolTip="Next active chat"/></Grid></Grid>
+  <Button x:Name="MiniEditContext" Content="Edit context limits" FontSize="11" Padding="10,3" HorizontalAlignment="Left" Margin="0,8,0,0" IsEnabled="False" ToolTip="Edit the project for this chat. The settings apply to all models in that project."/><!-- mini shortcut --></StackPanel><ScrollViewer x:Name="TokensPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed"><StackPanel Margin="0,0,8,0"><TextBlock x:Name="ActiveTokenHeading" Text="Active chats" FontSize="10" Foreground="#778DA9" Margin="0,0,0,6"/><StackPanel x:Name="ActiveTokenTasks"/><Expander x:Name="TokenSummary" Header="Recorded chats" Foreground="#E0E1DD" IsExpanded="True" Margin="0,0,0,8"><StackPanel>
   <DockPanel><TextBlock Text="Recorded totals" FontSize="10" Foreground="#778DA9"/><TextBlock x:Name="TokenLive" Text="Watching files" FontSize="10" HorizontalAlignment="Right"/></DockPanel>
-  <TextBlock x:Name="TokenTotal" Text="Waiting for usage" FontSize="28" FontWeight="SemiBold" Margin="0,4,0,4"/>
+  <TextBlock x:Name="TokenTotal" Text="No usage record" FontSize="28" FontWeight="SemiBold" Margin="0,4,0,4"/>
   <TextBlock x:Name="TokenBreakdown" FontSize="10" Opacity="0.75" Margin="0,0,0,8"/>
   <UniformGrid x:Name="TokenMetrics" Columns="3" Margin="0,0,0,8"/>
   </StackPanel></Expander><Expander Header="Other chat details" Foreground="#E0E1DD" Margin="0,0,0,8"><StackPanel x:Name="TokenTasks"/></Expander>
 
-  <Expander Header="Reading status" Margin="0,4,0,4"><TextBlock x:Name="TokenSource" Text="Reading subscription usage..." FontSize="10" Margin="0,4,0,6"/></Expander>
+  <Expander Header="Data status" Margin="0,4,0,4"><TextBlock x:Name="TokenSource" Text="Reading subscription usage..." FontSize="10" Margin="0,4,0,6"/></Expander>
   <Expander Header="How counts work" Foreground="#E0E1DD"><TextBlock x:Name="TokenCoverage" FontSize="10" Opacity="0.85" Margin="0,6,0,0"/></Expander>
  </StackPanel></ScrollViewer>
  <ContentControl x:Name="SettingsHost" Visibility="Collapsed"/><DockPanel x:Name="FullPanel" Visibility="Collapsed">
@@ -114,15 +115,15 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
   </StackPanel>
   <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
 
-   <TextBlock Text="Latest recorded context" ToolTip="Updates arrive after responses. Local Codex chats only." FontSize="10" Foreground="#778DA9" Margin="0,5,0,0"/>
+   <TextBlock Text="Last context record" ToolTip="Codex writes usage records after requests. CTC reads local chats." FontSize="10" Foreground="#778DA9" Margin="0,5,0,0"/>
   </StackPanel>
   <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="Cards"/></ScrollViewer>
  </DockPanel>
  </Grid>
  <StackPanel Grid.Row="4" Margin="0,12,0,0"><TextBlock x:Name="AuthorLine" Text="By Yahya Nabil" FontSize="10" Opacity="0.75" HorizontalAlignment="Center" Margin="0,0,0,8"/>
   <Border Height="1" Background="#0D1B2A" Margin="0,0,0,10"/>
-  <Grid x:Name="AppearanceControls"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Background" FontSize="11" Foreground="#E0E1DD" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider x:Name="LiveOpacity" Grid.Column="1" Minimum="40" Maximum="100" SmallChange="1" LargeChange="5" VerticalAlignment="Center" ToolTip="Drag to change background opacity live"/><TextBlock x:Name="LiveOpacityLabel" Grid.Column="2" Width="38" TextAlignment="Right" FontSize="11" VerticalAlignment="Center"/></Grid>
-  <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="1" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"><Hyperlink x:Name="UserWebsite" NavigateUri="https://yahyanabil.com" Foreground="#778DA9">yahyanabil.com</Hyperlink></TextBlock><StackPanel Orientation="Horizontal"><Button x:Name="QuickPin" Content="Pinned" FontSize="10" Padding="7,4" ToolTip="Toggle always on top"/><Button x:Name="QuickCorner" Content="Corner" FontSize="10" Padding="7,4" Margin="5,0,0,0" ToolTip="Choose a screen corner"/></StackPanel><StackPanel Grid.Column="2" Orientation="Horizontal"><Button x:Name="ParkButton" Content="Park tab" FontSize="10" Padding="8,4" Margin="5,0,0,0" ToolTip="Shrink to a visible restore tab. Click tab to return."/></StackPanel></Grid>
+  <Grid x:Name="AppearanceControls"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Background" FontSize="11" Foreground="#E0E1DD" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider x:Name="LiveOpacity" Grid.Column="1" Minimum="40" Maximum="100" SmallChange="1" LargeChange="5" VerticalAlignment="Center" ToolTip="Drag to change the background opacity."/><TextBlock x:Name="LiveOpacityLabel" Grid.Column="2" Width="38" TextAlignment="Right" FontSize="11" VerticalAlignment="Center"/></Grid>
+  <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="1" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"><Hyperlink x:Name="UserWebsite" NavigateUri="https://yahyanabil.com" Foreground="#778DA9">yahyanabil.com</Hyperlink></TextBlock><StackPanel Orientation="Horizontal"><Button x:Name="QuickPin" Content="Pinned" FontSize="10" Padding="7,4" ToolTip="Keep the widget above other windows."/><Button x:Name="QuickCorner" Content="Corner" FontSize="10" Padding="7,4" Margin="5,0,0,0" ToolTip="Select a screen corner."/></StackPanel><StackPanel Grid.Column="2" Orientation="Horizontal"><Button x:Name="ParkButton" Content="Park bar" FontSize="10" Padding="8,4" Margin="5,0,0,0" ToolTip="Show a small bar at the same corner. Select its restore button to open the widget."/></StackPanel></Grid>
  </StackPanel>
  <Thumb x:Name="ResizeGrip" Grid.Row="3" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Visibility="Collapsed" ToolTip="Drag to resize">
   <Thumb.Template><ControlTemplate TargetType="Thumb"><TextBlock Text="&#x25E2;" Foreground="#E0E1DD" Background="Transparent"/></ControlTemplate></Thumb.Template>
@@ -202,6 +203,7 @@ function Select-WidgetTask([int]$offset) {
     $index=[array]::IndexOf($ids,$script:displayedTask)
     $script:selectedTask=$ids[($index+$offset+$ids.Count)%$ids.Count]
     Update-Cards $shared.Latest
+    Update-ParkedBar
 }
 $PreviousTask.Add_Click({ Select-WidgetTask -1 }); $NextTask.Add_Click({ Select-WidgetTask 1 })
 function Get-WidgetWorkArea {
@@ -283,7 +285,7 @@ function Update-ContextQuotaBars {
     $RefreshUsage.Content=if($shared.Fetching){'...'}else{[char]0xE72C}
     $RefreshUsage.FontFamily=if($shared.Fetching){'Segoe UI'}else{'Segoe MDL2 Assets'}
     $RefreshUsage.IsEnabled=-not $shared.Fetching
-    $RefreshUsage.ToolTip=if($shared.QuotaError){$shared.QuotaError}else{'Refresh account quotas. Bars show remaining allowance; hover for used percentage and reset time.'}
+    $RefreshUsage.ToolTip=if($shared.QuotaError){$shared.QuotaError}else{'Refresh account quotas. The bars show the remaining quota. Move the pointer over a bar for details.'}
     $keys=@()
     foreach ($entry in $entries) {
         $key=$entry.Name; $keys+=$key
@@ -297,7 +299,7 @@ function Update-ContextQuotaBars {
         }
         $row=$script:contextQuotaRows[$key]
         $period=if ($entry.Minutes -eq 300) {'5h'} elseif ($entry.Minutes -eq 10080) {'7d'} else {$entry.Name}
-        if($null -eq $entry.Remaining){$row.Label.Text="$period | --";$row.Bar.Value=0;$row.Panel.ToolTip='Waiting for an account quota reading';continue}
+        if($null -eq $entry.Remaining){$row.Label.Text="$period | --";$row.Bar.Value=0;$row.Panel.ToolTip='No account quota reading is available.';continue}
         $observed=if ($entry.Observed) {$entry.Observed} else {$quota.Observed}; $stale=([DateTimeOffset]::Now-$observed).TotalMinutes -gt 2
         $row.Label.Text=('{0} | {1:N0}% left{2}' -f $period,$entry.Remaining,$(if($stale){' *'}else{''}))
         $row.Bar.Value=$entry.Remaining
@@ -308,23 +310,67 @@ function Update-ContextQuotaBars {
     }
 }
 $script:tokenMetricRows=@{}; $script:tokenTaskRows=@{}
+function New-TokenDetailPanel {
+    $panel=New-Object Windows.Controls.StackPanel
+    $grid=New-Object Windows.Controls.Primitives.UniformGrid; $grid.Columns=2
+    $values=@{}
+    foreach($name in @('Input','Output','Cached input','Uncached input','Reasoning','Other output')) {
+        $tile=New-Object Windows.Controls.Border; $tile.Background='#1B263B';$tile.CornerRadius=6;$tile.Padding=8;$tile.Margin='0,0,5,5'
+        $body=New-Object Windows.Controls.StackPanel
+        [void]$body.Children.Add((New-Label $name 10 '#778DA9'))
+        $value=New-Label '--' 18;$values[$name]=$value;[void]$body.Children.Add($value)
+        $tile.Child=$body;[void]$grid.Children.Add($tile)
+    }
+    [void]$panel.Children.Add($grid)
+    $ratios=New-Label '' 10 '#778DA9';[void]$panel.Children.Add($ratios)
+    $latest=New-Label '' 10
+    $last=New-Object Windows.Controls.Expander;$last.Header='Latest request';$last.Content=$latest;[void]$panel.Children.Add($last)
+    $tools=New-Label '' 11
+    $activity=New-Object Windows.Controls.Expander;$activity.Header='Tool calls';$activity.Content=$tools;$activity.Margin='0,5,0,0';[void]$panel.Children.Add($activity)
+    $data=New-Label '' 10 '#778DA9'
+    $help=New-Object Windows.Controls.Expander;$help.Header='Data and estimate';$help.Content=$data;$help.Margin='0,5,0,0';[void]$panel.Children.Add($help)
+    return @{Panel=$panel;Values=$values;Ratios=$ratios;Latest=$latest;Tools=$tools;Activity=$activity;Data=$data}
+}
+function Update-TokenDetailPanel($view,$chat) {
+    $other=if($null -ne $chat.Output -and $null -ne $chat.Reasoning -and $chat.Reasoning -le $chat.Output){$chat.Output-$chat.Reasoning}else{$null}
+    $map=@{Input=$chat.Input;Output=$chat.Output;'Cached input'=$chat.Cached;'Uncached input'=$chat.Uncached;Reasoning=$chat.Reasoning;'Other output'=$other}
+    foreach($key in $map.Keys){$view.Values[$key].Text=Format-ShortTokenValue $map[$key];$view.Values[$key].ToolTip="$(Format-TokenValue $map[$key]) tokens"}
+    $hit=if($chat.Input -gt 0 -and $null -ne $chat.Cached -and $chat.Cached -le $chat.Input){'{0:N1}%' -f (100.0*$chat.Cached/$chat.Input)}else{'--'}
+    $share=if($chat.Output -gt 0 -and $null -ne $chat.Reasoning -and $chat.Reasoning -le $chat.Output){'{0:N1}%' -f (100.0*$chat.Reasoning/$chat.Output)}else{'--'}
+    $view.Ratios.Text="Cache hit: $hit   |   Reasoning share: $share"
+    $view.Latest.Text="Input: $(Format-TokenValue $chat.LastInput)`nCached input: $(Format-TokenValue $chat.LastCached)`nOutput: $(Format-TokenValue $chat.LastOutput)"
+    $a=$chat.Activity
+    $view.Activity.Header=if($a.Ready){"Tool calls: $(Format-TokenValue $a.Calls)$(if($a.Partial){' *'})"}else{'Tool calls: --'}
+    $lines=@()
+    if($a.Ready){
+        $top=@($a.Tools|Select-Object -First 6)
+        foreach($tool in $top){$lines+="$($tool.Name)   $(Format-TokenValue $tool.Count)"}
+        if(@($a.Tools).Count -gt 6){$rest=($a.Tools|Select-Object -Skip 6|Measure-Object Count -Sum).Sum;$lines+="Other calls   $(Format-TokenValue $rest)"}
+        if(-not $top.Count){$lines+='No tool calls are in this record.'}
+    }else{$lines+='No complete call record is available.'}
+    if($a.Partial){$lines+='* Some calls lack an ID or exceed the scan limit.'}
+    $lines+='Call counts cover this rollout record. They do not measure token cost.'
+    $lines+='Tool tokens: --. Automation tokens: --. Codex supplies no separate counters.'
+    $view.Tools.Text=$lines -join "`n"
+    $view.Data.Text="Last model: $($chat.Model)`nLast record: $(if($chat.Observed){$chat.Observed.ToLocalTime().ToString('MMM d HH:mm:ss')}else{'--'})`nClient: $(if($a.Originator){$a.Originator}else{'--'})`nTotals include earlier models. Cache is part of input. Reasoning is part of output.`n$($chat.QuotaNotes)`nQuota shares are estimates. pp means percentage points of account allowance."
+}
 function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
-    $TokenLive.Text=if ($shared.Error) {'Read error'} else {'Watching files | 1 s'}
-    $TokenLive.ToolTip=if ($shared.Error) {$shared.Error} else {'Reads new local usage records each second. Codex may write usage after a request ends.'}
+    $TokenLive.Text=if ($shared.Error) {'Read error'} else {'File check | 1 s'}
+    $TokenLive.ToolTip=if ($shared.Error) {$shared.Error} else {'CTC reads local usage records each second. Codex can write usage after a request ends.'}
     if ($tokens -and $tokens.Tasks) {
         $TokenTotal.Text=Format-TokenValue $tokens.Total
         $age=[Math]::Max(0,[int]([DateTimeOffset]::Now-$tokens.Observed).TotalSeconds)
         $TokenBreakdown.Text="$($tokens.Tasks) chats | Last record $($tokens.Observed.ToLocalTime().ToString('HH:mm:ss'))"
-        if ($age -gt 120) { $TokenBreakdown.Text+=' | No recent usage' }
-        $TokenCoverage.Text="Total = input + output.`nCache is part of input. Reasoning is part of output.`n-- means no value. * means partial data.`n$($tokens.Coverage)`nSubscription limits apply to the account. Token counts come from this device."
-    } else { $TokenTotal.Text='--'; $TokenBreakdown.Text='Waiting for a usage record'; $TokenCoverage.Text='Counts appear when Codex writes a usage record. No estimate is added between records.' }
+        if ($age -gt 120) { $TokenBreakdown.Text+=' | No recent usage record' }
+        $TokenCoverage.Text="Total = input + output.`nInput includes cached input. Output includes reasoning.`n-- means no value. * means incomplete data.`n$($tokens.Coverage)`nQuotas apply to the account. Token counts come from this device."
+    } else { $TokenTotal.Text='--'; $TokenBreakdown.Text='Waiting for a usage record'; $TokenCoverage.Text='Counts appear when Codex writes a usage record. CTC does not add estimated tokens between records.' }
     $metricDefs=@(
-        @('Input','Input','DetailedTasks','All input tokens, including cached input.'),
-        @('Output','Output','DetailedTasks','All output tokens, including reasoning.'),
-        @('Cache','Cached','CacheTasks','Input read from cache. Included in Input.'),
-        @('Uncached','Uncached','CacheTasks','Input minus cached input.'),
-        @('Reasoning','Reasoning','ReasoningTasks','Reasoning output. Included in Output.'),
-        @('Cache hit','Hit','CacheTasks','Cached input divided by input for chats with both counters.')
+        @('Input','Input','DetailedTasks','Input includes cached input.'),
+        @('Output','Output','DetailedTasks','Output includes reasoning.'),
+        @('Cache','Cached','CacheTasks','These input tokens come from cache. Input includes these tokens.'),
+        @('Uncached','Uncached','CacheTasks','Uncached input equals input minus cached input.'),
+        @('Reasoning','Reasoning','ReasoningTasks','Output includes reasoning tokens.'),
+        @('Cache hit','Hit','CacheTasks','Cache hit equals cached input divided by input. Both values must be available.')
     )
     foreach ($def in $metricDefs) {
         $key=$def[1]
@@ -351,9 +397,9 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
         if (-not $chat) { continue }; $key=$chat.Id; $keys+=$key
         if (-not $script:tokenTaskRows.ContainsKey($key)) {
             $panel=New-Object Windows.Controls.StackPanel; $panel.Margin='0,3,0,9'
-            $title=New-Label '' 13 '#778DA9'; $detail=New-Label '' 11 '#E0E1DD'; $total=New-Label '' 25 '#E0E1DD'
+            $title=New-Label '' 13 '#778DA9'; $detail=New-TokenDetailPanel; $total=New-Label '' 25 '#E0E1DD'
             $brief=New-Label '' 11 '#778DA9'
-            $expand=New-Object Windows.Controls.Expander; $expand.Header='Token and quota details'; $expand.Content=$detail; $expand.Margin='0,5,0,0'
+            $expand=New-Object Windows.Controls.Expander; $expand.Header='Breakdown'; $expand.Content=$detail.Panel; $expand.Margin='0,5,0,0'
             [void]$panel.Children.Add($title); [void]$panel.Children.Add($total); [void]$panel.Children.Add($brief); [void]$panel.Children.Add($expand); [void]$TokenTasks.Children.Add($panel)
             $script:tokenTaskRows[$key]=@{Panel=$panel;Title=$title;Total=$total;Detail=$detail;Brief=$brief;Expand=$expand}
         }
@@ -361,23 +407,23 @@ function Update-TokenPanel($tokens=$shared.Latest.Tokens) {
         $target=if ($chat.Active) {$ActiveTokenTasks} else {$TokenTasks}
         if ($row.Panel.Parent -ne $target) { [void]$row.Panel.Parent.Children.Remove($row.Panel); [void]$target.Children.Add($row.Panel) }
         $row.Total.Text="$(Format-TokenValue $chat.Total) tokens"
-        $row.Total.ToolTip='Cumulative total for this chat, including earlier turns.'
+        $row.Total.ToolTip='These counts include previous requests in this chat.'
         $status=if ($chat.Active) {'Running'} else {'Idle'}
         $row.Title.Text="$($chat.Title) | $status"
-        $row.Brief.Text=if($chat.QuotaShare){$chat.QuotaShare}else{'Est. tracked share: 5h -- | 7d --'}
+        $row.Brief.Text=if($chat.QuotaShare){$chat.QuotaShare}else{'Quota estimate: 5h -- | 7d --'}
         $row.Brief.ToolTip=$chat.QuotaNotes
-        $row.Detail.Text=Get-ChatTokenDetails $chat
-        $row.Panel.ToolTip="Last model: $($chat.Model). Counts cover the whole chat, including earlier models. Last record: $(if ($chat.Observed) {$chat.Observed.ToLocalTime().ToString('HH:mm:ss')} else {'waiting'})."
+        Update-TokenDetailPanel $row.Detail $chat
+        $row.Title.ToolTip=$chat.Title; $row.Panel.ToolTip=$null
     }
     foreach ($key in @($script:tokenTaskRows.Keys)) { if ($key -notin $keys) { [void]$script:tokenTaskRows[$key].Panel.Parent.Children.Remove($script:tokenTaskRows[$key].Panel); $script:tokenTaskRows.Remove($key) } }
     $quota=Select-FreshQuota $shared.LiveQuota $tokens.Quota
     $entries=@(); if ($quota) { $entries=@($quota.Windows) }
-    $TokenSource.Text=if ($quota) { "$($quota.Source) | $($quota.Plan) | checked $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))" } else { 'No quota reading yet. Codex subscription sign-in required.' }
-    if ($quota -and -not $entries.Count) { $TokenSource.Text+=' | No quota windows supplied.' }
+    $TokenSource.Text=if ($quota) { "$($quota.Source) | $($quota.Plan) | checked $($quota.Observed.ToLocalTime().ToString('MMM d HH:mm:ss'))" } else { 'No quota reading is available. Sign in to Codex.' }
+    if ($quota -and -not $entries.Count) { $TokenSource.Text+=' | Codex supplied no quota windows.' }
     if ($quota -and $null -ne $quota.ResetCredits) { $TokenSource.Text+="`nAvailable reset credits: $($quota.ResetCredits) (read only)" }
     if ($shared.Fetching) { $TokenSource.Text+=' | Refreshing...' }
     elseif ($shared.QuotaError) { $TokenSource.Text+="`n$($shared.QuotaError)" }
-    if ($quota -and ([DateTimeOffset]::Now-$quota.Observed).TotalMinutes -gt 2) { $TokenSource.Text+=' | STALE' }
+    if ($quota -and ([DateTimeOffset]::Now-$quota.Observed).TotalMinutes -gt 2) { $TokenSource.Text+=' | Old data' }
 
 }
 $window.Add_SourceInitialized({ Set-WidgetCompact ([bool]$prefs.Compact) })
@@ -433,31 +479,32 @@ function Update-Cards($snapshot) {
         $MiniTitle.Text=$lead.Title; $MiniTitle.ToolTip=$lead.Title
         $MiniStatus.Text="$($active.Count) active | $($lead.Status) | $($lead.Model)"
         if ($lead.Percent -ge 95) { $MiniStatus.Text+=' | CRITICAL' } elseif ($lead.Percent -ge 80) { $MiniStatus.Text+=' | HIGH' }
-        $MiniUsage.Text=if ($null -ne $lead.Percent) { '{0:N0} / {1:N0} tokens' -f $lead.Input,$lead.Window } else { 'Waiting for recorded usage' }
+        $MiniUsage.Text=if ($null -ne $lead.Percent) { '{0:N0} / {1:N0} tokens' -f $lead.Input,$lead.Window } else { 'No usage record' }
         $MiniPercent.Text=if ($null -ne $lead.Percent) { '{0:N1}%' -f $lead.Percent } else { '--' }
         $MiniRemaining.Text=if ($null -ne $lead.Input -and $lead.Window -gt 0) { '{0:N0}' -f [Math]::Max(0,$lead.Window-$lead.Input) } else { '--' }
         $MiniCompactions.Text=[string]$lead.Compactions
         $MiniCached.Text=if ($lead.Input -gt 0) { '{0:N0}%' -f (100*$lead.Cached/$lead.Input) } else { '--' }
-        $MiniUpdated.Text="Last event $($lead.LastEvent)"
+        $MiniUpdated.Text=if ($lead.Saved.Status -eq 'Pending') {'Saved - waiting for reload'} else {"Last event $($lead.LastEvent)"}
+        $MiniUpdated.ToolTip=if ($lead.Saved) {$lead.Saved.Message} else {$null}
         $TaskPosition.Text=('{0} / {1}' -f (1+[array]::IndexOf($active,$lead)),$active.Count)
         $MiniBar.Value=[Math]::Max(0,[Math]::Min(100,[double]$lead.Percent))
         $MiniBar.Foreground=if ($lead.Status -eq 'COMPACTING') { '#778DA9' } elseif ($lead.Percent -ge 95) { '#778DA9' } elseif ($lead.Percent -ge 80) { '#778DA9' } else { '#778DA9' }
         $MiniPercent.Foreground=$MiniBar.Foreground
     } else {
         $MiniEditContext.IsEnabled=$false; $MiniTitle.Text='No running chats'; $MiniTitle.ToolTip=$null
-        $MiniStatus.Text='Ready when you are'; $MiniBar.Value=0
-        $MiniUsage.Text='Waiting for usage'; $MiniPercent.Text='--'
+        $MiniStatus.Text='No active chats'; $MiniBar.Value=0
+        $MiniUsage.Text='No usage record'; $MiniPercent.Text='--'
         $MiniRemaining.Text='--'; $MiniCompactions.Text='--'; $MiniCached.Text='--'
         $MiniUpdated.Text='Monitoring local chats'; $TaskPosition.Text='0 / 0'
     }
     $PreviousTask.IsEnabled=($active.Count -gt 1); $NextTask.IsEnabled=$PreviousTask.IsEnabled
     $ids=@($snapshot.Cards | ForEach-Object { $_.Id })
     foreach ($id in @($script:cardControls.Keys)) {
-        if ($id -notin $ids) { [void]$Cards.Children.Remove($script:cardControls[$id].Border); $script:cardControls.Remove($id) }
+        if ($id -notin $ids) { if($script:cardControls[$id].Editor.Tag.RestartView){[void]$script:restartControls.Remove($script:cardControls[$id].Editor.Tag.RestartView)}; [void]$Cards.Children.Remove($script:cardControls[$id].Border); $script:cardControls.Remove($id) }
     }
     if ($script:emptyLabel) { [void]$Cards.Children.Remove($script:emptyLabel); $script:emptyLabel=$null }
     if ($ids.Count -eq 0) {
-        $script:emptyLabel=New-Label 'No running chats. Ready when you are.' 17 '#E0E1DD'
+        $script:emptyLabel=New-Label 'No active chats.' 17 '#E0E1DD'
         [void]$Cards.Children.Add($script:emptyLabel)
     }
     $position=0
@@ -492,25 +539,48 @@ function Update-Cards($snapshot) {
         $c.Status.Text=$card.Status
         if ($card.Percent -ge 95) { $c.Status.Text+=' / CRITICAL CONTEXT' } elseif ($card.Percent -ge 80) { $c.Status.Text+=' / HIGH CONTEXT' }
         $c.Status.Foreground=$color; $c.Title.Text=$card.Title
-        $c.Title.ToolTip="Initial: $($card.Initial)`nTask: $($card.Id)"
+        $c.Title.ToolTip="Initial: $($card.Initial)`nChat: $($card.Id)"
         $c.Model.Text="$($card.Model)"; $c.Model.ToolTip=$card.Cwd
-        $c.Usage.Text=if ($null -ne $card.Percent) { '{0:N1}%   {1:N0} / {2:N0} tokens' -f $card.Percent,$card.Input,$card.Window } else { 'Waiting for token usage' }
+        $c.Usage.Text=if ($null -ne $card.Percent) { '{0:N1}%   {1:N0} / {2:N0} tokens' -f $card.Percent,$card.Input,$card.Window } else { 'No token usage record' }
         $c.Bar.Value=[Math]::Min(100,[Math]::Max(0,[double]$card.Percent)); $c.Bar.Foreground=$color
         $c.Saved.Text=''
         if ($card.Saved) {
             if ($card.Saved.Error) { $c.Saved.Text=$card.Saved.Error }
             else {
-                $c.Saved.Text='Saved {0}: {1:N0} raw' -f $card.Saved.Source,$card.Saved.Requested
+                $c.Saved.Text='Saved {0}: {1:N0} tokens' -f $card.Saved.Source,$card.Saved.Requested
                 if ($null -ne $card.Saved.Expected) {
                     $c.Saved.Text+=' -> {0:N0} usable' -f $card.Saved.Expected
-                    $c.Saved.Text+=if ($card.Saved.Expected -eq $card.Window) { ' (matches)' } else { ' (not applied here)' }
-                } else { $c.Saved.Text+=' (usable size unknown)' }
+                    $c.Saved.Text+=if ($card.Saved.Expected -eq $card.Window) { ' (confirmed in this chat)' } else { ' (waiting for reload)' }
+                } else { $c.Saved.Text+=' (chat window unknown)' }
             }
         }
+        $c.Saved.ToolTip=$card.Saved.Message
         $c.Saved.Foreground='#778DA9'
-        $c.Details.Text="Compactions: $($card.Compactions)  |  Last event: $($card.LastEvent)`nCached: $('{0:N0}' -f $card.Cached)  |  Output: $('{0:N0}' -f $card.Output)"
+        $c.Details.Text="Compactions: $($card.Compactions)  |  Last event: $($card.LastEvent)`nCached input: $('{0:N0}' -f $card.Cached)  |  Output: $('{0:N0}' -f $card.Output)"
         if ($card.Error) { $c.Details.Text+="`nRead error: $($card.Error)" }
     }
+}
+function Update-ParkedBar {
+    if(-not $script:restoreTab){return}
+    $snapshot=$shared.Latest;$chats=@($snapshot.Cards)
+    $chat=@($chats|Where-Object Id -eq $script:displayedTask|Select-Object -First 1)
+    $lead=if($chat.Count){$chat[0]}elseif($chats.Count){$chats[0]}else{$null}
+    $script:parkTitle.Text=if($lead){$lead.Title}else{'No active chats'};$script:parkTitle.ToolTip=$script:parkTitle.Text
+    $script:parkContext.Text=if($lead -and $null -ne $lead.Percent){'Context {0:N1}%' -f $lead.Percent}else{'Context --'}
+    $script:parkContext.ToolTip=if($lead){"$(Format-TokenValue $lead.Input) / $(Format-TokenValue $lead.Window) tokens"}else{$null}
+    $tokens=@($snapshot.Tokens.Rows|Where-Object Id -eq $lead.Id|Select-Object -First 1)
+    $total=if($tokens.Count){$tokens[0].Total}else{$null}
+    $script:parkTokens.Text="Tokens $(Format-ShortTokenValue $total)";$script:parkTokens.ToolTip="$(Format-TokenValue $total) tokens"
+    $quota=Select-FreshQuota $shared.LiveQuota $snapshot.Tokens.Quota
+    $parts=@()
+    foreach($minutes in @(300,10080)){
+        $entries=@($quota.Windows|Where-Object Minutes -eq $minutes)
+        $value=if($entries.Count -eq 1){'{0:N0}%' -f $entries[0].Remaining}else{'--'}
+        $name=if($minutes -eq 300){'5h'}else{'7d'};$parts+="$name $value left"
+    }
+    $script:parkQuota.Text=$parts -join '  |  '
+    $script:parkQuota.ToolTip=if($quota){"Quota checked: $($quota.Observed.ToLocalTime().ToString('HH:mm:ss'))"}else{'No quota reading is available.'}
+    $script:parkPrevious.IsEnabled=($chats.Count -gt 1);$script:parkNext.IsEnabled=$script:parkPrevious.IsEnabled
 }
 function Show-Overlay {
     if ($script:restoreTab) { $script:restoreTab.Hide() }
@@ -519,12 +589,21 @@ function Show-Overlay {
 function Hide-Overlay([bool]$park=$false) {
     if ($park) {
         $workArea=Get-WidgetWorkArea
-        $script:restoreTab.Left=$workArea.Right-$script:restoreTab.Width-12
-        $script:restoreTab.Top=[Math]::Max($workArea.Top+12,[Math]::Min($window.Top,$workArea.Bottom-50))
+        $corner=$prefs.Corner
+        if($corner -eq 'Free'){
+            $horizontal=if($window.Left+$window.Width/2 -lt $workArea.Left+$workArea.Width/2){'Left'}else{'Right'}
+            $vertical=if($window.Top+$window.Height/2 -lt $workArea.Top+$workArea.Height/2){'Top'}else{'Bottom'}
+            $corner=$vertical+$horizontal
+        }
+        $script:restoreTab.Width=[Math]::Min(370,[Math]::Max(220,$workArea.Width-24))
+        $script:restoreTab.Left=if($corner.EndsWith('Left')){$workArea.Left+12}else{$workArea.Right-$script:restoreTab.Width-12}
+        $script:restoreTab.Top=if($corner.StartsWith('Top')){$workArea.Top+12}else{$workArea.Bottom-$script:restoreTab.Height-12}
+        $script:restoreTab.Opacity=$window.Opacity;$script:restoreTab.Topmost=$window.Topmost
+        Update-ParkedBar
         $script:restoreTab.Show()
     } else {
         $script:restoreTab.Hide()
-        $tray.ShowBalloonTip(4000,'Context-Token Codex is running','Click the CTC icon beside the clock (or inside the ^ menu) to restore.',[Windows.Forms.ToolTipIcon]::Info)
+        $tray.ShowBalloonTip(4000,'Context-Token Codex is running','To restore the widget, select the ctc icon beside the clock. Check the ^ menu if necessary.',[Windows.Forms.ToolTipIcon]::Info)
     }
     $window.Hide()
 }
@@ -534,12 +613,12 @@ function Update-CompactPercentageHint($form) {
     try {
         $draft=ConvertTo-ContextDraft $form.Window.Text $form.Compact.Text
         $changed=($draft.Window -ne $form.Baseline.SavedWindow -or $draft.Compact -ne $form.Baseline.SavedCompact)
-        $status=if ($changed) {'Preview only. Select Save to apply.'} else {'Saved values. No changes.'}
+        $status=if ($changed) {'Select Save to store these values.'} else {'These values are saved.'}
         $form.Hint.Text=if ($null -ne $draft.Window -and $null -ne $draft.Compact) {
             ('{0:N1}% = {1:N0} tokens. ' -f (100.0*$draft.Compact/$draft.Window),$draft.Compact)+$status
-        } else { 'Example: 90% of 200k = 180k. Percent is saved as tokens.' }
+        } else { 'Example: 90% of 200k = 180k. CTC saves the percentage as tokens.' }
         if ($form.Baseline -and $form.Baseline.Maximum -gt 0 -and $draft.Window -gt $form.Baseline.Maximum) {
-            $form.Result.Tag='Warning'; $form.Result.Text=('Above local catalog maximum: {0:N0} ({1}). Codex may reject or cap it.' -f $form.Baseline.Maximum,$form.Baseline.Model)
+            $form.Result.Tag='Warning'; $form.Result.Text=('Model catalog limit: {0:N0} ({1}). This value is larger. Codex can reject or reduce it.' -f $form.Baseline.Maximum,$form.Baseline.Model)
         }
         $form.Save.IsEnabled=$changed
         $form.Window.BorderBrush='#415A77'; $form.Compact.BorderBrush='#415A77'
@@ -549,7 +628,7 @@ function Update-CompactPercentageHint($form) {
     }
     foreach ($button in $form.ScaleButtons) {
         $button.IsEnabled=($form.Baseline.Base -gt 0)
-        $button.ToolTip=if ($button.IsEnabled) { '{0:N0} tokens. Uses the displayed base; never compounds. Preview only.' -f ([decimal]$form.Baseline.Base*$button.Tag.Multiplier) } else { 'Enter a numeric context window first.' }
+        $button.ToolTip=if ($button.IsEnabled) { '{0:N0} tokens. Uses the displayed base value. Repeated selections do not multiply the previous result. Select Save to store the values.' -f ([decimal]$form.Baseline.Base*$button.Tag.Multiplier) } else { 'Enter a number for the context window first.' }
     }
 }
 function Set-LimitFormScope($form,[string]$path,$card) {
@@ -561,23 +640,73 @@ function Set-LimitFormScope($form,[string]$path,$card) {
         $form.Compact.Text=if ($null -eq $b.SavedCompact) {'default'} else {[string]$b.SavedCompact}
         $form.Current.Text="Saved: $(Format-Limit $b.SavedWindow) | Compact: $(Format-Limit $b.SavedCompact)"
         if ($b.Live -gt 0) { $form.Current.Text+="`nLive: $(Format-Limit $b.Live) | $($b.Model)" }
-        $form.Current.ToolTip="File: $path`nApplies to all models in this scope.`nLocal model catalog maximum: $(Format-Limit $b.Maximum)"
+        $form.Current.ToolTip="File: $path`nApplies to all models in this scope.`nModel catalog limit: $(Format-Limit $b.Maximum)"
         $scope=Get-TopLevelAutoCompactScope $path
         if (-not $scope) { $scope=Get-TopLevelAutoCompactScope $script:configPath }
         if (-not $scope) { $scope='total (default)' }
-        $form.Current.ToolTip+="`nCompaction accounting: $scope`nGlobal fallback window: $(Format-Limit (Get-TopLevelContextWindow $script:configPath))`nGlobal fallback threshold: $(Format-Limit (Get-TopLevelAutoCompactLimit $script:configPath))"
-        $form.BaseLabel.Text=if ($b.Base -gt 0) { 'Scale from {0:N0} ({1})' -f $b.Base,$b.Source } else { 'No window recorded. Enter a number to set a scaling base.' }
+        $form.Current.ToolTip+="`nCompaction token rule: $scope`nGlobal fallback window: $(Format-Limit (Get-TopLevelContextWindow $script:configPath))`nGlobal fallback Compact at: $(Format-Limit (Get-TopLevelAutoCompactLimit $script:configPath))"
+        $form.BaseLabel.Text=if ($b.Base -gt 0) { 'Base: {0:N0} ({1})' -f $b.Base,$b.Source } else { 'No base value is available. Enter a context window.' }
         foreach ($button in $form.ScaleButtons) {
-            $button.ToolTip=if ($b.Base -gt 0) { '{0:N0} tokens. Based on the displayed base; never compounds. Preview only.' -f ([decimal]$b.Base*$button.Tag.Multiplier) } else { 'Enter a numeric context window first.' }
+            $button.ToolTip=if ($b.Base -gt 0) { '{0:N0} tokens. Uses the displayed base value. Select Save to store the values.' -f ([decimal]$b.Base*$button.Tag.Multiplier) } else { 'Enter a number for the context window first.' }
         }
     } finally { $form.Loading=$false }
     Update-CompactPercentageHint $form
 }
-function Connect-LimitEditor($windowField,$compactField,$hint,$current,$quick,$compactQuick,$save,$result) {
+$script:restartControls=New-Object 'Collections.Generic.List[object]'
+$script:restartStatusPath=Join-Path $env:LOCALAPPDATA 'CodexContextMonitor/restart.json'
+if($TestSeconds -gt 0){$script:restartStatusPath=Join-Path $CodexHome 'restart-test.json'}
+function Get-WidgetRestartStatus {
+    if(-not [IO.File]::Exists($script:restartStatusPath)){return $null}
+    try{return ([IO.File]::ReadAllText($script:restartStatusPath)|ConvertFrom-Json)}catch{return $null}
+}
+function Start-WidgetRestart([bool]$now) {
+    if($TestSeconds -gt 0){return}
+    $homePath=if($CodexHome){$CodexHome}elseif($env:CODEX_HOME){$env:CODEX_HOME}else{Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'}
+    $scriptPath=Join-Path $script:folder 'Restart-Codex.ps1'
+    $arguments=@('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',('"'+$scriptPath+'"'),'-CodexHome',('"'+$homePath+'"'),'-StatusPath',('"'+$script:restartStatusPath+'"'))
+    if($now){$arguments+='-Now'}
+    Write-RestartStatus $script:restartStatusPath 'Waiting' 'CTC waits for running chats to stop.'
+    Start-Process -FilePath powershell.exe -WindowStyle Hidden -ArgumentList $arguments
+    Update-LimitRestartControls
+}
+function Add-LimitRestartControls($parent) {
+    $panel=New-Object Windows.Controls.Expander;$panel.Margin='0,8,0,0';$panel.FontSize=10
+    $label=$panel
+    $row=New-Object Windows.Controls.WrapPanel
+    $now=New-Object Windows.Controls.Button;$now.Content='Restart now safely';$now.Padding='7,4';$now.Margin='0,0,5,5'
+    $after=New-Object Windows.Controls.Button;$after.Content='Restart after all chats stop';$after.Padding='7,4';$after.Margin='0,0,0,5'
+    $cancel=New-Object Windows.Controls.Button;$cancel.Content='Cancel restart';$cancel.Padding='7,4';$cancel.Margin='0,0,0,5'
+    $now.ToolTip='CTC checks local chat records. It requests a normal close after the chats are idle. Open windows will close.'
+    $after.ToolTip='Queue one restart. CTC waits for recorded chats to stop. Unknown records block the restart. The request expires after 24 h.'
+    $now.Add_Click({Start-WidgetRestart $true});$after.Add_Click({Start-WidgetRestart $false})
+    $cancel.Add_Click({Write-RestartStatus $script:restartStatusPath 'Cancelled' 'The restart request was cancelled.';Update-LimitRestartControls})
+    foreach($button in @($now,$after,$cancel)){[void]$row.Children.Add($button)}
+    $panel.Content=$row;[void]$parent.Children.Add($panel)
+    $view=@{Label=$label;Now=$now;After=$after;Cancel=$cancel}
+    [void]$script:restartControls.Add($view)
+    Update-LimitRestartControls
+    return $view
+}
+function Update-LimitRestartControls {
+    $state=Get-WidgetRestartStatus
+    if($state.Status -eq 'Reopened'){$script:pendingLimits=$false}
+    $waiting=$state.Status -in @('Waiting','Closing')
+    $pending=@($shared.Latest.Cards|Where-Object {$_.Saved.Status -eq 'Pending'}).Count
+    $dirty=$script:pendingLimits -or $state.Status -in @('Saved','Blocked','Expired')
+    $gate=$shared.Latest.Restart
+    foreach($view in $script:restartControls){
+        $view.Label.Header=if($waiting){'Limits updates in queue - waiting for idle chats'}elseif($pending -or $dirty){'Limits updates in queue'}elseif($state.Status -eq 'Reopened'){'Codex reopened - check the next context record'}else{'No limits updates in queue'}
+        $view.Label.ToolTip=if($state.Message){$state.Message}else{'Saved values need a fresh Codex session. CTC confirms context values from usage records.'}
+        $view.Now.IsEnabled=[bool]$gate.Ready -and -not $waiting
+        $view.After.IsEnabled=-not $waiting
+        $view.Cancel.Visibility=if($state.Status -eq 'Waiting'){'Visible'}else{'Collapsed'}
+    }
+}
+function Connect-LimitEditor($windowField,$compactField,$hint,$current,$quick,$compactQuick,$resetRow,$save,$result) {
     $form=@{Window=$windowField;Compact=$compactField;Hint=$hint;Current=$current;Save=$save;Result=$result;Loading=$true;Baseline=$null;ScaleButtons=@()}
-    $baseLabel=New-Label '' 10; $baseLabel.Margin='0,3,0,3'; $form.BaseLabel=$baseLabel
+    $baseLabel=New-Label '' 10; $baseLabel.Margin='0,3,0,3'; $form.BaseLabel=$baseLabel; $form.ResetRow=$resetRow
     [void]$quick.Children.Add($baseLabel)
-    $row=New-Object Windows.Controls.WrapPanel; [void]$quick.Children.Add($row)
+    $row=New-Object Windows.Controls.WrapPanel; $quick.Children.Insert(0,$row)
     foreach ($factor in @(1,2,3)) {
         $button=New-Object Windows.Controls.Button; $button.Content=([string][char]0xD7)+$factor; $button.Padding='8,3'; $button.Margin='0,0,5,4'
         $button.Tag=@{Form=$form;Multiplier=$factor}; $form.ScaleButtons+=,$button
@@ -593,19 +722,19 @@ function Connect-LimitEditor($windowField,$compactField,$hint,$current,$quick,$c
         }); [void]$row.Children.Add($button)
     }
     foreach ($percent in @(80,90,95)) {
-        $button=New-Object Windows.Controls.Button; $button.Content="$percent%"; $button.Padding='10,3'; $button.Margin='0,0,6,4'; $button.ToolTip='Set compaction to this percentage of the entered window. Preview only.'
+        $button=New-Object Windows.Controls.Button; $button.Content="$percent%"; $button.Padding='7,3'; $button.Margin='0,0,6,4'; $button.ToolTip='Set Compact at to this percentage of the entered window. Select Save to store the values.'
         $button.Tag=@{Form=$form;Percent=$percent}
         $button.Add_Click({param($sender,$eventArgs) $sender.Tag.Form.Compact.Text="$($sender.Tag.Percent)%"})
         [void]$compactQuick.Children.Add($button)
     }
     foreach ($action in @('Restore saved','Use defaults')) {
         $button=New-Object Windows.Controls.Button; $button.Content=if ($action -eq 'Restore saved') {'Undo'} else {'Default'}; $button.Padding='8,3'; $button.Margin='0,0,5,4'; $button.Tag=@{Form=$form;Action=$action}
-        $button.ToolTip=if ($action -eq 'Use defaults') {'Remove both overrides in this scope when you save. Other scopes stay unchanged.'} else {'Discard this draft and read saved values again.'}
+        $button.ToolTip=if ($action -eq 'Use defaults') {'Select Save to remove both overrides from this scope. Other scopes do not change.'} else {'Restore the saved values. Remove the unsaved values.'}
         $button.Add_Click({param($sender,$eventArgs)
             $f=$sender.Tag.Form
             if ($sender.Tag.Action -eq 'Restore saved') { Set-LimitFormScope $f $f.Path $f.Card }
             else { $f.Loading=$true; $f.Window.Text='default'; $f.Compact.Text='default'; $f.Loading=$false; Update-CompactPercentageHint $f }
-        }); [void]$row.Children.Add($button)
+        }); [void]$resetRow.Children.Add($button)
     }
     foreach ($field in @($windowField,$compactField)) {
         $field.Tag=$form
@@ -614,7 +743,7 @@ function Connect-LimitEditor($windowField,$compactField,$hint,$current,$quick,$c
             # Unknown baselines gain a stable, explicit base after valid entry.
             if (-not $f.Loading -and $f.Baseline -and -not $f.Baseline.Base) {
                 try { $n=(ConvertTo-TokenLimit $f.Window.Text $null).Limit
-                    if ($n -gt 0) { $f.Baseline.Base=$n; $f.Baseline.Source='entered window'; $f.BaseLabel.Text='Scale from {0:N0} (entered window)' -f $n }
+                    if ($n -gt 0) { $f.Baseline.Base=$n; $f.Baseline.Source='entered window'; $f.BaseLabel.Text='Base: {0:N0} (entered window)' -f $n }
                 } catch { }
             }
             Update-CompactPercentageHint $f
@@ -628,27 +757,36 @@ function Connect-LimitEditor($windowField,$compactField,$hint,$current,$quick,$c
             $draft=ConvertTo-ContextDraft $f.Window.Text $f.Compact.Text
             [void](Set-ContextLimits $f.Path @{model_context_window=$draft.Window;model_auto_compact_token_limit=$draft.Compact})
             Set-LimitFormScope $f $f.Path $f.Card
-            $f.Result.Tag='Saved'; $f.Result.Text='Saved for all models in this scope. Reload may be required.'
+            $script:pendingLimits=$true
+            if((Get-WidgetRestartStatus).Status -notin @('Waiting','Closing')){Write-RestartStatus $script:restartStatusPath 'Saved' 'Saved limits need a fresh Codex session.'}
+            Update-LimitRestartControls
+            $f.Result.Tag='Saved'; $f.Result.Text='CTC saved these values. The running chat keeps its current window. After all chats stop, quit Codex. Open Codex again.'
         } catch { $f.Result.Tag='Error'; $f.Result.Text=$_.Exception.Message }
     })
+    $form.RestartView=Add-LimitRestartControls $resetRow.Parent
     return $form
 }
 function New-InlineLimitsEditor([string]$project,$card=$null) {
     $expander=New-Object Windows.Controls.Expander; $expander.Header='Edit context limits'; $expander.Foreground='#E0E1DD'; $expander.Margin='0,8,0,0'
     $panel=New-Object Windows.Controls.StackPanel; $expander.Content=$panel
     $current=New-Label '' 10; [void]$panel.Children.Add($current)
-    [void]$panel.Children.Add((New-Label 'Context window - e.g. 200k or default' 10))
-    $w=New-Object Windows.Controls.TextBox; $w.Padding='8,4'; $w.Margin='0,3,0,3'; [void]$panel.Children.Add($w)
-    $quick=New-Object Windows.Controls.StackPanel; [void]$panel.Children.Add($quick)
-    [void]$panel.Children.Add((New-Label 'Compact at - e.g. 180k or 90%' 10))
-    $c=New-Object Windows.Controls.TextBox; $c.Padding='8,4'; $c.Margin='0,3,0,3'; [void]$panel.Children.Add($c)
-    $presets=New-Object Windows.Controls.WrapPanel; [void]$panel.Children.Add($presets)
+    $grid=New-Object Windows.Controls.Grid
+    foreach ($width in @('*','8','*')) { $column=New-Object Windows.Controls.ColumnDefinition; $column.Width=$width; [void]$grid.ColumnDefinitions.Add($column) }
+    $left=New-Object Windows.Controls.StackPanel; $right=New-Object Windows.Controls.StackPanel; [Windows.Controls.Grid]::SetColumn($right,2)
+    [void]$grid.Children.Add($left); [void]$grid.Children.Add($right); [void]$panel.Children.Add($grid)
+    [void]$left.Children.Add((New-Label 'Context window' 10)); [void]$right.Children.Add((New-Label 'Compact at' 10))
+    $w=New-Object Windows.Controls.TextBox; $w.Padding='8,4'; $w.Margin='0,3,0,3'; $w.ToolTip='Enter 200k or default.'; [void]$left.Children.Add($w)
+    $quick=New-Object Windows.Controls.StackPanel; [void]$left.Children.Add($quick)
+    $c=New-Object Windows.Controls.TextBox; $c.Padding='8,4'; $c.Margin='0,3,0,3'; $c.ToolTip='Enter 180k, 90%, or default.'; [void]$right.Children.Add($c)
+    $presets=New-Object Windows.Controls.WrapPanel; [void]$right.Children.Add($presets)
+    $resets=New-Object Windows.Controls.WrapPanel; $resets.Margin='0,4,0,0'; [void]$panel.Children.Add($resets)
     $hint=New-Label '' 10; [void]$panel.Children.Add($hint)
-    [void]$panel.Children.Add((New-Label 'Project defaults for all models. Larger values do not increase model capacity. Reload may be required.' 10))
+    [void]$panel.Children.Add((New-Label 'These project settings apply to all models. Larger values do not increase model capacity. A running chat needs a fresh session.' 10))
     $save=New-Object Windows.Controls.Button; $save.Content='Save project limits'; $save.Margin='0,5,0,5'; [void]$panel.Children.Add($save)
     $result=New-Label '' 10; [void]$panel.Children.Add($result)
-    $form=Connect-LimitEditor $w $c $hint $current $quick $presets $save $result
+    $form=Connect-LimitEditor $w $c $hint $current $quick $presets $resets $save $result
     Set-LimitFormScope $form (Join-Path $project '.codex/config.toml') $card
+    $expander.Tag=$form
     Apply-WidgetTheme $expander
     return $expander
 }
@@ -659,32 +797,32 @@ function Show-LimitEditorSurface {
     $window.FindName('AppearanceControls').Visibility='Collapsed'
 }
 function Show-Settings([string]$pane='Context') {
+    if($script:settings.form.RestartView){[void]$script:restartControls.Remove($script:settings.form.RestartView)}
     $script:settings=@{}
     [xml]$settingsXaml=@'
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
- <DockPanel><StackPanel x:Name="LimitActions" DockPanel.Dock="Bottom"><TextBlock Text="Defaults for all models. Reload may be needed. Model capacity does not increase." FontSize="10" Foreground="#778DA9" TextWrapping="Wrap" Margin="0,6,0,6"/><DockPanel><Button x:Name="BackTasks" DockPanel.Dock="Left" Content="Back" Padding="10,5" Margin="0,0,6,0"/><Button x:Name="SaveLimits" Content="Save limits" Padding="12,5"/></DockPanel><TextBlock x:Name="LimitResult" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,0"/></StackPanel><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,10,0"><StackPanel x:Name="AppearanceSettings">
-  <TextBlock Text="Window &amp; startup" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,14"/>
+ <DockPanel><StackPanel x:Name="LimitActions" DockPanel.Dock="Bottom"><TextBlock Text="These settings apply to all models. A running chat needs a fresh session. Model capacity does not increase." FontSize="10" Foreground="#778DA9" TextWrapping="Wrap" Margin="0,6,0,6"/><DockPanel><Button x:Name="BackTasks" DockPanel.Dock="Left" Content="Back" Padding="10,5" Margin="0,0,6,0"/><Button x:Name="SaveLimits" Content="Save limits" Padding="12,5"/></DockPanel><TextBlock x:Name="LimitResult" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,0"/></StackPanel><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,10,0"><StackPanel x:Name="AppearanceSettings">
+  <TextBlock Text="Window and startup" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,14"/>
   <TextBlock x:Name="OpacityLabel" Text="Background opacity"/>
   <Slider x:Name="OpacitySlider" Minimum="40" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,8,0,8"/>
-  <TextBlock Text="40% opacity = more transparent; 100% = opaque. Text stays solid. Saves live." TextWrapping="Wrap" Foreground="#E0E1DD" Margin="0,0,0,12"/>
+  <TextBlock Text="40% shows more of the window below. 100% hides the window below. Text stays visible. CTC saves changes immediately." TextWrapping="Wrap" Foreground="#E0E1DD" Margin="0,0,0,12"/>
   <TextBlock Text="Corner placement (current screen)"/>
   <ComboBox x:Name="Corner" Margin="0,4,0,10"><ComboBoxItem Content="Free position"/><ComboBoxItem Content="Top left"/><ComboBoxItem Content="Top right"/><ComboBoxItem Content="Bottom left"/><ComboBoxItem Content="Bottom right"/></ComboBox>
-  <Expander Header="Move and resize" Margin="0,0,0,12"><TextBlock Text="Drag the header to move; release near a corner to snap. Use Expand or Collapse to switch size. Drag the bottom-right grip to resize the full view." FontSize="11" TextWrapping="Wrap"/></Expander>
+  <Expander Header="Move and resize" Margin="0,0,0,12"><TextBlock Text="Drag the header to move the widget. Release near a corner to set the position. Select Expand or Collapse to change size. Drag the lower right control to resize the expanded view." FontSize="11" TextWrapping="Wrap"/></Expander>
   <CheckBox x:Name="Auto" Content="Auto-open with app" ToolTip="Start the app watcher at Windows sign-in." Margin="0,0,0,10"/>
   <TextBlock Text="App to follow"/><ComboBox x:Name="Target" Margin="0,4,0,10"><ComboBoxItem Content="Codex"/><ComboBoxItem Content="ChatGPT"/><ComboBoxItem Content="Either"/></ComboBox>
-  <TextBlock TextWrapping="Wrap" Foreground="#E0E1DD" Text="Overlay stays open after the app closes. Minimize uses the taskbar; Hide to tray keeps it available beside the clock. Close exits; auto-open can reopen it on the next app launch."/>
+  <TextBlock TextWrapping="Wrap" Foreground="#E0E1DD" Text="The widget stays open after the app closes. Minimize puts the widget on the taskbar. Tray hides it beside the clock. Close stops CTC. Auto-open starts CTC when the app opens again."/>
   <Button x:Name="SaveApp" Content="Save window preferences" Padding="10" Margin="0,12,0,20"/><Button x:Name="WidgetBack" Content="Back" Padding="10"/>
   </StackPanel><StackPanel x:Name="ContextSettings">
-  <ComboBox x:Name="Scope" MinHeight="30" Margin="0,0,0,6" ToolTip="Save to this scope. Project settings apply to all models in that project; global settings apply across projects."/>
+  <ComboBox x:Name="Scope" MinHeight="30" Margin="0,0,0,6" ToolTip="Select the scope. Project settings apply to all models in that project. Global settings apply across projects."/>
   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-   <StackPanel><TextBlock Text="Context window" FontSize="11"/><TextBox x:Name="Context" Padding="8,4" MinHeight="30" Margin="0,3,0,0" ToolTip="Enter 200000, 200k, or default. This is a raw token count."/></StackPanel>
-   <StackPanel Grid.Column="2"><TextBlock Text="Compact at" FontSize="11"/><TextBox x:Name="Compact" Padding="8,4" MinHeight="30" Margin="0,3,0,0" ToolTip="Enter 180k, 90%, or default. Percent is converted to tokens on save."/></StackPanel>
+   <StackPanel><TextBlock Text="Context window" FontSize="11"/><TextBox x:Name="Context" Padding="8,4" MinHeight="30" Margin="0,3,0,0" ToolTip="Enter 200000, 200k, or default. This value is a token count."/><StackPanel x:Name="ContextQuick" Margin="0,4,0,0"/></StackPanel>
+   <StackPanel Grid.Column="2"><TextBlock Text="Compact at" FontSize="11"/><TextBox x:Name="Compact" Padding="8,4" MinHeight="30" Margin="0,3,0,0" ToolTip="Enter 180k, 90%, or default. CTC converts the percentage to tokens when you select Save."/><WrapPanel x:Name="CompactQuick" Margin="0,4,0,0"/></StackPanel>
   </Grid>
-  <StackPanel x:Name="ContextQuick" Margin="0,0,0,4"/>
-  <WrapPanel x:Name="CompactQuick"/>
+  <WrapPanel x:Name="ResetQuick" Margin="0,4,0,0"/>
   <TextBlock x:Name="CompactHint" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,6"/>
   <Expander Header="Saved and live values" FontSize="11" Margin="0,0,0,4"><TextBlock x:Name="Current" FontSize="10" TextWrapping="Wrap"/></Expander>
-  <Expander Header="How limits work" FontSize="11" Foreground="#E0E1DD"><TextBlock Text="2x and 3x use the displayed base, not the previous click. Numeric compaction thresholds keep their proportion. Default stays default. Use defaults removes this scope's overrides after Save. Percentages are stored as tokens and do not track later window changes. Live capacity may be smaller than the raw setting. Local catalog information may be old; it is not a provider guarantee. Other models can have different limits. Hover over saved values for the file path." FontSize="10" Margin="0,6,0,6" TextWrapping="Wrap"/></Expander>
+  <Expander Header="How limits work" FontSize="11" Foreground="#E0E1DD"><TextBlock Text="2x and 3x use the displayed base value. They do not multiply the previous result. Token thresholds keep their percentage. Default stays default. To remove both overrides, select Default. Then select Save. CTC saves percentages as tokens. They do not change with later window settings. The recorded chat window can be smaller than the saved value. Model catalog data can be old. Other models can have different limits. Move the pointer over the saved values to see the file path." FontSize="10" Margin="0,6,0,6" TextWrapping="Wrap"/></Expander>
   </StackPanel><TextBlock x:Name="Result" TextWrapping="Wrap" Foreground="#778DA9"/>
  </StackPanel></ScrollViewer></DockPanel>
 </UserControl>
@@ -693,7 +831,7 @@ function Show-Settings([string]$pane='Context') {
     $script:settings.auto=$script:settings.dialog.FindName('Auto'); $script:settings.target=$script:settings.dialog.FindName('Target'); $script:settings.scope=$script:settings.dialog.FindName('Scope')
     $script:settings.current=$script:settings.dialog.FindName('Current'); $script:settings.context=$script:settings.dialog.FindName('Context'); $script:settings.compact=$script:settings.dialog.FindName('Compact'); $script:settings.result=$script:settings.dialog.FindName('Result')
     $script:settings.result=$script:settings.dialog.FindName('LimitResult')
-    $script:settings.form=Connect-LimitEditor $script:settings.context $script:settings.compact ($script:settings.dialog.FindName('CompactHint')) $script:settings.current ($script:settings.dialog.FindName('ContextQuick')) ($script:settings.dialog.FindName('CompactQuick')) ($script:settings.dialog.FindName('SaveLimits')) $script:settings.result
+    $script:settings.form=Connect-LimitEditor $script:settings.context $script:settings.compact ($script:settings.dialog.FindName('CompactHint')) $script:settings.current ($script:settings.dialog.FindName('ContextQuick')) ($script:settings.dialog.FindName('CompactQuick')) ($script:settings.dialog.FindName('ResetQuick')) ($script:settings.dialog.FindName('SaveLimits')) $script:settings.result
     $script:settings.opacitySlider=$script:settings.dialog.FindName('OpacitySlider'); $script:settings.opacityLabel=$script:settings.dialog.FindName('OpacityLabel'); $script:settings.corner=$script:settings.dialog.FindName('Corner')
     $script:settings.opacitySlider.Value=$window.Content.Background.Opacity*100; $script:settings.opacityLabel.Text='Background opacity: {0:N0}%' -f $script:settings.opacitySlider.Value
     $script:settings.opacitySlider.Add_ValueChanged({
@@ -737,7 +875,7 @@ function Show-Settings([string]$pane='Context') {
             Set-OverlayStartup ([bool]$script:settings.auto.IsChecked) $script:folder
             $prefs.AutoOpen=[bool]$script:settings.auto.IsChecked; $prefs.Target=[string]$script:settings.target.SelectedItem.Content; Save-Preferences
             if ($prefs.AutoOpen) { Start-Watcher }
-            $script:settings.result.Foreground='#778DA9'; $script:settings.result.Text='Window preferences saved. Startup applies to your Windows account only.'
+            $script:settings.result.Foreground='#778DA9'; $script:settings.result.Text='CTC saved the window settings. Startup applies to your Windows account only.'
         } catch { $script:settings.result.Tag='Error'; $script:settings.result.Foreground='#778DA9'; $script:settings.result.Text=$_.Exception.Message }
     })
     if ($TestSettings -and $TestSeconds -gt 0) {
@@ -780,12 +918,25 @@ function Start-Watcher {
 }
 $script:tray=New-Object Windows.Forms.NotifyIcon
 $script:trayIcon=New-Object Drawing.Icon((Join-Path $script:folder 'Context.ico'))
-$tray.Icon=$script:trayIcon; $tray.Text='CTC - click to restore'; $tray.Visible=$true
+$tray.Icon=$script:trayIcon; $tray.Text='CTC - select to restore'; $tray.Visible=$true
 [xml]$tabXaml=@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Restore Context-Token Codex" Width="156" Height="38" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"><Border CornerRadius="12" Background="#0D1B2A" BorderBrush="#778DA9" BorderThickness="1"><TextBlock Text="ctc   Restore  &#x203A;" Foreground="#778DA9" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center" Cursor="Hand" ToolTip="Click to restore the context widget"/></Border></Window>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Context-Token Codex bar" Width="370" Height="88" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" Foreground="#E0E1DD">
+ <Border CornerRadius="10" Background="#0D1B2A" BorderBrush="#415A77" BorderThickness="1" Padding="10,7">
+  <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBlock x:Name="ParkTitle" Text="No active chats" FontSize="11" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" VerticalAlignment="Center" Margin="0,0,8,0"/>
+    <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="ParkPrevious" Content="&#x2039;" ToolTip="Previous chat"/><Button x:Name="ParkNext" Content="&#x203A;" ToolTip="Next chat"/><Button x:Name="ParkRestore" Content="&#x2197;" ToolTip="Restore the widget"/></StackPanel>
+   </Grid>
+   <Grid Grid.Row="1" Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock x:Name="ParkContext" FontSize="14" Text="Context --"/><TextBlock x:Name="ParkTokens" Grid.Column="1" FontSize="14" Text="Tokens --" HorizontalAlignment="Right"/></Grid>
+   <TextBlock x:Name="ParkQuota" Grid.Row="2" FontSize="10" Foreground="#778DA9" Margin="0,4,0,0" Text="5h -- left  |  7d -- left"/>
+  </Grid>
+ </Border>
+</Window>
 '@
 $script:restoreTab=[Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($tabXaml))
-$restoreTab.Add_MouseLeftButtonUp({ Show-Overlay })
+foreach($name in @('Title','Context','Tokens','Quota','Previous','Next','Restore')){Set-Variable -Name ('park'+$name) -Value $restoreTab.FindName('Park'+$name) -Scope Script}
+foreach($button in @($parkPrevious,$parkNext,$parkRestore)){$button.Style=$window.Resources[[Windows.Controls.Button]];$button.Width=24;$button.Height=22;$button.Padding=0;$button.Margin='3,0,0,0'}
+$parkPrevious.Add_Click({Select-WidgetTask -1});$parkNext.Add_Click({Select-WidgetTask 1});$parkRestore.Add_Click({Show-Overlay})
 $menu=New-Object Windows.Forms.ContextMenuStrip
 $restore=$menu.Items.Add('Show overlay'); $restore.Add_Click({ Show-Overlay })
 $hide=$menu.Items.Add('Hide to notification area'); $hide.Add_Click({ Hide-Overlay $false })
@@ -814,6 +965,8 @@ $timer.Add_Tick({
         }
         if ($showEvent.WaitOne(0)) { Show-Overlay }
         Update-ContextQuotaBars
+        Update-ParkedBar
+        Update-LimitRestartControls
         if ($prefs.Mode -eq 'Tokens') { Update-TokenPanel }
         if ($script:shared.Error) { $Health.Text='Data unavailable: '+$script:shared.Error; $MiniStatus.Text='Data unavailable - open for details' }
         $snapshot=$script:shared.Latest
@@ -854,7 +1007,7 @@ $timer.Add_Tick({
                 # Observe provider bounds without treating a cached maximum as a guarantee.
                 $script:settings.form.Baseline.Maximum=200000
                 $script:settings.context.Text='800k'
-                if ($script:settings.result.Tag -ne 'Warning' -or $script:settings.result.Text -notlike '*may reject or cap*') { throw 'Catalog limit warning missing.' }
+                if ($script:settings.result.Tag -ne 'Warning' -or $script:settings.result.Text -notlike '*reject or reduce*') { throw 'Catalog limit warning missing.' }
                 $script:settings.context.Text='100k'; $script:settings.compact.Text='101k'
                 if ($script:settings.dialog.FindName('SaveLimits').IsEnabled -or $script:settings.result.Tag -ne 'Error') { throw 'Invalid compact threshold enabled Save.' }
                 $script:settings.context.Text=[string]($miniBase*3); $script:settings.compact.Text='90%'
@@ -881,7 +1034,7 @@ $timer.Add_Tick({
                 $script:settings.context.Text='200k'; $script:settings.compact.Text='90%'
                 $script:settings.dialog.FindName('SaveLimits').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
                 if ((Get-TopLevelAutoCompactLimit $idleChoice.Path) -ne 180000) { throw "Idle project percentage save failed: path=$($idleChoice.Path) selected=$($script:settings.form.Path) result=$($script:settings.result.Text)" }
-                $quickRow=$script:settings.form.BaseLabel.Parent.Children[1]
+                $quickRow=$script:settings.form.ResetRow
                 $undo=@($quickRow.Children | Where-Object Content -eq 'Undo')[0]
                 $defaults=@($quickRow.Children | Where-Object Content -eq 'Default')[0]
                 $script:settings.context.Text='300k'; $undo.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
@@ -965,6 +1118,7 @@ $timer.Add_Tick({
                 Update-TokenPanel $originalSnapshot.Tokens; $TokensPanel.ScrollToVerticalOffset(0)
             }
             Update-ContextQuotaBars
+        Update-ParkedBar
             if ($script:contextQuotaRows.Count -ne 2 -or @($script:contextQuotaRows.Values | Where-Object {$_.Bar.Value -eq 65}).Count -ne 1) { throw 'Context quota bars failed.' }
             if ($TokensPanel.Visibility -ne 'Visible' -or $prefs.Mode -ne 'Tokens' -or $script:contextQuotaRows.Count -ne 2) { throw 'Tokens mode switch or quota rendering failed.' }
             $window.UpdateLayout()
@@ -993,6 +1147,24 @@ $timer.Add_Tick({
             }
             if ($UserWebsite.NavigateUri.AbsoluteUri -ne 'https://yahyanabil.com/' -or $AuthorLine.Text -ne 'By Yahya Nabil') { throw 'Attribution controls missing.' }
             $MinimizeButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent)); $minimized=($window.WindowState -eq 'Minimized')
+            foreach($corner in @('TopLeft','TopRight','BottomLeft','BottomRight')) {
+                $prefs.Corner=$corner; Hide-Overlay $true; $restoreTab.UpdateLayout()
+                $expectedLeft=if($corner.EndsWith('Left')){$workArea.Left+12}else{$workArea.Right-$restoreTab.Width-12}
+                $expectedTop=if($corner.StartsWith('Top')){$workArea.Top+12}else{$workArea.Bottom-$restoreTab.Height-12}
+                if([Math]::Abs($restoreTab.Left-$expectedLeft) -gt 1 -or [Math]::Abs($restoreTab.Top-$expectedTop) -gt 1){throw 'Parked bar changed its selected corner.'}
+            }
+            if($parkQuota.Text -notmatch '65%' -or $parkTokens.Text -eq 'Tokens --'){throw 'Parked bar omitted token or quota data.'}
+            if($TestReport){
+                $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$restoreTab.ActualWidth,[int]$restoreTab.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
+                $bitmap.Render($restoreTab);$encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder;$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
+                $stream=[IO.File]::Create($TestReport+'.park.png');try{$encoder.Save($stream)}finally{$stream.Dispose()}
+            }
+            Show-Overlay
+            if($TestSettings){
+                foreach($view in $script:restartControls){if($view.Now.IsEnabled){throw 'Restart now was enabled for a running chat.'}}
+                $detailView=@($script:tokenTaskRows.Values)[0].Detail
+                if($detailView.Values.Input.Text -ne (Format-ShortTokenValue 88000)){throw 'Token cards missed live counters.'}
+            }
             Show-Overlay; Hide-Overlay $true; $hidden=(-not $window.IsVisible -and $restoreTab.IsVisible -and $tray.Visible); Show-Overlay
             $script:testPassed=($script:shared.Scans -gt 0 -and $minimized -and $hidden -and $window.IsVisible -and -not $script:shared.Error)
             if (-not $script:hiddenLoopPassed -or -not $compactPassed -or -not $snapPassed -or ($TestSettings -and (-not $script:settingsTestPassed -or -not $script:widgetSettingsPassed))) { $script:testPassed=$false }

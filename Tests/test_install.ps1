@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $source=Split-Path $PSScriptRoot -Parent
 . (Join-Path $source 'Install.Core.ps1')
 $fixture=Join-Path $env:TEMP ('context-install-test-'+[guid]::NewGuid().ToString('N'))
@@ -18,12 +18,12 @@ try {
  $unrelated=$shell.CreateShortcut((Join-Path $fixture 'desktop\Context Widget.lnk')); $unrelated.TargetPath=Join-Path $env:WINDIR 'notepad.exe'; $unrelated.Save()
 } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
 $prefsPath=Join-Path $fixture 'preferences\overlay.json'
-$prefs=Get-Content $prefsPath -Raw | ConvertFrom-Json; $prefs.Opacity=0.61
+$prefs=Get-Content $prefsPath -Raw | ConvertFrom-Json; $prefs.Opacity=0.61; $prefs | Add-Member Mode 'Tokens' -Force
 $prefs | ConvertTo-Json | Set-Content $prefsPath
 $upgrade=Install-ContextWidget -Source $source -Destination $destination -AutoOpen $false -TestRoot $fixture
 Assert (Test-Path (Join-Path $upgrade.Backup 'Overlay.ps1')) 'Upgrade did not preserve previous version.'
 $prefs=Get-Content $prefsPath -Raw | ConvertFrom-Json
-Assert ($prefs.Opacity -eq 0.61 -and -not $prefs.AutoOpen) 'Upgrade lost preferences or ignored startup choice.'
+Assert ($prefs.Opacity -eq 0.61 -and $prefs.Mode -eq 'Tokens' -and -not $prefs.AutoOpen) 'Upgrade lost preferences or ignored startup choice.'
 Assert (-not (Test-Path (Join-Path $fixture 'startup\Context-Token Codex.lnk'))) 'Startup removal failed.'
 Assert (-not (Test-Path (Join-Path $fixture 'startup\Codex Context Overlay.lnk'))) 'Owned legacy shortcut was not migrated.'
 Assert (Test-Path (Join-Path $fixture 'desktop\Context Widget.lnk')) 'Unrelated shortcut was removed.'

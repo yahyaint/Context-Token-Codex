@@ -1,64 +1,94 @@
-# Repair CTC after an update
+# Repair CTC
 
-Paste this into Codex with this repository open:
+## Prompt for Codex
 
-> Diagnose and repair Context-Token Codex using RECOVERY.md. Preserve the installed version, preferences and all Codex tasks. Inspect the current release and local errors. Run the relevant fixture tests before changing live files. Never delete, edit or replay Codex queued messages. Do not send a task to test monitoring. Show the cause, fix and test evidence. Ask before restarting Codex. Do not publish or push without my mark.
-
-## Context editor recovery (6.7)
-
-- Disabled Save: check the validation message. Percent needs an explicit numeric window; Compact at cannot exceed that window. Unchanged values also disable Save.
-- Disabled 1x/2x/3x: no saved, inherited, catalog or live baseline exists. Enter a numeric window first. Buttons use the labeled base and do not compound previous clicks.
-- Unexpected scale: inspect Saved and live values and the base source. A raw configured window can differ from a live usable window. Undo reads saved values again.
-- Catalog warning: compare the current model's local model cache with official provider information. Cached maximum is advisory and can be old. Never assume a larger saved number expands provider capacity.
-- Missing project: restore the existing project folder before saving; CTC does not recreate a deleted project. Global defaults remain separately editable.
-- Run test_context_editor.ps1 and test_overlay.ps1 against fixtures before repairing helpers or controls. Keep atomic writes, configuration backups and intervening-change checks.
-
-## 6.4 recovery notes
-
-- Slow quota refresh: allow up to 45 seconds. Errors distinguish CLI initialization from the subscription response. Keep the newest available reading; do not edit live queues.
-- Invalid preferences: look for `overlay.json.invalid-*.bak`. Known fields are normalized to defaults; compare the preserved original if needed.
-- Unsupported TOML syntax: the editor refuses the save. Use Codex to edit that file, preserve multiline instructions, and run `Tests/test_regressions.ps1` after a repair.
-- Failed install: runtime/preferences/shortcuts are rolled back. If rollback itself fails, the error lists affected paths; preserve the Versions backup and fix access before retrying.
+> Diagnose and repair Context-Token Codex with RECOVERY.md and UI-WRITING.md. Use STE for all new app text. Keep the installed version, preferences, and Codex chats. Read local errors first. Run the related fixture tests before you change installed files. Do not change or replay queued Codex messages. Do not send a chat message to test monitoring. Report the cause, repair, and test results. Ask before you restart Codex. Do not publish or push without my mark.
 
 ## First checks
 
-1. Record Windows, PowerShell, CTC and Codex versions. Keep screenshots and timestamps.
-2. Read `installation.json`, `CHANGELOG.md` and `COMPATIBILITY.md`. Keep the previous install's `Versions` folder.
-3. Confirm the selected Codex home. Do not copy `auth.json`, session contents or databases into issues or Git.
-4. Check Context, Tokens and Limits. A missing value must show `--`, not zero.
-5. Run `Build/build.ps1`, then the relevant scripts in `Tests`. UI tests need an interactive Windows desktop and STA PowerShell. Test with Windows PowerShell 5.1 and PowerShell 7 when available.
+1. Record the CTC, Codex, Windows, and PowerShell versions.
+2. Keep the error text and its time.
+3. Keep preferences and the previous runtime files.
+4. Check the related row below.
+5. Use fixture tests before you install the repair.
 
-## Symptoms and fixes
+| Problem | Check and action |
+|---|---|
+| Save is disabled | Check the error message. Percent needs an entered numeric window. Compact at must be at most that window. |
+| Save is disabled with no error | The entered values match the saved values. |
+| Multiplier buttons are disabled | No base value is available. Enter a numeric context window first. |
+| Multiplier result is unexpected | Check the base label. Saved and recorded window sizes can differ. Select Undo to read saved values again. |
+| Model catalog warning | Check current provider data. The local catalog can be old. A larger setting cannot increase model capacity. |
+| Project folder is unavailable | Restore the project folder before you save. CTC does not recreate a deleted project. |
+| CTC rejects TOML syntax | Edit the file through Codex. Keep multiline strings. Run test_regressions.ps1 before you install a reader change. |
+| Quota refresh is slow | Allow up to 45 seconds. Check CLI initialization, account response, sign-in, and network access. |
+| Quota data are old | Read the record time. Select Refresh. Keep the last reading marked as old. |
+| Widget is hidden | Select the ctc tray icon or edge tab. Or open ContextWidget.exe again. |
+| Auto-open fails | Check Auto-open, Target, Windows Startup apps, shortcut path, and watcher process. Run test_watcher.ps1. |
+| Local startup is slow | Check session sizes and data status. Run test_startup.ps1. Keep the complete lifecycle scan. |
+| Preferences are incorrect | Compare overlay.json with overlay.json.invalid-*.bak. Keep the backup until recovery is complete. |
+| Installation fails | Check the rollback message and Versions backup. Restore the listed files if automatic recovery fails. |
 
-| Symptom | Check | Fix |
-|---|---|---|
-| No tasks | Selected profile; recent session files; task state | Wait for a local task record. Check discovery/fallback status. Do not fabricate active tasks. |
-| Token counts stop | Last-record time versus reader status | A running reader cannot invent usage between Codex records. Test a synthetic append with `test_overlay.ps1`. |
-| Missing live compaction | SQLite availability and log schema | Use completed-compaction events from session files. Adapt the private log query only after inspecting the new schema. |
-| Subscription refresh fails | CLI location/version, sign-in and timeout | Keep the last reading with its time. Test `test_transport.ps1`. Preserve private state isolation in `Usage.Provider.ps1`. |
-| Long lists jump | Wheel handler, nested scroll viewers, retained controls | Use fixed pixel scrolling. Do not recreate or reorder every card on each tick. |
-| Saved limit differs from live | Raw versus usable size; selected scope | Check inherited values. Reload the task only with approval. Never claim a larger configured number expands model capacity. |
-| Widget is hidden | Tray icon or edge restore tab | Click CTC beside the Windows clock or launch ContextWidget.exe again. |
-| Auto-open fails after an app update | Widget Auto-open/Target; Windows Startup apps; Startup shortcut target; watcher process | The shortcut must point to the installed ContextWidget.exe with /watch. Start that watcher once if it was not running. Detection uses package family/process/window identity, not a fixed package version. Test test_watcher.ps1. A new launch retries until a ready CTC window is acknowledged; manually exiting a healthy widget waits for the next app launch. |
-| Local data is slow on startup | Session sizes, read status, quick scan and backfill | Run test_startup.ps1 and compare a fresh first scan. Keep the full-file lifecycle scan: a fixed tail can misclassify long running chats. Detailed attribution arrives after the first snapshot; CLI quota refresh is separate and can still take up to 45 seconds. |
-| New release fails | Backup, checksum, test report | Close CTC, restore the previous runtime files from Versions, retain current preferences, then reopen. Do not remove Codex files. |
-| “App-server queued follow-up no longer exists” | Codex Desktop composer and queue state | Preserve draft text. Refresh/reopen the task when idle; submit as a new message only if the user requests it. Do not alter queue SQLite rows. See ERROR-AUDIT.md. |
+## Auto-open
 
-## Provider boundary
+The Startup shortcut must point to the installed ContextWidget.exe with `/watch`.
+It must not point to an old folder.
+The watcher reads process and window identity, not a fixed package version.
+It tries a failed first launch again until CTC is ready.
+After a normal Close, another app launch can start CTC again.
 
-CTC sends only initialization and `account/rateLimits/read`. Its helper uses a separate `sqlite_home` under the CTC data directory. It closes its own stdin before terminating its own helper if needed. Never replace this with killing processes by name, attaching to Desktop's RPC connection, thread/queue calls, or direct credential extraction.
+## Message queue error
 
-## Before publishing a repair
+Codex can show this source error:
 
-- Check `git diff --check`, license notices and staged files for private paths/data.
-- Build the Windows ZIP and SHA256 file. Test the extracted package and `Install-FromGitHub.ps1 -VerifyOnly` against that local ZIP.
-- Record actual tested environments and remaining limits. Hosted CI must pass after publication; local tests are not hosted CI.
-- Keep the old release. Use a new version and explain the behavior change.
+> App-server queued follow-up no longer exists
 
-For a Codex Desktop update, finish and save work first. Restart only after approval. Afterward, verify actual installed versions, a local task's read-only monitoring, subscription refresh, tray restore and Limits. Do not use a live queued message as a destructive test fixture.
+Keep the draft text.
+When the chat is idle, reopen or refresh it.
+Send a new message only if the user requests it.
+Do not change queue database rows.
+See ERROR-AUDIT.md for recorded checks.
 
-## Quota estimator after updates
+## Tests and data limits
 
-If account percentages work but chat estimates show --, open Token and quota details. Check two fresh observations, a nonzero observed delta, matching reset windows and supported token/model fields. Missing or expired rates, explicit non-Standard tiers, long-context requests and subagent intervals are conservatively left unattributed. Review Quota.Rates.json against its official source; do not extrapolate unknown models. Never add cached input or reasoning twice. Check Tests/test_estimator.ps1 before deploying a change.
+Run test_context_editor.ps1 for limit parsing and base selection.
+Run test_overlay.ps1 for the compact and expanded controls.
+Run test_install.ps1 for the setup window.
+Use disposable fixtures. Do not change real project limits to test a repair.
 
-If current-window history is damaged, CTC starts a fresh baseline. Its files are under %LOCALAPPDATA%\CodexContextMonitor\QuotaHistory. Stop CTC and move this folder aside to reset estimator history, including after a keychain-only account change. Do not edit Codex auth.json or session logs to repair the estimator. Local history does not prove exact per-chat billing.
+Keep atomic writes, configuration backups, and checks for file changes.
+Keep unknown readings unknown. Do not replace an unknown value with zero.
+CTC sends only initialization and `account/rateLimits/read` to its own helper.
+The helper uses a separate database folder.
+Do not attach to the Codex desktop RPC connection or change thread and queue records.
+Do not stop processes by name. Identify only the CTC helper that needs to stop.
+
+## Release checks
+
+Check `git diff --check` and the staged files.
+Keep license notices and source credits exact.
+Exclude private paths, authentication data, session logs, and preferences.
+Build the Windows ZIP and SHA256 file.
+Check the ZIP with `Install-FromGitHub.ps1 -VerifyOnly`.
+Keep test results and screenshots.
+Do not claim sign-in, separate-machine, ARM, or long-duration checks unless those checks passed.
+Do not push without the owner's mark.
+
+## A saved context window does not change a running chat
+
+Check the root `model_context_window` key in the selected settings file.
+A key under `[shell_environment_policy.set]` is an environment variable, not a context setting.
+Check project overrides and trust before changing global defaults.
+Saving changes the file. It does not replace the loaded session configuration.
+After all chats stop, quit Codex fully. Open Codex again. Resume the chat.
+Check the next `token_count.info.model_context_window` value.
+Do not edit rollout counters or the live state database to simulate a larger window.
+CTC must show the recorded window until Codex supplies a new value.
+
+## Queued restart is blocked
+
+Open **Limits updates in queue**. Read its status tooltip.
+CTC requires known idle lifecycle records. Incomplete data block the restart.
+Select **Cancel restart** to remove a waiting request.
+After all chats stop, quit Codex fully. Open it again. Check the next context record.
+Do not force-stop a running chat to apply a limit.

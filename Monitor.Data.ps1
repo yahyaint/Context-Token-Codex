@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+﻿# SPDX-License-Identifier: MIT
 # Dot-source after Monitor.Core.ps1. One scan produces an immutable UI snapshot.
 function Read-WidgetPreferences([string]$Path, [hashtable]$Defaults) {
     $result=@{}; foreach ($key in $Defaults.Keys) {$result[$key]=$Defaults[$key]}
@@ -80,7 +80,7 @@ function Get-MonitorSnapshot([switch]$QuickStart) {
     })
     $tokens=if (Get-Command Get-RecordedTokenSummary -ErrorAction SilentlyContinue) { Get-RecordedTokenSummary } else { $null }
     [pscustomobject]@{ Updated=[DateTimeOffset]::Now; Cards=$cards; Projects=@(Get-KnownProjectPaths); Quota=(Get-QuotaLine); Tokens=$tokens;
-        Discovery=$script:discoveryMode; Warning=$script:discoveryWarning; Compaction=$script:logStatus }
+        Restart=$(if(Get-Command Get-RestartReadiness -ErrorAction SilentlyContinue){Get-RestartReadiness @($script:rollouts.Values) $MaxRecentRollouts}else{$null}); Discovery=$script:discoveryMode; Warning=$script:discoveryWarning; Compaction=$script:logStatus }
 }
 
 function Get-TargetAppInstances([string]$target, $Processes=$null) {
@@ -126,7 +126,7 @@ function Set-OverlayStartup([bool]$enabled, [string]$folder) {
         $link.Arguments = '/watch'
         $link.IconLocation = (Join-Path $folder 'Context.ico') + ',0'
         $link.WorkingDirectory = $folder
-        $link.Description = 'Open the context overlay when your selected app starts.'
+        $link.Description = 'Open the widget when the selected app starts.'
         $link.Save()
         [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell)
     } elseif (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }

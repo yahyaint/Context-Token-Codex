@@ -1,4 +1,4 @@
-. (Join-Path $PSScriptRoot 'Quota.Estimator.ps1')
+﻿. (Join-Path $PSScriptRoot 'Quota.Estimator.ps1')
 # SPDX-License-Identifier: MIT
 # Independent CodexBar-style RPC provider and ccusage-inspired detail view.
 # No upstream source copied. See ACKNOWLEDGMENTS.md and THIRD_PARTY_NOTICES.md.
@@ -8,7 +8,7 @@ function Find-CodexExecutable {
     $root=Join-Path $env:LOCALAPPDATA 'OpenAI\Codex\bin'
     $found=Get-ChildItem -LiteralPath $root -Filter codex.exe -Recurse -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
     if ($found) { return $found.FullName }
-    throw 'Codex CLI not found. Install/sign in to Codex; recorded local quotas remain available.'
+    throw 'CTC cannot find the Codex CLI. Install Codex. Sign in to Codex. CTC keeps the last recorded quota.'
 }
 function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$Arguments='app-server',[int]$TimeoutSeconds=45) {
     $info=New-Object Diagnostics.ProcessStartInfo
@@ -36,18 +36,18 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
         $startedProcess=$true
         # Drain diagnostics but never display them: CLI output can contain local paths.
         $stderr=$process.StandardError.ReadToEndAsync()
-        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.7.0"}}}')
+        $process.StandardInput.WriteLine('{"id":1,"method":"initialize","params":{"clientInfo":{"name":"context-widget","version":"6.8.0"}}}')
         $process.StandardInput.Flush()
         $phase='CLI initialization'; $deadline=[DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         while ([DateTime]::UtcNow -lt $deadline) {
             $pending=$process.StandardOutput.ReadLineAsync()
             $left=[Math]::Max(1,[int]($deadline-[DateTime]::UtcNow).TotalMilliseconds)
-            if (-not $pending.Wait($left)) { throw "$phase timed out. Showing the newest available reading." }
-            if ($null -eq $pending.Result) { throw 'Codex CLI closed before returning subscription usage.' }
+            if (-not $pending.Wait($left)) { throw "$phase timed out. CTC shows the last available reading." }
+            if ($null -eq $pending.Result) { throw 'The Codex CLI closed before it sent account quota data.' }
             try { $message=$pending.Result|ConvertFrom-Json } catch { continue }
             if ($message.id -eq 1) {
                 $phase='Subscription response'
-                if ($message.error) { throw 'Codex CLI initialization failed. Update or sign in to Codex.' }
+                if ($message.error) { throw 'Codex CLI initialization failed. Update Codex or sign in to Codex.' }
                 $process.StandardInput.WriteLine('{"method":"initialized","params":{}}')
                 $process.StandardInput.WriteLine('{"id":2,"method":"account/rateLimits/read","params":{"excludeResetCreditDetails":true}}')
                 $process.StandardInput.Flush()
@@ -57,11 +57,11 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
                 $process.StandardInput.Flush(); continue
             }
             if ($message.id -in @(2,3)) {
-                if ($message.error) { throw 'Subscription usage unavailable. Check Codex sign-in and network access.' }
-                return ConvertTo-QuotaSnapshot $message.result 'Live Codex CLI' ([DateTimeOffset]::Now)
+                if ($message.error) { throw 'Account quota data are unavailable. Check your Codex sign-in and network connection.' }
+                return ConvertTo-QuotaSnapshot $message.result 'Codex CLI' ([DateTimeOffset]::Now)
             }
         }
-        throw 'Subscription usage refresh timed out.'
+        throw 'The account quota request timed out.'
     } finally {
         if ($startedProcess) { try { if (-not $process.HasExited) { $process.StandardInput.Close(); if (-not $process.WaitForExit(1000)) { $process.Kill(); [void]$process.WaitForExit(1500) } } } catch {} }
         $process.Dispose()
@@ -69,20 +69,23 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
 }
 function ConvertTo-QuotaSnapshot($response,[string]$source,$observed) {
     $buckets=@()
-    if ($response.rateLimitsByLimitId) { $buckets=@($response.rateLimitsByLimitId.PSObject.Properties | ForEach-Object { $_.Value }) }
-    if (-not $buckets.Count -and $response.rateLimits) { $buckets=@($response.rateLimits) }
+    if ($response.rateLimitsByLimitId) { $buckets=@($response.rateLimitsByLimitId.PSObject.Properties | ForEach-Object { [pscustomobject]@{Data=$_.Value;Id=$_.Name} }) }
+    if (-not $buckets.Count -and $response.rateLimits) { $buckets=@([pscustomobject]@{Data=$response.rateLimits;Id=$response.rateLimits.limitId}) }
     $windows=@(); $plan=''; $credits=$null
-    foreach ($bucket in $buckets) {
+    foreach ($wrapper in $buckets) {
+        $bucket=$wrapper.Data
+        $bucketId=if ($bucket.limitId) {[string]$bucket.limitId} elseif ($wrapper.Id) {[string]$wrapper.Id} elseif ($bucket.limitName) {[string]$bucket.limitName} else {'codex'}
         if ($bucket.planType) { $plan=[string]$bucket.planType }
         if ($bucket.credits) { $credits=$bucket.credits }
-        foreach ($entry in @($bucket.primary,$bucket.secondary)) {
+        foreach ($role in @('primary','secondary')) {
+            $entry=$bucket.$role
             if ($null -eq $entry -or $null -eq $entry.usedPercent) { continue }
             $used=0.0
             if (-not [double]::TryParse([string]$entry.usedPercent,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$used) -or [double]::IsNaN($used) -or [double]::IsInfinity($used)) { continue }
             $minutes=$entry.windowDurationMins
             $label=if ($minutes -eq 300) {'5 hours'} elseif ($minutes -eq 10080) {'7 days'} elseif ($minutes) {"$minutes minutes"} else {'Window'}
             $bucketName=if ($bucket.limitName) {$bucket.limitName} elseif ($bucket.limitId) {$bucket.limitId} else {'Codex'}
-            $windows+=[pscustomobject]@{Name="$bucketName / $label";Remaining=[Math]::Max(0.0,[Math]::Min(100.0,100.0-$used));Reset=$entry.resetsAt;Minutes=$minutes}
+            $windows+=[pscustomobject]@{Name="$bucketName / $label";WindowId="$bucketId/$role/$minutes";Remaining=[Math]::Max(0.0,[Math]::Min(100.0,100.0-$used));Reset=$entry.resetsAt;Minutes=$minutes}
         }
     }
     [pscustomobject]@{Source=$source;Observed=$observed;Plan=$plan;Windows=$windows;Credits=$credits;ResetCredits=$response.rateLimitResetCredits.availableCount}
@@ -119,13 +122,13 @@ function Get-RecordedTokenSummary {
         }
         $identity=if ($script:titleCache) {$script:titleCache[$state.ThreadId]} else {$null}
         $title=if ($identity.UiName) {$identity.UiName} elseif ($identity.Initial) {$identity.Initial} else {$state.ThreadId}
-        $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$lifecycle[$state.ThreadId].Active;Total=$state.ThreadTokens;Input=$usage.input_tokens;Cached=$usage.cached_input_tokens;Uncached=$plain;Output=$usage.output_tokens;Reasoning=$usage.reasoning_output_tokens;Observed=$when;LastInput=$state.ContextInput;LastCached=$state.CachedInput;LastOutput=$state.OutputTokens;Compactions=$state.CompactCount;QuotaObserved=$state.RateLimitAt}
+        $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$lifecycle[$state.ThreadId].Active;Total=$state.ThreadTokens;Input=$usage.input_tokens;Cached=$usage.cached_input_tokens;Uncached=$plain;Output=$usage.output_tokens;Reasoning=$usage.reasoning_output_tokens;Observed=$when;LastInput=$state.ContextInput;LastCached=$state.CachedInput;LastOutput=$state.OutputTokens;Compactions=$state.CompactCount;QuotaObserved=$state.RateLimitAt;Activity=(Get-RecordedToolActivity $state)}
     }
     foreach ($state in $lifecycle.Values) {
         if (-not $state.Active -or $byThread.ContainsKey($state.ThreadId)) { continue }
         $identity=if ($script:titleCache) {$script:titleCache[$state.ThreadId]} else {$null}
         $title=if ($identity.UiName) {$identity.UiName} else {$state.ThreadId}
-        $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$true;Total=$null;Input=$null;Cached=$null;Uncached=$null;Output=$null;Reasoning=$null;Observed=$null;LastInput=$null;LastCached=$null;LastOutput=$null;Compactions=$state.CompactCount;QuotaObserved=$state.RateLimitAt}
+        $rows+=[pscustomobject]@{Id=$state.ThreadId;Title=$title;Cwd=$state.Cwd;Model=$state.Model;Active=$true;Total=$null;Input=$null;Cached=$null;Uncached=$null;Output=$null;Reasoning=$null;Observed=$null;LastInput=$null;LastCached=$null;LastOutput=$null;Compactions=$state.CompactCount;QuotaObserved=$state.RateLimitAt;Activity=(Get-RecordedToolActivity $state)}
     }
     $latest=$script:rollouts.Values | Where-Object {$_.RateLimits} | Sort-Object RateLimitAt -Descending | Select-Object -First 1
     $quota=$null
@@ -138,7 +141,23 @@ function Get-RecordedTokenSummary {
         $quota=ConvertTo-QuotaSnapshot ([pscustomobject]@{rateLimits=[pscustomobject]$bucket}) 'Recorded local quota' $latest.RateLimitAt
     }
     [pscustomobject]@{Total=$total;Input=$input;Cached=$cached;Output=$output;Reasoning=$reasoning;Uncached=$uncached;CacheTasks=$cacheTasks;ReasoningTasks=$reasoningTasks;Rows=@($rows|Sort-Object Observed -Descending);ActiveRows=@($rows|Where-Object Active);Observed=$observed;Tasks=$byThread.Count;DetailedTasks=$detailed;Quota=$quota;
-        Coverage="Cumulative counters for $($byThread.Count) loaded user chats; discovery: last $LookbackHours h, up to $MaxRecentRollouts files. Not account lifetime or today's total."}
+        Coverage="These counts cover $($byThread.Count) chats. CTC reads up to $MaxRecentRollouts files from the last $LookbackHours h. These are not account totals."}
+}
+function Get-RecordedToolActivity($state) {
+    $ready=[bool]$state.HasMetadata -and -not $state.NeedsBackfill -and -not $state.ReadError
+    $items=@();$count=0L
+    if ($ready -and $state.ToolCounts) {
+        $items=@($state.ToolCounts.GetEnumerator() | Sort-Object Value -Descending | ForEach-Object { [pscustomobject]@{Name=$_.Key;Count=[long]$_.Value} })
+        foreach($item in $items){$count+=$item.Count}
+    }
+    [pscustomobject]@{Ready=$ready;Partial=[bool]$state.ActivityPartial;Calls=$(if($ready){$count}else{$null});Tools=$items;Originator=$state.Originator}
+}
+function Format-ShortTokenValue($value) {
+    if($null -eq $value){return '--'}
+    if($value -ge 1000000000){return ('{0:0.#}B' -f ($value/1000000000.0))}
+    if($value -ge 1000000){return ('{0:0.#}M' -f ($value/1000000.0))}
+    if($value -ge 1000){return ('{0:0.#}k' -f ($value/1000.0))}
+    return ('{0:N0}' -f $value)
 }
 function Format-TokenValue($value) {
     if ($null -eq $value) { return '--' }
@@ -148,16 +167,16 @@ function Get-ChatTokenDetails($chat) {
     $hit=if ($chat.Input -gt 0 -and $null -ne $chat.Cached -and $chat.Cached -le $chat.Input) { '{0:N1}%' -f (100.0*$chat.Cached/$chat.Input) } else {'--'}
     $nonReasoning=if ($null -ne $chat.Output -and $null -ne $chat.Reasoning -and $chat.Reasoning -le $chat.Output) {$chat.Output-$chat.Reasoning} else {$null}
     $share=if ($chat.Output -gt 0 -and $null -ne $chat.Reasoning -and $chat.Reasoning -le $chat.Output) {'{0:N1}%' -f (100.0*$chat.Reasoning/$chat.Output)} else {'--'}
-    @("CHAT TOTALS", "Input: $(Format-TokenValue $chat.Input)", "  Cached: $(Format-TokenValue $chat.Cached) | Hit rate: $hit", "  Uncached: $(Format-TokenValue $chat.Uncached)", "Output: $(Format-TokenValue $chat.Output)", "  Reasoning: $(Format-TokenValue $chat.Reasoning) | Share: $share", "  Other output: $(Format-TokenValue $nonReasoning)", '', 'LATEST REQUEST', "Input: $(Format-TokenValue $chat.LastInput) | Cached: $(Format-TokenValue $chat.LastCached)", "Output: $(Format-TokenValue $chat.LastOutput)", '', "Last model: $($chat.Model)", "Compactions in loaded file: $(Format-TokenValue $chat.Compactions)", "Last token record: $(if($chat.Observed){$chat.Observed.ToLocalTime().ToString('MMM d HH:mm:ss')}else{'--'})", '', 'QUOTA ESTIMATE', $chat.QuotaShare, $chat.QuotaNotes, "Last local quota record: $(if($chat.QuotaObserved -gt [DateTimeOffset]::MinValue){$chat.QuotaObserved.ToLocalTime().ToString('MMM d HH:mm:ss')}else{'--'})", 'pp = percentage points of account allowance.', 'Other chats/devices may contribute; first reading is the baseline.', 'No exact per-chat quota or model-weighted charge is supplied.', '', 'Totals include earlier models. Cache is part of input;', 'reasoning is part of output. Missing data shows --.') -join "`n"
+    @("CHAT TOTALS", "Input: $(Format-TokenValue $chat.Input)", "  Cached input: $(Format-TokenValue $chat.Cached) | Hit rate: $hit", "  Uncached: $(Format-TokenValue $chat.Uncached)", "Output: $(Format-TokenValue $chat.Output)", "  Reasoning: $(Format-TokenValue $chat.Reasoning) | Share: $share", "  Other output: $(Format-TokenValue $nonReasoning)", '', 'LATEST REQUEST', "Input: $(Format-TokenValue $chat.LastInput) | Cached input: $(Format-TokenValue $chat.LastCached)", "Output: $(Format-TokenValue $chat.LastOutput)", '', "Last model: $($chat.Model)", "Compactions in this record: $(Format-TokenValue $chat.Compactions)", "Last token record: $(if($chat.Observed){$chat.Observed.ToLocalTime().ToString('MMM d HH:mm:ss')}else{'--'})", '', 'QUOTA ESTIMATE', $chat.QuotaShare, $chat.QuotaNotes, "Last local quota record: $(if($chat.QuotaObserved -gt [DateTimeOffset]::MinValue){$chat.QuotaObserved.ToLocalTime().ToString('MMM d HH:mm:ss')}else{'--'})", 'pp = percentage points of account allowance.', 'Other chats/devices may contribute; first reading is the baseline.', 'No exact per-chat quota or model-weighted charge is supplied.', '', 'Totals include earlier models. Cache is part of input;', 'reasoning is part of output. Missing data shows --.') -join "`n"
 }
 function Format-QuotaReset($timestamp) {
-    if (-not $timestamp) { return 'Reset unknown' }
+    if (-not $timestamp) { return 'Reset time unknown' }
     try {
         $reset=[DateTimeOffset]::FromUnixTimeSeconds([long]$timestamp)
         $left=$reset-[DateTimeOffset]::Now
-        if ($left.TotalSeconds -le 0) { return 'Reset time passed; awaiting refreshed usage' }
+        if ($left.TotalSeconds -le 0) { return 'The reset time passed. Refresh the quota reading.' }
         return ('Resets {0} ({1}h {2}m)' -f $reset.ToLocalTime().ToString('MMM d HH:mm'),[Math]::Floor($left.TotalHours),$left.Minutes)
-    } catch { return 'Reset unknown' }
+    } catch { return 'Reset time unknown' }
 }
 
 function Select-FreshQuota($live,$recorded) {
@@ -166,10 +185,10 @@ function Select-FreshQuota($live,$recorded) {
     $byName=@{}
     foreach($snapshot in @($live,$recorded)) {
         foreach($entry in @($snapshot.Windows)) {
-            $key=$entry.Name
+            $key=if ($entry.WindowId) {$entry.WindowId} else {$entry.Name}
             if(-not $key){continue}
             if(-not $byName.ContainsKey($key) -or $snapshot.Observed -gt $byName[$key].Observed) {
-                $byName[$key]=[pscustomobject]@{Name=$entry.Name;Remaining=$entry.Remaining;Reset=$entry.Reset;Minutes=$entry.Minutes;Observed=$snapshot.Observed;Source=$snapshot.Source}
+                $byName[$key]=[pscustomobject]@{Name=$entry.Name;WindowId=$entry.WindowId;Remaining=$entry.Remaining;Reset=$entry.Reset;Minutes=$entry.Minutes;Observed=$snapshot.Observed;Source=$snapshot.Source}
             }
         }
     }

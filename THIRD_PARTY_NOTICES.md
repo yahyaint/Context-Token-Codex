@@ -129,3 +129,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Additional design reference: ClaudeCodeUsage
+
+MIT. Copyright (c) 2025 GrowthJack.
+Reviewed revision: `a871da2b970433cc42a56185f32428c21d0c4e36`.
+[Original license](https://github.com/ClaudeCodeUsage/ClaudeCodeUsage/blob/a871da2b970433cc42a56185f32428c21d0c4e36/LICENSE).
+This is a design reference. No source, assets, or binaries are copied or bundled.

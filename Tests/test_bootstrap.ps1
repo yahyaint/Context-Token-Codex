@@ -1,8 +1,8 @@
-# SPDX-License-Identifier: MIT
+﻿# SPDX-License-Identifier: MIT
 param([string]$Archive)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
-if (-not $Archive) {$Archive=Join-Path $root 'dist/Context-Token-Codex-Windows-v6.7.0.zip'}
+if (-not $Archive) {$Archive=Join-Path $root 'dist/Context-Token-Codex-Windows-v6.8.0.zip'}
 & (Join-Path $root 'Install-FromGitHub.ps1') -Archive $Archive -VerifyOnly
 $bad=Join-Path $env:TEMP ('ctc-bad-hash-'+[guid]::NewGuid().ToString('N')+'.sha256')
 [IO.File]::WriteAllText($bad,('0'*64)+'  '+[IO.Path]::GetFileName($Archive))

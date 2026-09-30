@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+﻿# SPDX-License-Identifier: MIT
 # Independent measured-interval attribution. Research references in QUOTA-RESEARCH.md.
 function Get-QuotaEventWeight($event,$rates) {
     if (([DateTimeOffset]::Now-[DateTimeOffset]::Parse($rates.checked)).TotalDays -gt 90) {return $null}
@@ -61,7 +61,7 @@ function Read-QuotaLedger([string]$path,[string]$scope) {
             $shares=@{}; foreach ($v in $w.Shares.PSObject.Properties) {$shares[$v.Name]=[double]$v.Value}; $w.Shares=$shares
             $ledger.Windows[$p.Name]=$w
         }
-    } catch { $ledger=New-QuotaLedger; $ledger.Scope=$scope; $ledger.Warning='History unavailable; new baseline' }
+    } catch { $ledger=New-QuotaLedger; $ledger.Scope=$scope; $ledger.Warning='CTC cannot read quota history. A new start reading is required.' }
     return $ledger
 }
 function Save-QuotaLedger($ledger,[string]$path) {
@@ -92,7 +92,7 @@ function Get-QuotaShareText($ledger,[string]$id,$now=[DateTimeOffset]::Now) {
         $n=$w.Shares[$id]; $value=if($n -lt 1){'<1%'}else{'~{0:N0}%' -f $n}
         $parts+="$label $value"
     }
-    'Est. tracked share: '+($parts -join ' | ')
+    'Quota estimate: '+($parts -join ' | ')
 }
 function Update-SnapshotQuota($snapshot,$live,[string]$homePath) {
     if (-not $homePath) {$homePath=if($env:CODEX_HOME){$env:CODEX_HOME}else{Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'}}
@@ -120,16 +120,16 @@ function Update-SnapshotQuota($snapshot,$live,[string]$homePath) {
     }
     foreach($row in @($snapshot.Tokens.Rows)) {
         $text=Get-QuotaShareText $script:quotaLedger $row.Id
-        $notes=@('Local-only allocation; other devices can contaminate it.','Only observed intervals since baseline; not full chat history.','Weights: model + uncached/cached input + output.','Missing speed assumes Standard; unsupported speed/context stays unattributed.')
+        $notes=@('This estimate uses local records. Activity on other devices can affect the result.','The estimate covers recorded changes after the start reading. It does not cover the full chat history.','The calculation uses the model, uncached input, cached input, and output.','If speed is unknown, CTC uses Standard. CTC cannot assign quota to unsupported speed or context data.')
         foreach($w in $script:quotaLedger.Windows.Values) {
             $label=if($w.Minutes -eq 300){'5h'}elseif($w.Minutes -eq 10080){'7d'}else{"$($w.Minutes)m"}
-            $notes+=('{0}: since {1}; {2} matched intervals; {3:N0} pp unattributed.' -f $label,$w.Start.ToLocalTime().ToString('MMM d HH:mm'),$w.Spans,$w.Unattributed)
+            $notes+=('{0}: from {1}; {2} recorded intervals; {3:N0} pp not assigned. pp means percentage points.' -f $label,$w.Start.ToLocalTime().ToString('MMM d HH:mm'),$w.Spans,$w.Unattributed)
         }
         if($script:quotaLedger.Warning){$notes+=$script:quotaLedger.Warning}
         $row|Add-Member QuotaShare $text -Force
         $row|Add-Member QuotaNotes ($notes -join "`n") -Force
     }
     if (([DateTimeOffset]::Now-$script:quotaLedger.SavedAt).TotalSeconds -ge 30) {
-        try {Save-QuotaLedger $script:quotaLedger $script:quotaLedgerPath} catch {$script:quotaLedger.Warning='History could not be saved; estimates last until restart'}
+        try {Save-QuotaLedger $script:quotaLedger $script:quotaLedgerPath} catch {$script:quotaLedger.Warning='CTC cannot save quota history. These estimates are available until CTC stops.'}
     }
 }

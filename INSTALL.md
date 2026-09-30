@@ -1,19 +1,41 @@
-# Install Context-Token Codex
+# Install CTC
 
-Windows only. The public repository and release must exist before these commands work.
+The GitHub method needs a public repository and Windows release.
+Publication waits for the owner's approval.
 
-## One prompt for Codex
+## Prompt for Codex
 
-> Install Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read INSTALL.md and RECOVERY.md first. Download the latest published Windows release and its SHA256 file. Verify the hash, then open Setup.exe. Preserve any existing preferences and back up the old version. Check that the widget opens and reads local task usage. Do not change Codex settings or queued messages. If there is no published release, stop and report that instead of downloading from another source.
+> Install Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read INSTALL.md, RECOVERY.md, and UI-WRITING.md first. Download the latest Windows release and SHA256 file. Check the hash. Open Setup.exe. Keep existing preferences and a backup. Check local chat data after installation. Do not change Codex limits or message queues. If no release is available, stop and report the cause.
 
-## One command with GitHub CLI
+## GitHub command
 
-Run in PowerShell after signing into `gh`:
+Install GitHub CLI first.
+Sign in with `gh auth login` if required.
+Run this command in PowerShell:
 
 ```powershell
 & { $p=Join-Path $env:TEMP ('ctc-source-'+[guid]::NewGuid().ToString('N')); gh repo clone yahyaint/Context-Token-Codex $p; if ($LASTEXITCODE) { throw 'Clone failed' }; powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $p 'Install-FromGitHub.ps1') }
 ```
 
-The command clones source and runs the repository's installer helper. The helper downloads the latest release, verifies its SHA256 and opens the setup wizard. You choose the destination and startup option in the wizard. It does not require administrator rights. This is not an unattended install or a digital-signature guarantee; the hash detects a mismatched download.
+To select a fixed release, add `-Version v6.8.0` to the helper command.
+The helper checks the ZIP hash before it opens Setup.
+The hash detects changed files. It is not a publisher signature.
 
-To pin a release, add `-Version v6.7.0` to the helper command. For a manual install, download the Windows ZIP and checksum from Releases, verify the hash with `Get-FileHash`, extract and open Setup.exe. Source archives require `Build/build.ps1` first.
+## Manual installation
+
+1. Download the Windows release ZIP and SHA256 file.
+2. Use `Get-FileHash` to check the ZIP hash.
+3. Extract the ZIP.
+4. Open Setup.exe.
+5. Select the installation folder.
+6. Select Install.
+
+Auto-open is on by default.
+CTC keeps previous files and settings when you install an update.
+Installation does not need administrator access.
+
+## Source files
+
+Source ZIPs do not contain the executables.
+Run `Build/build.ps1` before you open Setup.exe.
+The Windows release ZIP contains the executables.

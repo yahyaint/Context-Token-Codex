@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 . (Join-Path $root 'Usage.Provider.ps1')
 function Assert($condition,$message) { if (-not $condition) { throw $message } }
@@ -14,7 +14,8 @@ Assert ($quota.Windows[0].Minutes -eq 10080) 'Weekly-only primary mislabeled.'
 Assert ($quota.ResetCredits -eq 0) 'Known zero reset credits lost.'
 $empty=ConvertTo-QuotaSnapshot ([pscustomobject]@{rateLimits=$null}) 'empty' $now
 Assert ($empty.Windows.Count -eq 0) 'Empty quota should remain unavailable.'
-Assert ((Format-QuotaReset $now.AddMinutes(-1).ToUnixTimeSeconds()) -match 'awaiting') 'Past reset should not claim quota recovery.'
+$pastReset=Format-QuotaReset $now.AddMinutes(-1).ToUnixTimeSeconds()
+Assert ($pastReset -match 'time passed' -and $pastReset -match 'Refresh') 'A past reset must require a new reading.'
 $script:rollouts=@{}
 $old=[pscustomobject]@{ThreadId='same';IsSubagent=$false;ThreadTokens=100;UsageAt=$now.AddMinutes(-1);TotalUsage=@{input_tokens=80;cached_input_tokens=20;output_tokens=20};RateLimits=$null}
 $new=[pscustomobject]@{ThreadId='same';IsSubagent=$false;ThreadTokens=150;UsageAt=$now;TotalUsage=@{input_tokens=120;cached_input_tokens=40;output_tokens=30};RateLimits=$null}
@@ -44,3 +45,9 @@ Assert (@((Get-RecordedTokenSummary).ActiveRows).Count -eq 0) 'Finished task rem
 $detail=Get-ChatTokenDetails ([pscustomobject]@{Input=100;Cached=80;Uncached=20;Output=50;Reasoning=30;Model='fixture'})
 Assert ($detail -match 'Other output: 20' -and $detail -match '80[.,]0%') 'Derived token detail incorrect.'
 Write-Output 'PASS: detailed token breakdown.'
+
+$a=ConvertTo-QuotaSnapshot ([pscustomobject]@{rateLimits=[pscustomobject]@{limitId='codex';limitName='Display';primary=@{usedPercent=10;windowDurationMins=300}}}) 'live' $now
+$b=ConvertTo-QuotaSnapshot ([pscustomobject]@{rateLimits=[pscustomobject]@{limitId='codex';primary=@{usedPercent=20;windowDurationMins=300}}}) 'recorded' $now.AddSeconds(1)
+$merged=Select-FreshQuota $a $b
+Assert (@($merged.Windows).Count -eq 1 -and $merged.Windows[0].Remaining -eq 80) 'Quota identity depends on display names.'
+'PASS: stable quota identity across source labels.'

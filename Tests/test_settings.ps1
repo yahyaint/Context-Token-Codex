@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $scriptPath = Join-Path $PSScriptRoot 'Monitor.Core.ps1'
 if (-not (Test-Path -LiteralPath $scriptPath)) {
     $scriptPath = Join-Path (Split-Path -Path $PSScriptRoot -Parent) 'Monitor.Core.ps1'
@@ -82,6 +82,11 @@ try {
     if ((Find-VersionedDatabase $folder 'state') -ne $plainDb) {
         throw 'Unversioned SQLite database was missed'
     }
+    $savedState=[pscustomobject]@{Cwd=$folder;Model='gpt-6-astra';ContextWindow=95000}
+    $pending=Get-SavedWindowStatus $savedState
+    if ($pending.Status -ne 'Pending' -or $pending.Expected -ne 142500) {throw 'Saved window falsely reported as applied.'}
+    $savedState.ContextWindow=142500
+    if ((Get-SavedWindowStatus $savedState).Status -ne 'Confirmed') {throw 'Recorded window did not confirm saved settings.'}
     Write-Host 'Settings edit tests passed.'
 }
 finally { Remove-Item -LiteralPath $folder -Recurse -Force }

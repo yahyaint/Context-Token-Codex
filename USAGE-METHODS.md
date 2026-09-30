@@ -41,3 +41,30 @@ An independent measured-interval allocator replaces simple chat-local before/aft
 Research references: [Codexometer](https://github.com/merefield/codexometer) (MIT), for local-only labeling, source precision and reset/baseline guards; [CPA Quota Estimator](https://github.com/Autsunset/cpa-quota-estimator) (MIT), for model/cache valuation; [How Much I Get From Codex](https://github.com/bigbobro/how-much-i-get-from-codex) (MIT), for separate-window calibration research. [AI Usage Tracker](https://github.com/Danielw412/AI-usage-tracker) is a comparison for interval allocation; no license was confirmed and no code was copied. No external project code is bundled.
 
 Current-window history is bounded and checkpointed locally. Unsupported or missing inputs, subagent intervals and observation gaps remain unattributed. Values are explicitly estimates and rounded to whole percentages; a positive estimate below one point is shown as <1%. An unknown value is --, never zero. External activity concurrent with visible local events remains inseparable. A reset, percent decrease or login-file metadata change starts a new baseline. These conservative guards can underreport local usage. Empirical allowance-capacity calibration and retrospective full-week reconstruction are not implemented.
+
+## Token cards and tool activity - 30 September 2026
+
+CTC uses token cards with exact values in tooltips. Secondary data use expandable sections.
+Input and output remain totals. Cache and reasoning remain subsets.
+
+The activity reader counts `response_item` function, custom-tool, and web-search calls with unique IDs.
+It excludes output records and repeated call IDs.
+It retains names and counts, not arguments or result text.
+The scan bounds names, tool groups, and IDs. Incomplete scans show unknown counts.
+Missing IDs and capped histories mark counts as partial.
+Counts cover the selected rollout record, not all resumed records in a chat.
+Client metadata are shown as recorded. They do not prove that a call came from an automation.
+
+Codex's aggregate usage counters do not assign billed tokens to each tool call.
+Tool output size is not the model's total input charge.
+Therefore, CTC shows call counts and leaves tool and automation token costs unknown.
+Source: [Codex protocol](https://github.com/openai/codex/blob/main/codex-rs/protocol/src/protocol.rs).
+
+Design references:
+
+- [ccusage Codex reports](https://ccusage.com/guide/codex/): input, cache, and output separation with coverage.
+- [ClaudeCodeUsage](https://github.com/ClaudeCodeUsage/ClaudeCodeUsage/tree/a871da2b970433cc42a56185f32428c21d0c4e36): compact primary values, grouped details, and labelled content estimates.
+- [Codex Monitor HUD](https://github.com/LH-03/codex-monitor-hud): record filtering and bounded discovery.
+
+CTC uses the display patterns. It does not copy a tokenizer or claim exact content attribution.
+See ACKNOWLEDGMENTS.md for licenses and fixed revisions.

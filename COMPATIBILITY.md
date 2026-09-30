@@ -1,3 +1,11 @@
+# STE text - 6.7.1
+
+The app uses short instructions and defined software terms.
+The writing rules apply to future changes.
+User content, source error details, license notices, and historical evidence stay exact.
+The context editor behavior does not change.
+See UI-WRITING.md and AGENTS.md for the rules.
+
 # Context editor - 6.7.0
 
 Compact project editing, anchored multipliers, percentage presets, scoped saved/live values, preview-only reset controls and catalog warnings share the same helpers as the expanded editor. The release checks cover these controls in disposable fixtures; they do not alter real Codex limits. Source credits are in ACKNOWLEDGMENTS.md. Older verification below remains historical.

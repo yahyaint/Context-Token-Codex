@@ -32,6 +32,10 @@ jobs:
         run: .\Tests\test_regressions.ps1
       - name: Test usage accounting and quota parsing
         run: .\Tests\test_usage.ps1
+      - name: Test tool activity and restart safety
+        run: |
+          .\Tests\test_activity.ps1
+          .\Tests\test_restart.ps1
       - name: Test quota estimator
         run: .\Tests\test_estimator.ps1
       - name: Verify source and isolated installation

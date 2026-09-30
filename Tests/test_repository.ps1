@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 function Assert($condition,$message) { if (-not $condition) { throw $message } }
 foreach ($file in @(Get-ChildItem -LiteralPath $root -Filter *.ps1 -Recurse | Where-Object FullName -NotMatch '\\dist\\')) {
@@ -18,7 +18,7 @@ foreach ($name in @('ContextWidget.exe','Setup.exe')) { Assert (Test-Path (Join-
 $fixture=Join-Path $env:TEMP ('context-repository-test-'+[guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory($fixture)
 $result=Install-ContextWidget -Source $root -Destination (Join-Path $fixture 'installed') -TestRoot $fixture
-Assert ($result.Files -eq 24) 'Unexpected runtime manifest.'
+Assert ($result.Files -eq 26) 'Unexpected runtime manifest.'
 foreach ($name in @('ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md')) {
  Assert (Test-Path (Join-Path $fixture "installed/$name")) "Installed distribution missing $name."
 }

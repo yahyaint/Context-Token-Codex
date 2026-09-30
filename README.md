@@ -1,126 +1,184 @@
-# Context-Token Codex 6.7.0
+# Context-Token Codex 6.8.0
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
-A Windows widget for local Codex context, token counts and subscription usage.
+CTC is a Windows widget for Codex context, token counts, and account quotas.
+Created by **Yahya Nabil** â€” [yahyanabil.com](https://yahyanabil.com).
 
 **Windows 10/11 | MIT | Independent community project**
 
-Created by **Yahya Nabil** — [yahyanabil.com](https://yahyanabil.com).
-
 ## Install
 
-Download the Windows release ZIP, verify its SHA256, extract it and open **Setup.exe**. The installer creates CTC shortcuts, preserves settings and backs up the previous runtime. Auto-open with ChatGPT or Codex is enabled by default. Installation needs no administrator access or downloaded runtime.
+1. Download the Windows release ZIP and its SHA256 file.
+2. Check the ZIP hash.
+3. Extract the ZIP.
+4. Open **Setup.exe**.
 
-See [INSTALL.md](INSTALL.md) for the GitHub CLI command and copy-paste Codex installation prompt. These require a published repository/release. Publication is pending the owner's explicit approval.
+Setup creates shortcuts and keeps your settings.
+When you install an update, CTC keeps the previous files in a backup.
+Installation does not need administrator access.
+Windows supplies PowerShell and .NET.
+The executables are unsigned.
 
-From source, build first:
+See [INSTALL.md](INSTALL.md) for the GitHub command and Codex installation prompt.
+These methods need a public repository and release.
+Publication waits for the owner's approval.
+
+If you use source files, build the executables first:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Build\build.ps1
 ```
 
-Then open `Setup.exe` or `ContextWidget.exe`. Executables are generated, not committed. The Windows package includes them. Launchers are unsigned.
-
-You can also launch from an extracted folder. **Default auto-open creates a Startup shortcut pointing to that folder.** Disable Auto-open in Widget settings before moving/deleting it; enable it again from the new location. This is portable storage, not a no-persistence mode.
+Then open **Setup.exe** or **ContextWidget.exe**.
+You can run CTC from an extracted folder.
+Auto-open creates a Startup shortcut to that folder.
+Before you move the folder, disable Auto-open.
+After the move, enable Auto-open from the new location.
 
 ## Views
 
-- **Context:** active chats, measured context percentage and compaction state. Details holds secondary readings.
-- **Tokens:** active-chat cumulative totals, input, output, cache, uncached input and reasoning; loaded-chat totals and subscription readings.
-- **Limits:** global and project defaults, including saved idle projects. Applies to all models in the chosen scope.
-- **Collapsed:** one selected active chat. Previous/next changes the chat. **Edit context limits** opens that chat's project editor at the same compact size. Save stays visible while details scroll. Expand/Collapse keeps the current draft.
+| View | Data and controls |
+|---|---|
+| Context | Active chats, recorded context percentage, and compaction status. |
+| Tokens | Recorded chat totals, input, output, cached input, and reasoning. |
+| Limits | Global and project context settings. Includes saved idle projects. |
+| Compact | One selected active chat. Use the arrows to select another chat. |
 
-Current chat names come from local desktop state or the session index. Initial text is a tooltip fallback. Missing data stays unknown rather than being invented.
+The quota bars appear in every view.
+They show the remaining account quota.
+Move the pointer over a bar to see used percentage, plan, record time, and reset time.
+Select **Refresh** to read the newest account quota.
 
-Small account quota bars stay below the tabs in every view, including Limits and Widget settings. Bars show remaining allowance; hover for used percentage, plan, observation time and reset time. Refresh sits beside the bars.
+CTC reads local records.
+Context is the last recorded request, not a continuous model measurement.
+Token counts change when Codex writes new records.
+Input includes cached input. Output includes reasoning.
+The total equals input plus output.
+Chat totals can include previous models.
+Local totals are not account totals.
 
-Context is the latest recorded request, not a continuous measurement inside Codex. Token counters update when new local records arrive. Changed model windows clear incompatible old context readings. Compaction completion comes from session events; live compaction-start indicators need compatible SQLite logs.
+Quota estimates use recorded changes and local token data.
+Other devices can affect the result.
+The estimate does not measure exact quota use for one chat.
+Old or unknown readings stay marked.
+Compaction completion comes from session events.
+The live compaction indicator needs compatible local logs.
 
-## Context settings
+## Edit context limits
 
-Enter `180000`, `180k`, or `default`. **Compact at also accepts percentages**, e.g. `90%` with a `200k` context window saves `180000` tokens. Decimal percentages are supported, above 0 through 100. Enter a numeric context window first; `default` has no fixed denominator across models. The live hint previews the token result. Percentages are converted on save, not stored as a rule for future window changes.
+Select **Edit context limits** in the compact view.
+CTC opens the project for the displayed chat.
+You can edit values at the compact size.
+Save stays visible while details scroll.
+Expand and Collapse keep your unsaved values.
 
-Use **×1 / ×2 / ×3** to preview a window from the labeled base. Clicking ×2 then ×3 produces twice then three times that base, not six times. The base comes from this scope's saved raw value, global fallback, local model catalog, or a labeled live usable reading. If none exists, enter a numeric window first. Numeric compaction thresholds keep their proportion; percentage input stays a percentage; `default` stays `default`.
+Select a project or global scope from the list.
+These settings apply to all models in that scope.
+CTC does not store separate limits for each chat or model.
+Saving does not change the window of a loaded chat.
+CTC shows **Saved - waiting for reload** while the recorded window differs.
+After all chats stop, quit Codex fully. Open Codex again. Resume the chat.
+Closing one window can leave Codex running in the background.
+Check for a new usage record. CTC confirms the setting only when the recorded window matches.
+The usable window can be smaller than the saved value. Codex can reserve space.
+**Limits updates in queue** contains restart controls.
+**Restart now safely** is disabled while CTC records running chats.
+**Restart after all chats stop** queues one restart. **Cancel restart** removes the waiting request.
+The helper scans recent user and agent records. It waits for ten seconds of recorded idle state.
+Unknown lifecycle data, incomplete records, read errors, and scan limits block the restart.
+The helper requests a normal close. It does not force-stop Codex.
+If Codex stays open, quit it manually. The request expires after 24 h.
+The helper reopens Codex. Resume the chat. Check its next context record.
+CTC writes settings at Save. It queues the restart, not a separate per-chat configuration.
 
-**80% / 90% / 95%** set a draft threshold. **Undo** reloads saved values. **Default** previews removing both overrides in this scope. Nothing writes until **Save**. Invalid drafts disable Save and show the reason. A known local catalog maximum produces a warning if exceeded; it can be stale and applies only to the identified model, while project/global settings apply to all models. CTC does not promise that Codex will accept a larger value.
+Enter `200000`, `200k`, or `default` for the context window.
+Enter tokens or a percentage for **Compact at**.
+Example: `90%` of `200k` equals `180000` tokens.
+A percentage needs an entered numeric window.
+CTC saves the percentage as tokens.
+It does not change automatically with later window settings.
 
-Saved and live readings are under **Saved and live values**. Hover for the config path. Global, active-project and saved idle-project scopes use the same controls. Both input fields and scale buttons fit the compact editor; additional details scroll.
+Use **Ã—1 / Ã—2 / Ã—3** to multiply the displayed base value.
+If you select Ã—2 then Ã—3, the results are twice then three times the same base.
+Numeric compaction thresholds keep their percentage.
+Percentage input stays a percentage. `default` stays `default`.
+If no base value is available, enter a numeric window first.
+The base label identifies saved, inherited, catalog, or recorded data.
 
-Window and compact changes are prepared together and atomically replace the selected file, with a backup and an intervening-change check. The editor preserves multiline strings and ordinary quoted keys. Unsupported root-key syntax is rejected before writing; edit such a file through Codex instead. This is a conservative scoped editor, not a general TOML formatter.
+**80% / 90% / 95%** set a compaction percentage.
+**Undo** reads the saved values again.
+**Default** sets both fields to `default`.
+**Save** writes the values.
+Before Save, CTC does not change the settings file.
+An incorrect value disables Save and shows the reason.
 
-These are project/global defaults, **not persistent per-chat or per-model overrides**. Loaded chats may require a reload. There is no apply-on-idle queue. A configured number does not increase the model's supported capacity. Live usable capacity may differ from the raw configured window.
+Larger values do not increase model capacity.
+CTC shows a warning if a value exceeds the limit in the local model catalog.
+Model catalog data can be old. Other models can have different limits.
+Codex can reject or reduce the requested value.
+
+Open **Saved and live values** to compare saved and recorded data.
+Move the pointer over these values to see the file path.
+CTC writes both limits together and keeps a backup.
+It checks for file changes before the final write.
+It preserves normal TOML strings and quoted keys.
+If CTC cannot use the file syntax, it stops before writing.
 
 ## Window controls
 
-Drag the header to move; drop near a corner to snap. Expand shows all active chats; Collapse shows the mini card. Expanded views have a 520-unit minimum height where the screen permits it.
+Drag the header to move the widget.
+Release near a corner to set the position.
+Expand shows more detail. Collapse returns to the compact view.
+Drag the lower right control to resize the expanded view.
 
-Compact Context and Tokens views use the same 370 by 480 layout, with room for quota bars and the context edit button.
+| Control | Action |
+|---|---|
+| Background | Changes background opacity. Text stays visible. CTC saves changes immediately. |
+| Pinned | Keeps CTC above other windows. |
+| Corner | Selects a screen corner. |
+| Tray | Hides CTC beside the Windows clock. Select the ctc icon to restore it. |
+| Park bar | Shows context, tokens, navigation, and small quotas at the same corner. Select its restore button to open CTC. |
+| Minus | Minimizes CTC to the taskbar. |
+| Close | Stops CTC. |
 
-- **Background:** live background opacity, 40–100%; text and controls stay opaque.
-- **Pinned:** always on top.
-- **Corner:** move to a screen corner.
-- **Tray:** beside Expand; hide and restore with the CTC icon beside the Windows clock, possibly inside the overflow menu.
-- **Park tab:** show a small restore tab at the screen edge.
-- **Minus:** minimize to the taskbar. **Close:** exit the widget.
+If the widget is hidden, open ContextWidget.exe again to restore it.
+The icon can be in the tray's ^ menu.
 
-The footer includes the author and website. Opening the launcher again restores an existing hidden widget.
+## Startup and data
 
-## Startup
+Auto-open is on by default.
+Widget settings can follow Codex, ChatGPT, or Either.
+The watcher starts at Windows sign-in.
+It checks app windows every 1.5 seconds without a fixed app version.
+If the first launch fails, it tries again every 15 seconds.
+After CTC is ready, Close stops it until another app launch or manual launch.
+CTC stays open after the selected app closes.
 
-Widget settings chooses Codex, ChatGPT or Either. Auto-open adds a per-user Startup shortcut and a watcher. The watcher polls visible app instances every 1.5 seconds; identities include the process/window and do not pin a package version. If a new app launch fails to produce a ready CTC window, the watcher retries every 15 seconds while the app remains open. CTC stays open after the watched app closes. Once readiness is acknowledged, Exit stays respected until another app launch or manual launch.
+Local data appear before detailed quota estimates.
+An account quota request can take up to 45 seconds.
+CTC uses a separate helper database for that request.
+It sends only initialization and account quota requests.
+CTC does not read chat text for quota calculation or change the Codex message queue.
 
-On startup, the reader scans complete session lines but parses only the newest state records from large histories. It publishes current context, cumulative tokens and recorded quota first. Detailed token event history is reconstructed on the following background pass. Long running chats are detected from the whole file, rather than only a tail fragment. First data does not wait for the network quota refresh.
+Codex data formats can change.
+Some changes need a CTC update.
+See [COMPATIBILITY.md](COMPATIBILITY.md) for tested environments and remaining checks.
+See [RECOVERY.md](RECOVERY.md) for repair steps.
 
-The watched application controls when CTC opens. **ChatGPT conversations are not monitored**; data comes from local Codex files.
+## Writing and credits
 
-## Quotas and token totals
+Use STE for all new app text. See [UI-WRITING.md](UI-WRITING.md) and [AGENTS.md](AGENTS.md).
+Keep the [MIT license](LICENSE) and [reference notices](THIRD_PARTY_NOTICES.md).
+See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for source credits and exact revisions.
 
-Every view asks the installed, signed-in Codex CLI for subscription readings, roughly once a minute after a refresh finishes. Refresh allows an earlier request. Requests run off the UI thread with a 45-second bound; errors identify initialization versus subscription-response timeout.
+## Tool activity
 
-The newest observation wins for each quota window. Other available buckets remain visible; older readings are marked with `*`. Hover shows observation/reset times and source. Retry indicates a failed refresh. Missing readings are not treated as zero.
+Open a chat's **Breakdown** to see token cards. Move the pointer over a count to see its exact value.
+Open **Latest request**, **Tool calls**, or **Data and estimate** for more details.
+Tool calls count unique call IDs in the selected rollout record. Resumed records can cover different periods.
+CTC does not keep tool arguments or results in this activity view.
+Call counts do not measure token cost. Separate tool and automation token costs remain `--`.
+See [USAGE-METHODS.md](USAGE-METHODS.md) for the data rules and design sources.
 
-Cumulative totals cover currently retained user chats, not today's usage, billing, account lifetime totals, or plan tokens remaining. Discovery considers recent files (24 hours, up to 128 by default). Active rollouts are retained; inactive rollouts are bounded by age and count. Totals can change when inactive history expires. Cached input is a subset of input; reasoning is a subset of output. Subagent counts are excluded to avoid misleading aggregation. See [USAGE-METHODS.md](USAGE-METHODS.md).
-
-## Data and privacy
-
-The application reads session files, title indexes and optional local SQLite state. Queries use read-only SQLite access. Prompt bodies are not a UI feature; names/initial-title tooltips can contain user text. Do not share private screenshots or diagnostics without reviewing them.
-
-Subscription refresh starts a Codex CLI helper. The CLI owns authentication and provider network access. CTC does not extract credentials or read browser cookies; it requests a separate SQLite state directory for the helper and sends initialization plus account rate-limit reads. No task/queue mutation RPC or telemetry is implemented.
-
-Settings saves write only the selected context configuration. No queued Codex messages are edited. Release packaging explicitly excludes conversation data, credentials and local preferences.
-
-`CODEX_HOME` selects the data profile. SQLite discovery honors `sqlite_home`, then `CODEX_SQLITE_HOME`, then Codex home. `sqlite3.exe` on PATH is optional; without it, session-file fallback remains available. Custom launch:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File .\Overlay.ps1 -CodexHome 'D:\CodexData'
-```
-
-One-off profile arguments are not saved to startup. Preferences live at `%LOCALAPPDATA%\CodexContextMonitor\overlay.json`. Invalid values fall back to defaults; originals are retained as `.invalid-*.bak` before normalization.
-
-## Recovery and removal
-
-See [RECOVERY.md](RECOVERY.md) for a Codex repair prompt, failure checks and rollback. Failed installations restore captured runtime/preferences/shortcuts where possible; a rollback failure reports the paths that need manual recovery. Existing update backups remain available.
-
-To remove: disable Auto-open and save, exit CTC, delete its installed folder, and remove the **Context-Token Codex** desktop/Start-menu shortcuts. Preferences and helper state under `%LOCALAPPDATA%\CodexContextMonitor` can be removed separately. Do not delete Codex's own profile.
-
-## Development and compatibility
-
-Windows PowerShell 5.1/WPF and desktop .NET Framework are the runtime; PowerShell 7 is also tested. Small launchers do not imply a small RAM footprint. See [AUDIT.md](AUDIT.md), [COMPATIBILITY.md](COMPATIBILITY.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
-
-Private Codex schemas can change. Versioned discovery, read-only fallbacks and regression fixtures reduce risk; they cannot guarantee every future update. Hosted Windows CI, a separate Windows machine, mixed-DPI hardware, ARM and long-duration soak checks are not claimed unless documented as completed.
-
-## Credits
-
-MIT. Thanks to ccusage, CodexBar, Codex Monitor HUD and Codex Usage for referenced ideas. [Acknowledgments](ACKNOWLEDGMENTS.md), [third-party notices](THIRD_PARTY_NOTICES.md), [methods](METHODS.md), [branding](BRANDING.md), and [UI writing](UI-WRITING.md) describe provenance. This is not an OpenAI product or an endorsed upstream fork.
-## Quota estimates (6.5.0)
-
-Tokens mode shows actual account **5h / 7d percent used**, the reported plan, and an **Est. tracked share** below each chat. Estimates allocate observed quota increases using each chat's model-weighted uncached input, cached input and output. The model is recorded per token event; reasoning is already part of output. They are local-only estimates, not exact subscription charges or lifetime chat percentages. Other devices can contribute to the same account readings.
-
-`--` means not enough reliable data. Monitoring needs two fresh observations and supported local token deltas. Estimates cover matched intervals since the displayed baseline, independently for each reset window. Missing events/models, gaps over ten minutes, explicit non-Standard speed, long-context requests over 272k and subagent intervals stay unattributed. An absent speed field assumes Standard. Account bars remain usable regardless of estimator coverage. No hours estimate is shown.
-
-Expand **Token and quota details** for cached/uncached input, cache hit rate, reasoning/other output, latest request, last model, compactions and estimate coverage. The total covers all recorded models; it is not re-priced using the last model.
-
-`Quota.Rates.json` contains dated relative weights sourced from official rates. Unknown models get no invented price. Weights expire after 90 days until reviewed; rates do not establish an account's subscription ceiling. `Quota.Estimator.ps1` implements the independent allocator. Current-window history checkpoints every 30 seconds under `%LOCALAPPDATA%\CodexContextMonitor\QuotaHistory`; a changed profile/login-file timestamp starts a new baseline. Credential contents are not read. Keychain-only account changes cannot be detected from file metadata: restart with cleared quota history after such an account switch. History contains chat IDs and estimates, not messages or credentials.
-
-See [quota research](QUOTA-RESEARCH.md) for methods, assumptions and references. Removing only the QuotaHistory folder resets estimates; token logs and account quotas are unaffected.
+The source package includes [ARCHITECTURE-REVIEW.md](ARCHITECTURE-REVIEW.md) and [WORK-QUEUE.md](WORK-QUEUE.md).

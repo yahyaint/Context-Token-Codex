@@ -1,3 +1,43 @@
+# Version 6.8.0 verification - 30 September 2026
+
+Eleven backend checks passed in PowerShell 5.1 and PowerShell 7.
+The checks cover settings, context editing, quotas, activity, estimates, schema fallback, startup, watcher logic, restart gates, regression fixes, and installation.
+The WPF overlay and setup wizard passed in both runtimes.
+The widget test checks live counter updates, scroll preservation, both sizes, corner placement, tray restore, opacity, and settings writes.
+The parked bar passed data and all four corner checks. Its image was inspected.
+The token cards and context controls were inspected in rendered fixture images.
+
+The restart flow passed with a separate fixture app outside the sandbox in both runtimes.
+It requests a normal close, waits for exit, and reopens once. Real Codex was not closed.
+Sandbox window messaging did not close the fixture; this limitation was tested outside the sandbox.
+
+The real project configuration resolves to 544000 through Codex config/read.
+The current loaded chat reports 258400. Its saved change awaits a fresh session and usage record.
+CTC shows pending status and restart controls. It does not replace measured counters with saved values.
+
+The independent architecture review found two P2 issues. Tests confirm both repairs.
+The installer retains Mode. Quota merging uses stable identities rather than display names.
+
+Only the current Windows host was tested locally. Windows 10 and other machines remain unverified.
+The CI matrix is prepared for Windows Server 2022/2025 and both PowerShell runtimes.
+CI, public GitHub download, and the pending Codex desktop update remain untested until publication or a separate approved app restart.
+No restart can guarantee idle state on other devices. CTC checks local recorded lifecycle data.
+
+Installed version: 6.8.0. All 26 runtime files match the working source.
+Preferences and the previous version are retained. One widget and one watcher are running.
+The ready event is set. Runtime size: 290133 bytes. ZIP size before final documentation: 177871 bytes.
+Real-profile quick snapshot: 2.3 s. Background scan: 4.2 s. Three files were discovered on this host.
+
+## Earlier audit evidence
+
+# STE text - 6.7.1
+
+The app uses short instructions and defined software terms.
+The writing rules apply to future changes.
+User content, source error details, license notices, and historical evidence stay exact.
+The context editor behavior does not change.
+See UI-WRITING.md and AGENTS.md for the rules.
+
 # Context editor - 6.7.0
 
 Compact project editing, anchored multipliers, percentage presets, scoped saved/live values, preview-only reset controls and catalog warnings share the same helpers as the expanded editor. The release checks cover these controls in disposable fixtures; they do not alter real Codex limits. Source credits are in ACKNOWLEDGMENTS.md. Older verification below remains historical.

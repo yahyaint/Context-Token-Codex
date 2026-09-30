@@ -1,5 +1,24 @@
 # Changelog
 
+## 6.8.0 - 30 September 2026
+
+- Show saved limits as pending until recorded context confirms them.
+- Add a queued restart with idle checks, cancellation, and normal app close.
+- Arrange multipliers and percentages below their fields. Keep Undo and Default on a shared row.
+- Replace token paragraphs with metric cards and expandable details.
+- Count recorded tool calls. Keep unavailable tool and automation token costs unknown.
+- Replace Park with a small information bar at the same corner.
+- Keep the selected Tokens view during installation. Merge quotas with stable IDs.
+- Add an independent architecture review and a staged C# / WPF migration plan.
+
+
+## 6.7.1 - STE app text
+
+- Use STE wording in labels, help, status, errors, setup, and current user guides.
+- Add a project term list and writing rules for future changes.
+- Keep source error details, user content, names, license notices, and historical evidence exact.
+- Keep the context editor behavior and previous release files.
+
 ## 6.7.0 - context editor
 
 - Edit project/global limits inside the compact widget. Select the displayed chat's project directly; keep Save visible while details scroll.

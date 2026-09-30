@@ -1,7 +1,7 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 Add-Type -AssemblyName System.Drawing
-# Original CTC monogram. Geometry stays legible at tray sizes.
+# Lowercase wordmark, using the Windows UI font family already on the device.
 $sizes=@(16,24,32,48,64,128,256)
 $images=@()
 foreach ($size in $sizes) {
@@ -9,18 +9,22 @@ foreach ($size in $sizes) {
  $g=[Drawing.Graphics]::FromImage($bmp); $g.SmoothingMode='AntiAlias'; $g.Clear([Drawing.Color]::Transparent)
  $g.ScaleTransform($size/64.0,$size/64.0)
  $ink=New-Object Drawing.SolidBrush([Drawing.ColorTranslator]::FromHtml('#0D1B2A'))
- $frost=New-Object Drawing.Pen([Drawing.ColorTranslator]::FromHtml('#778DA9'),7)
- $snow=New-Object Drawing.Pen([Drawing.ColorTranslator]::FromHtml('#E0E1DD'),6)
- $frost.StartCap='Round'; $frost.EndCap='Round'; $snow.StartCap='Round'; $snow.EndCap='Round'
- $g.FillEllipse($ink,0,0,64,64)
- # Three distinct letter stems; the T crossbar links the C openings.
- $frost.Width=5; $snow.Width=5
- $g.DrawArc($frost,6,18,17,28,48,264)
- $g.DrawLine($snow,23,20,42,20)
- $g.DrawLine($snow,32,20,32,45)
- $g.DrawArc($frost,41,18,17,28,48,264)
+ $textBrush=New-Object Drawing.SolidBrush([Drawing.ColorTranslator]::FromHtml('#E0E1DD'))
+ $tile=New-Object Drawing.Drawing2D.GraphicsPath
+ $tile.AddArc(0,0,16,16,180,90);$tile.AddArc(48,0,16,16,270,90)
+ $tile.AddArc(48,48,16,16,0,90);$tile.AddArc(0,48,16,16,90,90);$tile.CloseFigure()
+ $g.FillPath($ink,$tile)
+ $family=New-Object Drawing.FontFamily('Segoe UI Semibold')
+ $glyphs=New-Object Drawing.Drawing2D.GraphicsPath
+ $glyphs.AddString('ctc',$family,[int][Drawing.FontStyle]::Regular,44,[Drawing.PointF]::new(0,0),[Drawing.StringFormat]::GenericTypographic)
+ $bounds=$glyphs.GetBounds();$fit=[Math]::Min(56/$bounds.Width,30/$bounds.Height)
+ $transform=New-Object Drawing.Drawing2D.Matrix
+ $transform.Translate([single](32-($bounds.X+$bounds.Width/2)*$fit),[single](32-($bounds.Y+$bounds.Height/2)*$fit))
+ $transform.Scale([single]$fit,[single]$fit)
+ $glyphs.Transform($transform);$g.FillPath($textBrush,$glyphs)
  $memory=New-Object IO.MemoryStream; $bmp.Save($memory,[Drawing.Imaging.ImageFormat]::Png); $images+=,@($memory.ToArray())
- $memory.Dispose(); $g.Dispose(); $bmp.Dispose(); $ink.Dispose(); $frost.Dispose(); $snow.Dispose()
+ if($size -eq 256){$bmp.Save((Join-Path $PSScriptRoot 'ctc-logo.png'),[Drawing.Imaging.ImageFormat]::Png)}
+ $memory.Dispose(); $g.Dispose(); $bmp.Dispose(); $ink.Dispose(); $textBrush.Dispose();$tile.Dispose();$glyphs.Dispose();$family.Dispose();$transform.Dispose()
 }
 $stream=[IO.File]::Create((Join-Path $root 'Context.ico')); $writer=New-Object IO.BinaryWriter($stream)
 $writer.Write([uint16]0); $writer.Write([uint16]1); $writer.Write([uint16]$sizes.Count)

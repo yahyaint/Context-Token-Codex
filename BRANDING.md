@@ -1,6 +1,6 @@
 # Context-Token Codex (CTC)
 
-Product name: **Context-Token Codex**. Logo: original interlocking **CTC** geometric monogram.
+Product name: **Context-Token Codex**. Logo: a simple lowercase **ctc** wordmark in **Segoe UI Semibold**, matching the app's Windows UI typeface.
 
 Five base colors, selected by Yahya Nabil:
 
@@ -14,7 +14,7 @@ Five base colors, selected by Yahya Nabil:
 
 These colors replace the earlier charcoal/ivory/amber palette and supersede the original three-color restriction. Historical Nord inspiration remains acknowledged; the current palette is user-selected. Background transparency and antialiasing can produce blended colors. Text and controls remain opaque. Navigation uses selected fills instead of dimming usable tabs. Scrollbars, expanders and progress bars use the shared palette.
 
-Three distinct letter stems and a linking T crossbar keep CTC readable at small sizes. The original vector CTC mark is drawn by Build/build.ps1 and embedded at 16, 24, 32, 48, 64, 128 and 256 pixels. It appears in the widget, tray, taskbar, installer and shortcuts. No third-party logo is copied.
+Ivory lettering sits on an ink-blue rounded square. Build/build.ps1 outlines the installed Windows font and renders the mark at 16, 24, 32, 48, 64, 128 and 256 pixels. The same icon appears in the widget, tray, taskbar, installer and shortcuts. Build/ctc-logo.png provides a large preview. The font is supplied by Windows; no font file or third-party logo is bundled. The earlier interlocking mark remains in previous release archives.
 
 Controls use a shared centered content template and a 28-pixel minimum target height. The Limits tab embeds the context editor in the widget. Combo boxes use the same palette, including their dropdown. Compact mode reserves enough vertical space for navigation and the footer.
 

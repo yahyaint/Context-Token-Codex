@@ -76,7 +76,7 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
  <Grid x:Name="DragHandle" Background="Transparent" Margin="0,0,0,9" Cursor="SizeAll" ToolTip="Drag to move. Drop near a corner to snap.">
   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-  <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image x:Name="BrandIcon" Width="22" Height="22" Margin="0,0,7,0"/><TextBlock Text="CTC" FontSize="11" Foreground="#778DA9" FontWeight="SemiBold"/></StackPanel>
+  <Image x:Name="BrandIcon" Width="32" Height="32" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="Context-Token Codex"/>
   <StackPanel Grid.Column="1" Orientation="Horizontal">
    <Button x:Name="ToggleButton" Content="Expand" Padding="7,3" Margin="0,0,5,0" FontSize="11" ToolTip="Switch between mini card and full view"/>
    <Button x:Name="DirectTray" Content="Tray" Padding="7,3" Margin="0,0,5,0" FontSize="11" ToolTip="Hide to the Windows notification area. Restore from the CTC icon beside the clock."/><Button x:Name="QuickSettings" Width="28" Height="28" FontSize="12" FontFamily="Segoe MDL2 Assets" Content="&#xE713;" Padding="0" Margin="0,0,5,0" ToolTip="Widget settings"/>
@@ -708,7 +708,7 @@ $script:tray=New-Object Windows.Forms.NotifyIcon
 $script:trayIcon=New-Object Drawing.Icon((Join-Path $script:folder 'Context.ico'))
 $tray.Icon=$script:trayIcon; $tray.Text='CTC - click to restore'; $tray.Visible=$true
 [xml]$tabXaml=@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Restore Context-Token Codex" Width="156" Height="38" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"><Border CornerRadius="12" Background="#0D1B2A" BorderBrush="#778DA9" BorderThickness="1"><TextBlock Text="CTC   Restore  &#x203A;" Foreground="#778DA9" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center" Cursor="Hand" ToolTip="Click to restore the context widget"/></Border></Window>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Restore Context-Token Codex" Width="156" Height="38" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"><Border CornerRadius="12" Background="#0D1B2A" BorderBrush="#778DA9" BorderThickness="1"><TextBlock Text="ctc   Restore  &#x203A;" Foreground="#778DA9" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center" Cursor="Hand" ToolTip="Click to restore the context widget"/></Border></Window>
 '@
 $script:restoreTab=[Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($tabXaml))
 $restoreTab.Add_MouseLeftButtonUp({ Show-Overlay })

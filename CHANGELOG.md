@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.6.1 - simple wordmark
+
+- Replace the interlocking logo with lowercase ctc in Segoe UI Semibold, using the existing blue-grey palette.
+- Update the widget, restore tab, tray, taskbar, installer, executables and shortcuts from the same icon source. Remove the redundant uppercase header label.
+- Preserve previous releases and user preferences.
+
 ## 6.6.0 - startup recovery and shared quotas
 
 - Retry failed initial launches until the overlay acknowledges a ready window. Detect visible app instances every 1.5 seconds without caching an app package version.

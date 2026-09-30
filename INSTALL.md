@@ -16,4 +16,4 @@ Run in PowerShell after signing into `gh`:
 
 The command clones source and runs the repository's installer helper. The helper downloads the latest release, verifies its SHA256 and opens the setup wizard. You choose the destination and startup option in the wizard. It does not require administrator rights. This is not an unattended install or a digital-signature guarantee; the hash detects a mismatched download.
 
-To pin a release, add `-Version v6.6.0` to the helper command. For a manual install, download the Windows ZIP and checksum from Releases, verify the hash with `Get-FileHash`, extract and open Setup.exe. Source archives require `Build/build.ps1` first.
+To pin a release, add `-Version v6.6.1` to the helper command. For a manual install, download the Windows ZIP and checksum from Releases, verify the hash with `Get-FileHash`, extract and open Setup.exe. Source archives require `Build/build.ps1` first.

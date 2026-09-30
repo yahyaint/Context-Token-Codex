@@ -1,3 +1,11 @@
+# Release 6.6.1 logo validation - 30 September 2026
+
+- New lowercase ctc wordmark uses Segoe UI Semibold and the existing ivory/ink palette. One icon source supplies seven resolutions and both executable resources, widget header, tray, taskbar, setup, restore tab and shortcuts. README includes the generated preview; no font file is bundled.
+- Visual inspection of 16/24/32/48/64/128-pixel icons and the compact widget: lettering is readable, redundant header text removed, controls and context edit button fit.
+- WPF overlay and actual installation wizard passed under Windows PowerShell 5.1 and PowerShell 7. Repository payload/syntax and release checksum checks passed. Prior runtime and user preferences are retained during deployment.
+- Startup/reader behavior is unchanged from 6.6.0. See the preceding validation below for performance and platform limits.
+
+---
 # Release 6.6.0 validation - 30 September 2026
 
 - Eighteen relevant suite executions passed on Windows 10.0.26200: startup, watcher, compatibility, usage, estimator, regressions, repository/install and bootstrap, each under Windows PowerShell 5.1 and PowerShell 7; plus the WPF overlay under both shells. Startup parity was rerun after the reordered-record fallback was added; WPF checks were rerun after replacing runtime C# compilation with the precompiled launcher bridge.

@@ -1,4 +1,6 @@
-# Context-Token Codex 6.6.0
+# Context-Token Codex 6.6.1
+
+<img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
 A Windows widget for local Codex context, token counts and subscription usage.
 

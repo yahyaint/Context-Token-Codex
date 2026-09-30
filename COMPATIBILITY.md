@@ -1,4 +1,15 @@
-﻿# 6.8.7 verification - 1 October 2026
+﻿# 6.8.8 publication preparation - 1 October 2026
+
+The fresh-export check found a PowerShell 7 normal-close selection failure.
+The repair enumerates visible unowned windows by process ID and rechecks ownership before each request.
+Restart tests use a marked application fixture with main and untitled auxiliary windows.
+All 22 fresh-export checks pass in PowerShell 5.1.26100.9444 and PowerShell 7.6.5 on this host.
+Real Codex, Windows sign-in, another device, hosted CI, and public downloads were not tested by this preparation.
+Previous measured results below retain their version labels.
+
+---
+
+# 6.8.7 verification - 1 October 2026
 
 The actual widget and setup wizard pass in PowerShell 5.1 and 7 on this Windows host.
 Corner return, free placement, resize, mode changes, logo frame selection, icon resources, and isolated upgrades pass.

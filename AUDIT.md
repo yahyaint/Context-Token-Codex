@@ -1,4 +1,24 @@
-﻿# Version 6.8.7 icon and corner checks - 1 October 2026
+﻿# Version 6.8.8 publication check - 1 October 2026
+
+A fresh Git export builds without untracked launchers or local dependencies.
+The first full run passed 22 checks in PowerShell 5.1 and 21 in PowerShell 7.
+PowerShell 7 selected an untitled auxiliary window instead of the fixture's main window.
+Repeated isolated runs confirmed the failure. A normal close now targets visible unowned windows of the selected process.
+The helper rechecks each window's process ID before it posts WM_CLOSE.
+It retains the idle gate, cancellation, original expiry, and complete process-exit check.
+No force-stop was added. Real Codex was not restarted.
+After the repair, a new Git export passed all 22 checks in PowerShell 5.1 and all 22 in PowerShell 7.
+The runs include backend fixtures, icon resources, theme, WPF controls, setup, restart flow, and package verification.
+The new fixture has a main window and an untitled auxiliary window.
+
+Git integrity, all tracked history paths, and common secret patterns pass the local checks.
+Official CI actions are pinned to verified revisions. The four hosted jobs remain unrun until publication.
+GitHub CLI is installed and authenticated. Repository creation and pushes remain held.
+See PUBLISHING.md for the owner's publication gates.
+
+---
+
+# Version 6.8.7 icon and corner checks - 1 October 2026
 
 Both PowerShell versions pass the actual WPF controls and setup wizard.
 Expand and Collapse restore all four corners and free placement after expanded movement, resize, and mode changes.

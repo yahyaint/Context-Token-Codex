@@ -1,6 +1,14 @@
-﻿# Context-Token Codex 6.8.7
+﻿# Context-Token Codex 6.8.8
 
 Created by Yahya Nabil | [yahyanabil.com](https://yahyanabil.com)
+
+## Publication checks
+
+- Build and test a fresh Git export with one runner in both PowerShell versions.
+- Fix normal-close selection when an app has an untitled auxiliary window.
+- Request a normal close only on visible windows of the selected app process.
+- Keep idle checks, expiry, cancellation, and complete process-exit checks.
+- Include contributor templates, security reporting, a sample screenshot, and installation instructions.
 
 ## Icon and corner repair
 

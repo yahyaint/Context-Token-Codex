@@ -1,4 +1,4 @@
-# Methods and borrowed ideas
+﻿# Methods and borrowed ideas
 
 This PowerShell monitor borrows **design ideas** from [Codex Monitor HUD](https://github.com/LH-03/codex-monitor-hud) by LH-03 and contributors ([MIT license](https://github.com/LH-03/codex-monitor-hud/blob/main/LICENSE)). The relevant sources are its [core session reader](https://github.com/LH-03/codex-monitor-hud/blob/main/src/MonitorHud.Core.psm1) and [privacy description](https://github.com/LH-03/codex-monitor-hud/blob/main/PRIVACY.md). The monitor remains an independent implementation; its existing compaction detection and settings menu were developed before this comparison.
 
@@ -28,3 +28,13 @@ Version 6.6 adds an original startup scan: it scans all complete lines of large 
 | App launch | Manual launcher | Manual launcher or optional Startup watcher |
 | Configuration | Terminal prompts | Form with current values, examples, validation and feedback |
 | Runtime reload | Saved/live mismatch shown | Same limitation shown directly in cards and settings |
+
+## Normal app close
+
+CTC identifies Codex processes from their app paths. The idle gate must pass before a close request.
+It uses [EnumWindows](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows) to find visible unowned app windows.
+It uses [GetWindowThreadProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowthreadprocessid) to recheck the selected process for each window.
+It posts [WM_CLOSE](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-close) as a normal close request.
+An app can reject that request or ask for confirmation. CTC does not force-stop it.
+CTC waits for all processes at the selected app path to exit before it reopens the app.
+These are Windows API references. The CTC implementation is original.

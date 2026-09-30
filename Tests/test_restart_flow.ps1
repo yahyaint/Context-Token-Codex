@@ -8,7 +8,12 @@ $profile=Join-Path $fixture 'profile'
 $source=Join-Path $fixture 'Fixture.cs';$exe=Join-Path $fixture 'CTCTestCodex.exe'
 [IO.File]::WriteAllText($source,@'
 using System; using System.Windows.Forms;
-class Fixture { [STAThread] static void Main() { Application.Run(new Form { Text="CTC restart fixture", Width=180, Height=80, ShowInTaskbar=true }); } }
+class Fixture { [STAThread] static void Main() {
+ var main=new Form { Text="CTC restart fixture", Width=180, Height=80, ShowInTaskbar=true };
+ var auxiliary=new Form { Text="", Width=80, Height=60, ShowInTaskbar=false, FormBorderStyle=FormBorderStyle.FixedToolWindow };
+ main.Shown+=(s,e)=>auxiliary.Show();
+ Application.Run(main);auxiliary.Dispose();
+} }
 '@)
 $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 & $compiler /nologo /target:winexe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/out:$exe" $source
@@ -38,7 +43,7 @@ try {
     $cancelledBefore=[IO.File]::ReadAllText($status)
     & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'Restart-Codex.ps1') -CodexHome $profile -StatusPath $status -TestRoot $fixture -TestExecutable $exe -RequestExpiresAt ([DateTimeOffset]::UtcNow.AddHours(1).ToString('o'))
     if([IO.File]::ReadAllText($status) -cne $cancelledBefore -or -not (Get-Process -Id $reopenedPID -ErrorAction SilentlyContinue)){throw 'Helper maintenance revived a cancelled request.'}
-    'PASS: isolated normal close, process exit, and one reopen. Real Codex was not touched.'
+    'PASS: main and untitled auxiliary windows, normal close, process exit, one reopen, expiry and cancellation. Real Codex was not touched.'
 }finally{
     foreach($process in @(Get-Process -Name CTCTestCodex -ErrorAction SilentlyContinue|Where-Object Path -eq $exe)){
         [void]$process.CloseMainWindow();if(-not $process.WaitForExit(5000)){$process.Kill()}

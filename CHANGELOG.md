@@ -1,5 +1,19 @@
 ﻿# Changelog
 
+## 6.8.8 - 1 October 2026
+
+- Request a normal close on visible app windows by process ID. Avoid selecting only an untitled auxiliary window.
+- Recheck window ownership before each close request. Keep idle checks, expiry, cancellation, and exit verification.
+- Test an application with main and untitled auxiliary windows in both PowerShell versions.
+
+## Repository preparation - 1 October 2026
+
+- Add one test runner for both PowerShell versions. Check each test in a separate process.
+- Pin official CI actions. Keep tested packages and verification reports as CI artifacts.
+- Add issue and pull request templates plus security reporting instructions.
+- Clean duplicate README text. Add the GitHub CLI installation command.
+- Verify a fresh Git export before local tagging. Keep public publication held.
+
 ## 6.8.7 - 1 October 2026
 
 - Use the launcher icon for desktop, Start Menu, and startup shortcuts. Notify Explorer about each changed shortcut.

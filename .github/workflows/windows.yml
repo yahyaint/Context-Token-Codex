@@ -1,4 +1,4 @@
-name: Windows build
+﻿name: Windows build
 on:
   push:
     branches: [main]
@@ -19,41 +19,24 @@ jobs:
       run:
         shell: ${{ matrix.shell }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - name: Build Windows launchers
         run: .\Build\build.ps1
-      - name: Test configuration helpers
-        run: |
-          .\Tests\test_settings.ps1
-          .\Tests\test_context_editor.ps1
-          .\Tests\test_limits_matrix.ps1
-      - name: Test audit regressions
-        run: .\Tests\test_regressions.ps1
-      - name: Test usage accounting and quota parsing
-        run: |
-          .\Tests\test_usage.ps1
-          .\Tests\test_account_quota.ps1
-          .\Tests\test_limits_queue.ps1
-      - name: Test tool activity and restart safety
-        run: |
-          .\Tests\test_activity.ps1
-          .\Tests\test_exec_activity.ps1
-          .\Tests\test_restart.ps1
-      - name: Test quota estimator
-        run: .\Tests\test_estimator.ps1
-      - name: Verify source and isolated installation
-        run: |
-          .\Tests\test_repository.ps1
-          .\Tests\test_branding.ps1
-      - name: Test compatibility and RPC failures
-        run: |
-          .\Tests\test_compatibility.ps1
-          .\Tests\test_transport.ps1
-          .\Tests\test_watcher.ps1
-          .\Tests\test_startup.ps1
+      - name: Run noninteractive checks
+        run: .\Tests\run.ps1 -Report .\dist\checks.json
       - name: Create release ZIP and checksum
         run: .\Build\package.ps1
       - name: Verify release installation helper
         run: .\Tests\test_bootstrap.ps1
+      - name: Save tested release files
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: CTC-${{ matrix.os }}-${{ matrix.shell }}
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/checks.json
+          if-no-files-found: error
+          retention-days: 14

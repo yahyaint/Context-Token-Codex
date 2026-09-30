@@ -1,4 +1,4 @@
-﻿# Context-Token Codex 6.8.7
+﻿# Context-Token Codex 6.8.8
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
@@ -6,6 +6,10 @@ CTC is a Windows widget for Codex context, token counts, and account quotas.
 Created by **Yahya Nabil** | [yahyanabil.com](https://yahyanabil.com).
 
 **Windows 10/11 | MIT | Independent community project**
+
+<img src="docs/images/context.png" alt="CTC compact context view with sample chat data" width="370">
+
+Example view. Uses sample data.
 
 ## Install
 
@@ -20,7 +24,13 @@ Installation does not need administrator access.
 Windows supplies PowerShell and .NET.
 The executables are unsigned.
 
-See [INSTALL.md](INSTALL.md) for the GitHub command and Codex installation prompt.
+After publication, this command downloads the release through GitHub CLI and opens setup:
+
+```powershell
+& { $p=Join-Path $env:TEMP ('ctc-source-'+[guid]::NewGuid().ToString('N')); gh repo clone yahyaint/Context-Token-Codex $p; if ($LASTEXITCODE) { throw 'Clone failed' }; powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $p 'Install-FromGitHub.ps1') }
+```
+
+See [INSTALL.md](INSTALL.md) for the Codex installation prompt and manual steps.
 These methods need a public repository and release.
 Publication waits for the owner's approval.
 
@@ -137,7 +147,7 @@ If CTC cannot use the file syntax, it stops before writing.
 
 Drag the header to move the widget.
 Release near a corner to set the position.
-Expand shows more detail. Collapse returns to the compact view.
+Expand shows more detail. Collapse returns to the compact view at its original corner.
 Drag the lower right control to resize the expanded view.
 
 | Control | Action |
@@ -195,8 +205,6 @@ The source package includes [ARCHITECTURE-REVIEW.md](ARCHITECTURE-REVIEW.md) and
 
 Context limit tests and reload checks: [LIMITS-VERIFICATION.md](LIMITS-VERIFICATION.md).
 
-## Tool activity
-
 Tool calls has one full-width tile in Breakdown.
 Open Exec for call results, status, time, and command types.
 Open Script tools for nested tool references.
@@ -211,3 +219,9 @@ CTC does not add shell results to the number of recorded tool calls.
 Recorded time uses available wall times, or call-to-result spans when wall time is unavailable.
 Spans include waiting. Concurrent calls can overlap. These totals are not active work hours.
 CTC cannot read exact token costs for a tool or automation.
+
+## Contribute or report a fault
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build and test steps.
+Use the issue templates for faults and feature requests.
+For a security report, follow [SECURITY.md](SECURITY.md).

@@ -1,4 +1,4 @@
-# Contributing
+﻿# Contributing
 
 Use Windows 10/11 and Windows PowerShell 5.1. The .NET Framework compiler is supplied by Windows; the build does not download a runtime. `sqlite3.exe` is optional for development and improves live Codex data discovery.
 
@@ -13,19 +13,17 @@ This generates ContextWidget.exe, Setup.exe and the multi-resolution Context.ico
 ## Verify
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_settings.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_regressions.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_repository.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_usage.ps1
-.\Tests\test_estimator.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_compatibility.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_startup.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_watcher.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_transport.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_overlay.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_install.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\test_bootstrap.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\run.ps1 -Desktop
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\run.ps1 -Desktop
 ```
+
+Without `-Desktop`, the runner checks the noninteractive tests.
+Each test runs in a separate STA process. A failed check makes the runner fail.
+Add `-Report <path>` to save the results as JSON.
+Build a package first to check the installation helper. Then add `-Archive <ZIP path>`.
+Tests need built launchers. Run Build/build.ps1 first.
+The native-engine limits check is optional. See LIMITS-VERIFICATION.md.
+
 
 The overlay, installer and theme tests open temporary Windows UI and need a desktop session. Repeat with pwsh.exe to test PowerShell 7, including its own WPF child processes. Tests use disposable fixtures and leave diagnostic results in the temporary directory. Do not use real conversation transcripts as test fixtures. CI runs all noninteractive tests on Windows 2022/2025 with both shells; desktop UI tests remain a local release check. See COMPATIBILITY.md for actual coverage and limitations.
 

@@ -1,5 +1,41 @@
 ﻿# SPDX-License-Identifier: MIT
 # This gate uses recorded lifecycle data. Unknown data always block a restart.
+function Request-CodexNormalClose($Process) {
+    if($Process.HasExited){return $true}
+    if(-not ('CtcNormalWindowClose' -as [type])){Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+public static class CtcNormalWindowClose {
+ delegate bool WindowCallback(IntPtr window,IntPtr param);
+ [DllImport("user32.dll")] static extern bool EnumWindows(WindowCallback callback,IntPtr param);
+ [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
+ [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr window,uint command);
+ [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window,out uint process);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern bool PostMessage(IntPtr window,uint message,IntPtr wparam,IntPtr lparam);
+ public static bool Request(int processId){
+  var windows=new List<IntPtr>();
+  WindowCallback callback=delegate(IntPtr window,IntPtr param){
+   uint owner;
+   if(GetWindowThreadProcessId(window,out owner)!=0 && owner==(uint)processId && IsWindowVisible(window) && GetWindow(window,4)==IntPtr.Zero)windows.Add(window);
+   return true;
+  };
+  if(!EnumWindows(callback,IntPtr.Zero) || windows.Count==0)return false;
+  bool accepted=true;
+  foreach(var window in windows){
+   uint owner;
+   // A window can disappear after enumeration. Never message a reused handle
+   // unless it still belongs to the selected app process.
+   if(GetWindowThreadProcessId(window,out owner)==0)continue;
+   if(owner!=(uint)processId){accepted=false;continue;}
+   if(!PostMessage(window,0x0010,IntPtr.Zero,IntPtr.Zero))accepted=false;
+  }
+  return accepted;
+ }
+}
+'@}
+    return [CtcNormalWindowClose]::Request($Process.Id)
+}
 function Select-CodexDesktopProcesses($Processes) {
     foreach($process in @($Processes)){
         try {

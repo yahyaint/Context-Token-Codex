@@ -60,7 +60,9 @@ try {
         try{$request=[IO.File]::ReadAllText($StatusPath)|ConvertFrom-Json;if($request.Status -eq 'Cancelled'){exit}}catch{}
         Write-RestartStatus $StatusPath 'Closing' 'CTC requested a normal app close.'
         $closeAccepted=$true
-        foreach($root in $roots){if(-not $root.CloseMainWindow()){$closeAccepted=$false}}
+        # Process.MainWindowHandle can select an untitled auxiliary window.
+        # Request a normal close on each visible unowned window of the app PID.
+        foreach($root in $roots){if(-not (Request-CodexNormalClose $root)){$closeAccepted=$false}}
         $left=[DateTime]::UtcNow.AddSeconds(20)
         do {
             $remaining=@(Get-RestartDesktopProcesses|Where-Object {try{$_.Path -eq $path}catch{$false}})

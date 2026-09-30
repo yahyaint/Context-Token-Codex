@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+﻿# SPDX-License-Identifier: MIT
 param([switch]$Watch, [string]$CodexHome='', [string]$PreferencesPath='', [int]$TestSeconds=0, [string]$TestReport='', [switch]$TestSettings)
 $ErrorActionPreference = 'Stop'
 if ($TestSettings -and ($TestSeconds -lt 1 -or -not $CodexHome -or -not (Test-Path -LiteralPath (Join-Path $CodexHome '.overlay-test-fixture')))) { throw 'Settings test requires a marked disposable fixture and TestSeconds.' }
@@ -121,7 +121,7 @@ try { . (Join-Path $PSScriptRoot 'Monitor.Core.ps1') -CodexHome $CodexHome } cat
  </Grid>
  <StackPanel Grid.Row="4" Margin="0,12,0,0"><TextBlock x:Name="AuthorLine" Text="By Yahya Nabil" FontSize="10" Opacity="0.75" HorizontalAlignment="Center" Margin="0,0,0,8"/>
   <Border Height="1" Background="#0D1B2A" Margin="0,0,0,10"/>
-  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Background" FontSize="11" Foreground="#E0E1DD" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider x:Name="LiveOpacity" Grid.Column="1" Minimum="40" Maximum="100" SmallChange="1" LargeChange="5" VerticalAlignment="Center" ToolTip="Drag to change background opacity live"/><TextBlock x:Name="LiveOpacityLabel" Grid.Column="2" Width="38" TextAlignment="Right" FontSize="11" VerticalAlignment="Center"/></Grid>
+  <Grid x:Name="AppearanceControls"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Background" FontSize="11" Foreground="#E0E1DD" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider x:Name="LiveOpacity" Grid.Column="1" Minimum="40" Maximum="100" SmallChange="1" LargeChange="5" VerticalAlignment="Center" ToolTip="Drag to change background opacity live"/><TextBlock x:Name="LiveOpacityLabel" Grid.Column="2" Width="38" TextAlignment="Right" FontSize="11" VerticalAlignment="Center"/></Grid>
   <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="1" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"><Hyperlink x:Name="UserWebsite" NavigateUri="https://yahyanabil.com" Foreground="#778DA9">yahyanabil.com</Hyperlink></TextBlock><StackPanel Orientation="Horizontal"><Button x:Name="QuickPin" Content="Pinned" FontSize="10" Padding="7,4" ToolTip="Toggle always on top"/><Button x:Name="QuickCorner" Content="Corner" FontSize="10" Padding="7,4" Margin="5,0,0,0" ToolTip="Choose a screen corner"/></StackPanel><StackPanel Grid.Column="2" Orientation="Horizontal"><Button x:Name="ParkButton" Content="Park tab" FontSize="10" Padding="8,4" Margin="5,0,0,0" ToolTip="Shrink to a visible restore tab. Click tab to return."/></StackPanel></Grid>
  </StackPanel>
  <Thumb x:Name="ResizeGrip" Grid.Row="3" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Visibility="Collapsed" ToolTip="Drag to resize">
@@ -240,6 +240,7 @@ function Position-Widget([switch]$Snap) {
 }
 function Set-WidgetCompact([bool]$compact) {
     $SettingsHost.Visibility='Collapsed'
+    $window.FindName('AppearanceControls').Visibility='Visible'
     $LimitsMode.Tag=''
     $ContextMode.Tag=if ($prefs.Mode -eq 'Context') {'Selected'} else {''}
     $TokenMode.Tag=if ($prefs.Mode -eq 'Tokens') {'Selected'} else {''}
@@ -397,14 +398,22 @@ $ResizeGrip.Add_DragDelta({
     $prefs.Width=$window.Width; $prefs.Height=$window.Height
 })
 $ResizeGrip.Add_DragCompleted({ Position-Widget; Save-Preferences })
-$ToggleButton.Add_Click({ Set-WidgetCompact (-not [bool]$prefs.Compact); Save-Preferences })
+$ToggleButton.Add_Click({
+    $editing=($SettingsHost.Visibility -eq 'Visible' -and $script:settings -and $script:settings.dialog.FindName('ContextSettings').Visibility -eq 'Visible')
+    Set-WidgetCompact (-not [bool]$prefs.Compact)
+    if ($editing) { Show-LimitEditorSurface }
+    Save-Preferences
+})
 $MiniEditContext.Add_Click({
     $id=$script:displayedTask
-    if (-not $id -or -not $script:cardControls.ContainsKey($id)) { return }
-    $editor=$script:cardControls[$id].Editor
-    if (-not $editor) { return }
-    Set-WidgetMode 'Context'; Set-WidgetCompact $false
-    $editor.IsExpanded=$true; $window.UpdateLayout(); $editor.BringIntoView(); Save-Preferences
+    if (-not $id) { return }
+    $card=@($script:shared.Latest.Cards | Where-Object Id -eq $id)[0]
+    if (-not $card.Cwd) { return }
+    Show-Settings 'Context'
+    foreach ($choice in $script:settings.scope.Items) {
+        if ($choice.Path -eq (Join-Path $card.Cwd '.codex/config.toml')) { $choice.Card=$card; $script:settings.scope.SelectedItem=$choice; break }
+    }
+
 })
 $MiniTitle.Add_MouseLeftButtonUp({ Set-WidgetCompact $false; Save-Preferences })
 $MinimizeButton.Add_Click({ $window.WindowState='Minimized' })
@@ -470,7 +479,7 @@ function Update-Cards($snapshot) {
             foreach ($item in @('Saved','Details')) { $label=New-Label ''; $label.FontSize=11; $controls[$item]=$label; [void]$detailsPanel.Children.Add($label) }
             [void]$panel.Children.Add($detailsExpander); Apply-WidgetTheme $detailsExpander
             if ($card.Cwd) {
-                $editor=New-InlineLimitsEditor $card.Cwd; $controls.Editor=$editor
+                $editor=New-InlineLimitsEditor $card.Cwd $card; $controls.Editor=$editor
                 [void]$panel.Children.Add($editor)
             }
             $script:cardControls[$card.Id]=$controls; [void]$Cards.Children.Add($border)
@@ -520,54 +529,140 @@ function Hide-Overlay([bool]$park=$false) {
     $window.Hide()
 }
 function Update-CompactPercentageHint($form) {
-    $example='Example: 90% of 200k = 180k. Percent needs an entered window. Saved as tokens. Reset: default.'
+    if ($form.Loading) { return }
+    $form.Result.Text=''; $form.Result.Tag=''
     try {
-        $w=ConvertTo-TokenLimit $form.Window.Text $null; $c=ConvertTo-TokenLimit $form.Compact.Text $w.Limit
-        if ($w.Limit -gt 0 -and $null -ne $c.Limit) {
-            $form.Hint.Text=('{0:N1}% = {1:N0} tokens. ' -f (100.0*$c.Limit/$w.Limit),$c.Limit)+$example
-        } else { $form.Hint.Text=$example }
-    } catch { $form.Hint.Text=$example }
-}
-function Connect-CompactPercentageHint($windowField,$compactField,$hint) {
-    $form=@{Window=$windowField;Compact=$compactField;Hint=$hint}
-    foreach ($field in @($windowField,$compactField)) {
-        $field.Tag=$form
-        $field.Add_TextChanged({param($sender,$eventArgs) Update-CompactPercentageHint $sender.Tag})
+        $draft=ConvertTo-ContextDraft $form.Window.Text $form.Compact.Text
+        $changed=($draft.Window -ne $form.Baseline.SavedWindow -or $draft.Compact -ne $form.Baseline.SavedCompact)
+        $status=if ($changed) {'Preview only. Select Save to apply.'} else {'Saved values. No changes.'}
+        $form.Hint.Text=if ($null -ne $draft.Window -and $null -ne $draft.Compact) {
+            ('{0:N1}% = {1:N0} tokens. ' -f (100.0*$draft.Compact/$draft.Window),$draft.Compact)+$status
+        } else { 'Example: 90% of 200k = 180k. Percent is saved as tokens.' }
+        if ($form.Baseline -and $form.Baseline.Maximum -gt 0 -and $draft.Window -gt $form.Baseline.Maximum) {
+            $form.Result.Tag='Warning'; $form.Result.Text=('Above local catalog maximum: {0:N0} ({1}). Codex may reject or cap it.' -f $form.Baseline.Maximum,$form.Baseline.Model)
+        }
+        $form.Save.IsEnabled=$changed
+        $form.Window.BorderBrush='#415A77'; $form.Compact.BorderBrush='#415A77'
+    } catch {
+        $form.Hint.Text=$_.Exception.Message; $form.Result.Text=$_.Exception.Message; $form.Result.Tag='Error'; $form.Save.IsEnabled=$false
+        $form.Window.BorderBrush='#778DA9'; $form.Compact.BorderBrush='#778DA9'
     }
+    foreach ($button in $form.ScaleButtons) {
+        $button.IsEnabled=($form.Baseline.Base -gt 0)
+        $button.ToolTip=if ($button.IsEnabled) { '{0:N0} tokens. Uses the displayed base; never compounds. Preview only.' -f ([decimal]$form.Baseline.Base*$button.Tag.Multiplier) } else { 'Enter a numeric context window first.' }
+    }
+}
+function Set-LimitFormScope($form,[string]$path,$card) {
+    $form.Path=$path; $form.Card=$card; $form.Loading=$true
+    try {
+        $form.Baseline=Get-LimitEditorBaseline $path $card
+        $b=$form.Baseline
+        $form.Window.Text=if ($null -eq $b.SavedWindow) {'default'} else {[string]$b.SavedWindow}
+        $form.Compact.Text=if ($null -eq $b.SavedCompact) {'default'} else {[string]$b.SavedCompact}
+        $form.Current.Text="Saved: $(Format-Limit $b.SavedWindow) | Compact: $(Format-Limit $b.SavedCompact)"
+        if ($b.Live -gt 0) { $form.Current.Text+="`nLive: $(Format-Limit $b.Live) | $($b.Model)" }
+        $form.Current.ToolTip="File: $path`nApplies to all models in this scope.`nLocal model catalog maximum: $(Format-Limit $b.Maximum)"
+        $scope=Get-TopLevelAutoCompactScope $path
+        if (-not $scope) { $scope=Get-TopLevelAutoCompactScope $script:configPath }
+        if (-not $scope) { $scope='total (default)' }
+        $form.Current.ToolTip+="`nCompaction accounting: $scope`nGlobal fallback window: $(Format-Limit (Get-TopLevelContextWindow $script:configPath))`nGlobal fallback threshold: $(Format-Limit (Get-TopLevelAutoCompactLimit $script:configPath))"
+        $form.BaseLabel.Text=if ($b.Base -gt 0) { 'Scale from {0:N0} ({1})' -f $b.Base,$b.Source } else { 'No window recorded. Enter a number to set a scaling base.' }
+        foreach ($button in $form.ScaleButtons) {
+            $button.ToolTip=if ($b.Base -gt 0) { '{0:N0} tokens. Based on the displayed base; never compounds. Preview only.' -f ([decimal]$b.Base*$button.Tag.Multiplier) } else { 'Enter a numeric context window first.' }
+        }
+    } finally { $form.Loading=$false }
     Update-CompactPercentageHint $form
 }
-function New-InlineLimitsEditor([string]$project) {
+function Connect-LimitEditor($windowField,$compactField,$hint,$current,$quick,$compactQuick,$save,$result) {
+    $form=@{Window=$windowField;Compact=$compactField;Hint=$hint;Current=$current;Save=$save;Result=$result;Loading=$true;Baseline=$null;ScaleButtons=@()}
+    $baseLabel=New-Label '' 10; $baseLabel.Margin='0,3,0,3'; $form.BaseLabel=$baseLabel
+    [void]$quick.Children.Add($baseLabel)
+    $row=New-Object Windows.Controls.WrapPanel; [void]$quick.Children.Add($row)
+    foreach ($factor in @(1,2,3)) {
+        $button=New-Object Windows.Controls.Button; $button.Content=([string][char]0xD7)+$factor; $button.Padding='8,3'; $button.Margin='0,0,5,4'
+        $button.Tag=@{Form=$form;Multiplier=$factor}; $form.ScaleButtons+=,$button
+        $button.Add_Click({param($sender,$eventArgs)
+            $f=$sender.Tag.Form
+            try {
+                $base=$f.Baseline.Base
+                if (-not $base) { $base=(ConvertTo-TokenLimit $f.Window.Text $null).Limit }
+                $draft=Get-ScaledContextDraft $base $sender.Tag.Multiplier $f.Window.Text $f.Compact.Text
+                $f.Loading=$true; $f.Window.Text=$draft.Window; $f.Compact.Text=$draft.Compact; $f.Loading=$false
+                Update-CompactPercentageHint $f
+            } catch { $f.Loading=$false; $f.Result.Tag='Error'; $f.Result.Text=$_.Exception.Message }
+        }); [void]$row.Children.Add($button)
+    }
+    foreach ($percent in @(80,90,95)) {
+        $button=New-Object Windows.Controls.Button; $button.Content="$percent%"; $button.Padding='10,3'; $button.Margin='0,0,6,4'; $button.ToolTip='Set compaction to this percentage of the entered window. Preview only.'
+        $button.Tag=@{Form=$form;Percent=$percent}
+        $button.Add_Click({param($sender,$eventArgs) $sender.Tag.Form.Compact.Text="$($sender.Tag.Percent)%"})
+        [void]$compactQuick.Children.Add($button)
+    }
+    foreach ($action in @('Restore saved','Use defaults')) {
+        $button=New-Object Windows.Controls.Button; $button.Content=if ($action -eq 'Restore saved') {'Undo'} else {'Default'}; $button.Padding='8,3'; $button.Margin='0,0,5,4'; $button.Tag=@{Form=$form;Action=$action}
+        $button.ToolTip=if ($action -eq 'Use defaults') {'Remove both overrides in this scope when you save. Other scopes stay unchanged.'} else {'Discard this draft and read saved values again.'}
+        $button.Add_Click({param($sender,$eventArgs)
+            $f=$sender.Tag.Form
+            if ($sender.Tag.Action -eq 'Restore saved') { Set-LimitFormScope $f $f.Path $f.Card }
+            else { $f.Loading=$true; $f.Window.Text='default'; $f.Compact.Text='default'; $f.Loading=$false; Update-CompactPercentageHint $f }
+        }); [void]$row.Children.Add($button)
+    }
+    foreach ($field in @($windowField,$compactField)) {
+        $field.Tag=$form
+        $field.Add_TextChanged({param($sender,$eventArgs)
+            $f=$sender.Tag
+            # Unknown baselines gain a stable, explicit base after valid entry.
+            if (-not $f.Loading -and $f.Baseline -and -not $f.Baseline.Base) {
+                try { $n=(ConvertTo-TokenLimit $f.Window.Text $null).Limit
+                    if ($n -gt 0) { $f.Baseline.Base=$n; $f.Baseline.Source='entered window'; $f.BaseLabel.Text='Scale from {0:N0} (entered window)' -f $n }
+                } catch { }
+            }
+            Update-CompactPercentageHint $f
+        })
+    }
+    $save.Tag=$form
+    $save.Add_Click({param($sender,$eventArgs)
+        $f=$sender.Tag
+        try {
+            if ($script:coreError) { throw $script:coreError }
+            $draft=ConvertTo-ContextDraft $f.Window.Text $f.Compact.Text
+            [void](Set-ContextLimits $f.Path @{model_context_window=$draft.Window;model_auto_compact_token_limit=$draft.Compact})
+            Set-LimitFormScope $f $f.Path $f.Card
+            $f.Result.Tag='Saved'; $f.Result.Text='Saved for all models in this scope. Reload may be required.'
+        } catch { $f.Result.Tag='Error'; $f.Result.Text=$_.Exception.Message }
+    })
+    return $form
+}
+function New-InlineLimitsEditor([string]$project,$card=$null) {
     $expander=New-Object Windows.Controls.Expander; $expander.Header='Edit context limits'; $expander.Foreground='#E0E1DD'; $expander.Margin='0,8,0,0'
     $panel=New-Object Windows.Controls.StackPanel; $expander.Content=$panel
-    $path=Join-Path $project '.codex/config.toml'
-    [void]$panel.Children.Add((New-Label 'Project defaults for all models. Running chats may need a reload.' 10))
-    $fields=@{}
-    foreach ($spec in @(@('Window','Context window: e.g. 258400 or 1000k'),@('Compact','Compact at: e.g. 180k or 90%'))) {
-        [void]$panel.Children.Add((New-Label $spec[1] 10))
-        $input=New-Object Windows.Controls.TextBox; $input.Padding='8,6'; $input.Margin='0,3,0,6'
-        $current=if ($spec[0] -eq 'Window') {Get-TopLevelContextWindow $path} else {Get-TopLevelAutoCompactLimit $path}
-        $input.Text=if ($null -eq $current) {'default'} else {[string]$current}; $fields[$spec[0]]=$input; [void]$panel.Children.Add($input)
-    }
-    $hint=New-Label '' 10; [void]$panel.Children.Add($hint); Connect-CompactPercentageHint $fields.Window $fields.Compact $hint
-    $result=New-Label '' 10
-    $save=New-Object Windows.Controls.Button; $save.Content='Save project limits'; $save.Margin='0,5,0,5'
-    $save.Tag=@{Path=$path;Window=$fields.Window;Compact=$fields.Compact;Result=$result}
-    $save.Add_Click({param($sender,$eventArgs)
-        $form=$sender.Tag
-        try {
-            $windowLimit=ConvertTo-TokenLimit $form.Window.Text $null; $compactLimit=ConvertTo-TokenLimit $form.Compact.Text $windowLimit.Limit
-            [void](Set-ContextLimits $form.Path @{model_context_window=$windowLimit.Limit;model_auto_compact_token_limit=$compactLimit.Limit})
-            $form.Result.Text='Saved for this project, all models. Reload may be required.'
-        } catch { $form.Result.Text=$_.Exception.Message }
-    })
-    [void]$panel.Children.Add($save); [void]$panel.Children.Add($result); Apply-WidgetTheme $expander
+    $current=New-Label '' 10; [void]$panel.Children.Add($current)
+    [void]$panel.Children.Add((New-Label 'Context window - e.g. 200k or default' 10))
+    $w=New-Object Windows.Controls.TextBox; $w.Padding='8,4'; $w.Margin='0,3,0,3'; [void]$panel.Children.Add($w)
+    $quick=New-Object Windows.Controls.StackPanel; [void]$panel.Children.Add($quick)
+    [void]$panel.Children.Add((New-Label 'Compact at - e.g. 180k or 90%' 10))
+    $c=New-Object Windows.Controls.TextBox; $c.Padding='8,4'; $c.Margin='0,3,0,3'; [void]$panel.Children.Add($c)
+    $presets=New-Object Windows.Controls.WrapPanel; [void]$panel.Children.Add($presets)
+    $hint=New-Label '' 10; [void]$panel.Children.Add($hint)
+    [void]$panel.Children.Add((New-Label 'Project defaults for all models. Larger values do not increase model capacity. Reload may be required.' 10))
+    $save=New-Object Windows.Controls.Button; $save.Content='Save project limits'; $save.Margin='0,5,0,5'; [void]$panel.Children.Add($save)
+    $result=New-Label '' 10; [void]$panel.Children.Add($result)
+    $form=Connect-LimitEditor $w $c $hint $current $quick $presets $save $result
+    Set-LimitFormScope $form (Join-Path $project '.codex/config.toml') $card
+    Apply-WidgetTheme $expander
     return $expander
+}
+function Show-LimitEditorSurface {
+    $FullPanel.Visibility='Collapsed'; $MiniPanel.Visibility='Collapsed'; $TokensPanel.Visibility='Collapsed'
+    $SettingsHost.Content=$script:settings.dialog; $SettingsHost.Visibility='Visible'
+    $LimitsMode.Tag='Selected'; $ContextMode.Tag=''; $TokenMode.Tag=''
+    $window.FindName('AppearanceControls').Visibility='Collapsed'
 }
 function Show-Settings([string]$pane='Context') {
     $script:settings=@{}
     [xml]$settingsXaml=@'
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
- <DockPanel><DockPanel DockPanel.Dock="Top" Margin="0,0,0,10"><Button x:Name="BackTasks" Content="Back" HorizontalAlignment="Left" Padding="12,4"/></DockPanel><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,10,0"><StackPanel x:Name="AppearanceSettings">
+ <DockPanel><StackPanel x:Name="LimitActions" DockPanel.Dock="Bottom"><TextBlock Text="Defaults for all models. Reload may be needed. Model capacity does not increase." FontSize="10" Foreground="#778DA9" TextWrapping="Wrap" Margin="0,6,0,6"/><DockPanel><Button x:Name="BackTasks" DockPanel.Dock="Left" Content="Back" Padding="10,5" Margin="0,0,6,0"/><Button x:Name="SaveLimits" Content="Save limits" Padding="12,5"/></DockPanel><TextBlock x:Name="LimitResult" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,0"/></StackPanel><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,10,0"><StackPanel x:Name="AppearanceSettings">
   <TextBlock Text="Window &amp; startup" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,14"/>
   <TextBlock x:Name="OpacityLabel" Text="Background opacity"/>
   <Slider x:Name="OpacitySlider" Minimum="40" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,8,0,8"/>
@@ -578,19 +673,18 @@ function Show-Settings([string]$pane='Context') {
   <CheckBox x:Name="Auto" Content="Auto-open with app" ToolTip="Start the app watcher at Windows sign-in." Margin="0,0,0,10"/>
   <TextBlock Text="App to follow"/><ComboBox x:Name="Target" Margin="0,4,0,10"><ComboBoxItem Content="Codex"/><ComboBoxItem Content="ChatGPT"/><ComboBoxItem Content="Either"/></ComboBox>
   <TextBlock TextWrapping="Wrap" Foreground="#E0E1DD" Text="Overlay stays open after the app closes. Minimize uses the taskbar; Hide to tray keeps it available beside the clock. Close exits; auto-open can reopen it on the next app launch."/>
-  <Button x:Name="SaveApp" Content="Save window preferences" Padding="10" Margin="0,12,0,20"/>
+  <Button x:Name="SaveApp" Content="Save window preferences" Padding="10" Margin="0,12,0,20"/><Button x:Name="WidgetBack" Content="Back" Padding="10"/>
   </StackPanel><StackPanel x:Name="ContextSettings">
-  <TextBlock Text="Context limits" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12"/>
-  <TextBlock Text="Save to"/><ComboBox x:Name="Scope" MinHeight="32" Margin="0,4,0,10"/>
-  <Border BorderBrush="#778DA9" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,12"><TextBlock x:Name="Current" FontSize="11" TextWrapping="Wrap"/></Border>
-  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-   <StackPanel><TextBlock Text="Context window (all models)"/><TextBox x:Name="Context" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Raw token count. Use a number or default."/></StackPanel>
-   <StackPanel Grid.Column="2"><TextBlock Text="Compact at"/><TextBox x:Name="Compact" Padding="8,6" MinHeight="34" Margin="0,4,0,0" ToolTip="Use tokens, 90% of the entered context window, or default. Percent is saved as tokens."/></StackPanel>
+  <ComboBox x:Name="Scope" MinHeight="30" Margin="0,0,0,6" ToolTip="Save to this scope. Project settings apply to all models in that project; global settings apply across projects."/>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <StackPanel><TextBlock Text="Context window" FontSize="11"/><TextBox x:Name="Context" Padding="8,4" MinHeight="30" Margin="0,3,0,0" ToolTip="Enter 200000, 200k, or default. This is a raw token count."/></StackPanel>
+   <StackPanel Grid.Column="2"><TextBlock Text="Compact at" FontSize="11"/><TextBox x:Name="Compact" Padding="8,4" MinHeight="30" Margin="0,3,0,0" ToolTip="Enter 180k, 90%, or default. Percent is converted to tokens on save."/></StackPanel>
   </Grid>
-  <TextBlock Text="Tokens: 180000 = 180k | 1000000 = 1000k" FontSize="10" Opacity="0.8" Margin="0,6,0,10"/>
-  <TextBlock x:Name="CompactHint" FontSize="10" Margin="0,0,0,10"/><TextBlock Text="Saved limits may need a chat reload." FontSize="11" Foreground="#778DA9" Margin="0,0,0,10"/>
-  <Button x:Name="SaveLimits" Content="Save limits" HorizontalAlignment="Right" MinWidth="120" Padding="12,6" Margin="0,0,0,12"/>
-  <Expander Header="How limits work" Foreground="#E0E1DD"><TextBlock Text="The window is a raw token count. Live chats report usable capacity. A saved value does not change a running chat or increase model capacity. Use default to remove this scope's override. Compact at accepts 90% when a context window is entered. Percent is converted to tokens on save; it does not track future window changes. Hover over the saved values to see the file and inherited settings." FontSize="11" Margin="0,8,0,8" TextWrapping="Wrap"/></Expander>
+  <StackPanel x:Name="ContextQuick" Margin="0,0,0,4"/>
+  <WrapPanel x:Name="CompactQuick"/>
+  <TextBlock x:Name="CompactHint" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,6"/>
+  <Expander Header="Saved and live values" FontSize="11" Margin="0,0,0,4"><TextBlock x:Name="Current" FontSize="10" TextWrapping="Wrap"/></Expander>
+  <Expander Header="How limits work" FontSize="11" Foreground="#E0E1DD"><TextBlock Text="2x and 3x use the displayed base, not the previous click. Numeric compaction thresholds keep their proportion. Default stays default. Use defaults removes this scope's overrides after Save. Percentages are stored as tokens and do not track later window changes. Live capacity may be smaller than the raw setting. Local catalog information may be old; it is not a provider guarantee. Other models can have different limits. Hover over saved values for the file path." FontSize="10" Margin="0,6,0,6" TextWrapping="Wrap"/></Expander>
   </StackPanel><TextBlock x:Name="Result" TextWrapping="Wrap" Foreground="#778DA9"/>
  </StackPanel></ScrollViewer></DockPanel>
 </UserControl>
@@ -598,7 +692,8 @@ function Show-Settings([string]$pane='Context') {
     $script:settings.dialog=[Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($settingsXaml))
     $script:settings.auto=$script:settings.dialog.FindName('Auto'); $script:settings.target=$script:settings.dialog.FindName('Target'); $script:settings.scope=$script:settings.dialog.FindName('Scope')
     $script:settings.current=$script:settings.dialog.FindName('Current'); $script:settings.context=$script:settings.dialog.FindName('Context'); $script:settings.compact=$script:settings.dialog.FindName('Compact'); $script:settings.result=$script:settings.dialog.FindName('Result')
-    Connect-CompactPercentageHint $script:settings.context $script:settings.compact ($script:settings.dialog.FindName('CompactHint'))
+    $script:settings.result=$script:settings.dialog.FindName('LimitResult')
+    $script:settings.form=Connect-LimitEditor $script:settings.context $script:settings.compact ($script:settings.dialog.FindName('CompactHint')) $script:settings.current ($script:settings.dialog.FindName('ContextQuick')) ($script:settings.dialog.FindName('CompactQuick')) ($script:settings.dialog.FindName('SaveLimits')) $script:settings.result
     $script:settings.opacitySlider=$script:settings.dialog.FindName('OpacitySlider'); $script:settings.opacityLabel=$script:settings.dialog.FindName('OpacityLabel'); $script:settings.corner=$script:settings.dialog.FindName('Corner')
     $script:settings.opacitySlider.Value=$window.Content.Background.Opacity*100; $script:settings.opacityLabel.Text='Background opacity: {0:N0}%' -f $script:settings.opacitySlider.Value
     $script:settings.opacitySlider.Add_ValueChanged({
@@ -631,38 +726,13 @@ function Show-Settings([string]$pane='Context') {
     $script:settings.scope.Add_SelectionChanged({
         try {
             $choice=$script:settings.scope.SelectedItem
-            $raw=Get-TopLevelContextWindow $choice.Path; $threshold=Get-TopLevelAutoCompactLimit $choice.Path
-            $script:settings.context.Text=if ($null -eq $raw) { 'default' } else { [string]$raw }
-            $script:settings.compact.Text=if ($null -eq $threshold) { 'default' } else { [string]$threshold }
-            $script:settings.current.Text="File: $($choice.Path)`nSaved raw window: $(Format-Limit $raw)`nSaved threshold: $(Format-Limit $threshold)"
-            if ($choice.Card) {
-                $script:settings.current.Text+="`nLive usable window: $(Format-Limit $choice.Card.Window) | $($choice.Card.Model)"
-                $script:settings.current.Text+="`nGlobal fallback window: $(Format-Limit (Get-TopLevelContextWindow $script:configPath))"
-                $script:settings.current.Text+="`nGlobal fallback threshold: $(Format-Limit (Get-TopLevelAutoCompactLimit $script:configPath))"
-            }
-            $compactScope=Get-TopLevelAutoCompactScope $choice.Path
-            if (-not $compactScope) { $compactScope=Get-TopLevelAutoCompactScope $script:configPath }
-            if (-not $compactScope) { $compactScope='total (default)' }
-            $script:settings.current.Text+="`nCompaction accounting: $compactScope"
-            $script:settings.current.ToolTip=$script:settings.current.Text
-            $script:settings.current.Text="Saved window: $(Format-Limit $raw) | Compact: $(Format-Limit $threshold)"
-            if ($choice.Card) { $script:settings.current.Text+="`nLive: $(Format-Limit $choice.Card.Window) | $($choice.Card.Model)" }
-            $script:settings.result.Text=''
-        } catch { $script:settings.result.Text=$_.Exception.Message }
+            $script:settings.scope.ToolTip=$choice.Path
+            Set-LimitFormScope $script:settings.form $choice.Path $choice.Card
+        } catch { $script:settings.result.Tag='Error'; $script:settings.result.Text=$_.Exception.Message }
     })
     $script:settings.scope.SelectedIndex=0
-    $script:settings.dialog.FindName('SaveLimits').Add_Click({
-        try {
-            if ($script:coreError) { throw $script:coreError }
-            $newContext=ConvertTo-TokenLimit $script:settings.context.Text $null; $newCompact=ConvertTo-TokenLimit $script:settings.compact.Text $newContext.Limit
-            [void](Set-ContextLimits $script:settings.scope.SelectedItem.Path @{model_context_window=$newContext.Limit;model_auto_compact_token_limit=$newCompact.Limit})
-            $script:settings.result.Foreground='#778DA9'; $script:settings.result.Text="Saved. Backup created. Reload may be required."
-            $script:settings.current.Text="Saved window: $(Format-Limit $newContext.Limit) | Compact: $(Format-Limit $newCompact.Limit)"
-            $script:settings.current.ToolTip="File: $($script:settings.scope.SelectedItem.Path)`n$($script:settings.current.Text)"
-            if ($script:settings.scope.SelectedItem.Card) { $script:settings.current.Text+="`nLive: $(Format-Limit $script:settings.scope.SelectedItem.Card.Window) | $($script:settings.scope.SelectedItem.Card.Model)" }
-        } catch { $script:settings.result.Tag='Error'; $script:settings.result.Foreground='#778DA9'; $script:settings.result.Text=$_.Exception.Message }
-    })
     $script:settings.dialog.FindName('SaveApp').Add_Click({
+        $script:settings.result=$script:settings.dialog.FindName('Result')
         try {
             Set-OverlayStartup ([bool]$script:settings.auto.IsChecked) $script:folder
             $prefs.AutoOpen=[bool]$script:settings.auto.IsChecked; $prefs.Target=[string]$script:settings.target.SelectedItem.Content; Save-Preferences
@@ -691,14 +761,18 @@ function Show-Settings([string]$pane='Context') {
             } catch { $script:settingsTestError=$_.Exception.Message }
         }
     }
-        Set-WidgetCompact $false
-    $FullPanel.Visibility='Collapsed'; $TokensPanel.Visibility='Collapsed'
+    if ($pane -eq 'Widget') { Set-WidgetCompact $false }
+    $FullPanel.Visibility='Collapsed'; $TokensPanel.Visibility='Collapsed'; $MiniPanel.Visibility='Collapsed'
     $SettingsHost.Content=$script:settings.dialog; $SettingsHost.Visibility='Visible'
     $LimitsMode.Tag=if ($pane -eq 'Context') {'Selected'} else {''}; $ContextMode.Tag=''; $TokenMode.Tag=''
     Apply-WidgetTheme $script:settings.dialog
     $script:settings.dialog.FindName('AppearanceSettings').Visibility=if ($pane -eq 'Widget') {'Visible'} else {'Collapsed'}
     $script:settings.dialog.FindName('ContextSettings').Visibility=if ($pane -eq 'Context') {'Visible'} else {'Collapsed'}
-    $script:settings.dialog.FindName('BackTasks').Add_Click({ Set-WidgetCompact $false })
+    $script:settings.dialog.FindName('LimitActions').Visibility=if ($pane -eq 'Context') {'Visible'} else {'Collapsed'}
+    $window.FindName('AppearanceControls').Visibility=if ($pane -eq 'Context') {'Collapsed'} else {'Visible'}
+    if ($pane -eq 'Context') { Show-LimitEditorSurface }
+    $script:settings.dialog.FindName('BackTasks').Add_Click({ Set-WidgetCompact ([bool]$prefs.Compact) })
+    $script:settings.dialog.FindName('WidgetBack').Add_Click({ Set-WidgetCompact ([bool]$prefs.Compact) })
 }
 function Start-Watcher {
     $watchScript=Join-Path $script:folder 'Watch-App.ps1'
@@ -759,7 +833,39 @@ $timer.Add_Tick({
             if ($TestSettings) {
                 Set-WidgetCompact $true
                 $MiniEditContext.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
-                if ($prefs.Compact -or -not $script:cardControls[$script:displayedTask].Editor.IsExpanded -or $prefs.Mode -ne 'Context') { throw 'Mini context shortcut failed.' }
+                if (-not $prefs.Compact -or $window.Width -ne 370 -or $SettingsHost.Visibility -ne 'Visible' -or $script:settings.scope.SelectedItem.Path -ne (Join-Path $CodexHome '.codex/config.toml')) { throw 'Mini context editor failed.' }
+                $script:settings.context.Text='200k'; $script:settings.compact.Text='90%'
+                $miniBase=$script:settings.form.Baseline.Base
+                $script:settings.form.ScaleButtons[1].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if ($script:settings.context.Text -ne [string]($miniBase*2) -or $script:settings.compact.Text -ne '90%') { throw "Mini 2x preview failed: base=$miniBase window=$($script:settings.context.Text) compact=$($script:settings.compact.Text) result=$($script:settings.result.Text)" }
+                $script:settings.form.ScaleButtons[2].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if ($script:settings.context.Text -ne [string]($miniBase*3)) { throw 'Mini 3x compounded instead of using base.' }
+                if (-not $script:settings.dialog.FindName('SaveLimits').IsEnabled) { throw 'Valid mini draft not enabled.' }
+                $draftWindow=$script:settings.context.Text; $formBeforeToggle=$script:settings.form
+                $ToggleButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if ($prefs.Compact -or $SettingsHost.Visibility -ne 'Visible' -or $script:settings.context.Text -ne $draftWindow -or -not [object]::ReferenceEquals($formBeforeToggle,$script:settings.form)) { throw 'Expand lost context draft.' }
+                $ToggleButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if (-not $prefs.Compact -or $SettingsHost.Visibility -ne 'Visible') { throw 'Collapse did not retain editor.' }
+                $window.UpdateLayout()
+                foreach ($field in @($script:settings.context,$script:settings.compact,$script:settings.dialog.FindName('SaveLimits'))) {
+                    $point=$field.TranslatePoint([Windows.Point]::new(0,0),$window)
+                    if ($point.Y -lt 0 -or $point.Y+$field.ActualHeight -gt $window.ActualHeight) { throw 'Mini editor field or save button outside window.' }
+                }
+                # Observe provider bounds without treating a cached maximum as a guarantee.
+                $script:settings.form.Baseline.Maximum=200000
+                $script:settings.context.Text='800k'
+                if ($script:settings.result.Tag -ne 'Warning' -or $script:settings.result.Text -notlike '*may reject or cap*') { throw 'Catalog limit warning missing.' }
+                $script:settings.context.Text='100k'; $script:settings.compact.Text='101k'
+                if ($script:settings.dialog.FindName('SaveLimits').IsEnabled -or $script:settings.result.Tag -ne 'Error') { throw 'Invalid compact threshold enabled Save.' }
+                $script:settings.context.Text=[string]($miniBase*3); $script:settings.compact.Text='90%'
+                $script:settings.form.Baseline.Maximum=$null
+                Update-CompactPercentageHint $script:settings.form
+                if ($TestReport) {
+                    $window.UpdateLayout()
+                    $miniBitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
+                    $miniBitmap.Render($window); $miniEncoder=New-Object Windows.Media.Imaging.PngBitmapEncoder; $miniEncoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($miniBitmap))
+                    $miniStream=[IO.File]::Create($TestReport+'.mini-limits.png'); try { $miniEncoder.Save($miniStream) } finally { $miniStream.Dispose() }
+                }
                 $inline=New-InlineLimitsEditor $CodexHome
                 $inlineSave=@($inline.Content.Children|Where-Object {$_ -is [Windows.Controls.Button]})[0]
                 $inlineSave.Tag.Window.Text='200k'; $inlineSave.Tag.Compact.Text='90%'
@@ -769,11 +875,29 @@ $timer.Add_Tick({
                 if ((Get-TopLevelContextWindow $inlineSave.Tag.Path) -ne 1000000 -or (Get-TopLevelAutoCompactLimit $inlineSave.Tag.Path) -ne 900000) { throw 'Inline chat limit edit failed.' }
                 $LimitsMode.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
                 if ($SettingsHost.Visibility -ne 'Visible' -or $SettingsHost.Content -isnot [Windows.Controls.UserControl]) { throw 'Settings did not open inside the overlay.' }
+                $idleChoice=@($script:settings.scope.Items | Where-Object Label -like '*(idle)')[0]
+                if (-not $idleChoice) { throw 'Idle project scope missing from editor.' }
+                $script:settings.scope.SelectedItem=$idleChoice
+                $script:settings.context.Text='200k'; $script:settings.compact.Text='90%'
+                $script:settings.dialog.FindName('SaveLimits').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if ((Get-TopLevelAutoCompactLimit $idleChoice.Path) -ne 180000) { throw "Idle project percentage save failed: path=$($idleChoice.Path) selected=$($script:settings.form.Path) result=$($script:settings.result.Text)" }
+                $quickRow=$script:settings.form.BaseLabel.Parent.Children[1]
+                $undo=@($quickRow.Children | Where-Object Content -eq 'Undo')[0]
+                $defaults=@($quickRow.Children | Where-Object Content -eq 'Default')[0]
+                $script:settings.context.Text='300k'; $undo.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if ($script:settings.context.Text -ne '200000' -or $script:settings.dialog.FindName('SaveLimits').IsEnabled) { throw 'Undo did not restore saved values.' }
+                $defaults.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if ((Get-TopLevelContextWindow $idleChoice.Path) -ne 200000) { throw 'Default preview wrote before Save.' }
+                $script:settings.dialog.FindName('SaveLimits').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+                if ($null -ne (Get-TopLevelContextWindow $idleChoice.Path)) { throw 'Default save did not remove project override.' }
+                $script:settings.scope.SelectedIndex=0
                 # Exercise handlers after Show-Settings has returned (no modal local scope).
                 $script:settings.context.Text='500k'; $script:settings.compact.Text='36%'
                 $script:settings.dialog.FindName('SaveLimits').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
                 if ((Get-TopLevelContextWindow $script:settings.scope.SelectedItem.Path) -ne 500000) { throw 'Embedded settings save failed after return.' }
                 if ($TestReport) {
+                Set-WidgetCompact $false
+                Show-LimitEditorSurface
                 $window.UpdateLayout()
                 $bitmap=New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$window.ActualWidth,[int]$window.ActualHeight,96,96,[Windows.Media.PixelFormats]::Pbgra32)
                     $bitmap.Render($window); $encoder=New-Object Windows.Media.Imaging.PngBitmapEncoder

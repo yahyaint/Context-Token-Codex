@@ -1,4 +1,4 @@
-# Context-Token Codex 6.6.1
+# Context-Token Codex 6.7.0
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
@@ -29,7 +29,7 @@ You can also launch from an extracted folder. **Default auto-open creates a Star
 - **Context:** active chats, measured context percentage and compaction state. Details holds secondary readings.
 - **Tokens:** active-chat cumulative totals, input, output, cache, uncached input and reasoning; loaded-chat totals and subscription readings.
 - **Limits:** global and project defaults, including saved idle projects. Applies to all models in the chosen scope.
-- **Collapsed:** one selected active chat. Previous/next changes the chat. **Edit context limits** expands that chat's project editor.
+- **Collapsed:** one selected active chat. Previous/next changes the chat. **Edit context limits** opens that chat's project editor at the same compact size. Save stays visible while details scroll. Expand/Collapse keeps the current draft.
 
 Current chat names come from local desktop state or the session index. Initial text is a tooltip fallback. Missing data stays unknown rather than being invented.
 
@@ -40,6 +40,12 @@ Context is the latest recorded request, not a continuous measurement inside Code
 ## Context settings
 
 Enter `180000`, `180k`, or `default`. **Compact at also accepts percentages**, e.g. `90%` with a `200k` context window saves `180000` tokens. Decimal percentages are supported, above 0 through 100. Enter a numeric context window first; `default` has no fixed denominator across models. The live hint previews the token result. Percentages are converted on save, not stored as a rule for future window changes.
+
+Use **×1 / ×2 / ×3** to preview a window from the labeled base. Clicking ×2 then ×3 produces twice then three times that base, not six times. The base comes from this scope's saved raw value, global fallback, local model catalog, or a labeled live usable reading. If none exists, enter a numeric window first. Numeric compaction thresholds keep their proportion; percentage input stays a percentage; `default` stays `default`.
+
+**80% / 90% / 95%** set a draft threshold. **Undo** reloads saved values. **Default** previews removing both overrides in this scope. Nothing writes until **Save**. Invalid drafts disable Save and show the reason. A known local catalog maximum produces a warning if exceeded; it can be stale and applies only to the identified model, while project/global settings apply to all models. CTC does not promise that Codex will accept a larger value.
+
+Saved and live readings are under **Saved and live values**. Hover for the config path. Global, active-project and saved idle-project scopes use the same controls. Both input fields and scale buttons fit the compact editor; additional details scroll.
 
 Window and compact changes are prepared together and atomically replace the selected file, with a backup and an intervening-change check. The editor preserves multiline strings and ordinary quoted keys. Unsupported root-key syntax is rejected before writing; edit such a file through Codex instead. This is a conservative scoped editor, not a general TOML formatter.
 

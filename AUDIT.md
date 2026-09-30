@@ -1,3 +1,9 @@
+# Context editor - 6.7.0
+
+Compact project editing, anchored multipliers, percentage presets, scoped saved/live values, preview-only reset controls and catalog warnings share the same helpers as the expanded editor. The release checks cover these controls in disposable fixtures; they do not alter real Codex limits. Source credits are in ACKNOWLEDGMENTS.md. Older verification below remains historical.
+
+Windows PowerShell 5.1 and PowerShell 7: context editor helpers, settings, regression, repository/isolated-install, local bootstrap checksum and WPF overlay suites passed. UI fixtures check anchored scaling, ratio retention, exact percentages, mini controls, expand/collapse draft retention, idle project writes, Undo/Default previews, invalid drafts and catalog warnings. Both layouts were rendered and inspected. Hosted CI, a separate clean machine and actual sign-in/reboot remain untested.
+
 # Release 6.6.1 logo validation - 30 September 2026
 
 - New lowercase ctc wordmark uses Segoe UI Semibold and the existing ivory/ink palette. One icon source supplies seven resolutions and both executable resources, widget header, tray, taskbar, setup, restore tab and shortcuts. README includes the generated preview; no font file is bundled.

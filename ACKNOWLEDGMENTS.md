@@ -27,3 +27,18 @@ License links checked on 18 September 2026. Keep this file and the notices in so
 - [AI Usage Tracker](https://github.com/Danielw412/AI-usage-tracker), Danielw412: interval-allocation comparison. License not confirmed; no source incorporated.
 
 CTC's implementation is independently written. These are method/research acknowledgments, not copied-code notices or endorsements. See QUOTA-RESEARCH.md.
+
+## Context editor design review - 30 September 2026
+
+The following sources informed this review. Their source and license were checked at the revisions below. These are design references, not copied code. CTC's multiplier, percentage, validation and TOML save code is original. No listed monitor documents this exact context-writing feature; CTC does not attribute its editor implementation to them.
+
+| Upstream (MIT) | Reviewed revision | Useful pattern / application |
+|---|---|---|
+| [Codex Token Overlay](https://github.com/soleillevant0125/codex-token-overlay), soleillevant0125 | `b3a38d727fb2e0cf8e8c92ffff3f65da9a592dc5` | Compact controls, expanded details, explicit reset/commit interaction. CTC adopts compact editing and hides secondary readings behind disclosure. Focus-following IPC remains a possible later enhancement. |
+| [Codex Monitor HUD](https://github.com/LH-03/codex-monitor-hud), contributors | `d9ac8537e1763fac470ffb55d6abdf7aa83a0f44` | Compact projections, bounded discovery and model-agnostic fallbacks. CTC labels unknown/catalog/live baselines and avoids model-name assumptions in editor controls. |
+| [CodexBar Windows](https://github.com/dontcallmejames/CodexBar-Windows), Peter Steinberger and contributors | `1bdf1ffe2453997539bbcf13aaa184769d2e0ad0` | Compact usage surfaces and per-provider backoff. Structured settings and quota retry improvements are later candidates, not added by this editor change. |
+| [ccusage](https://github.com/ccusage/ccusage), ryoppippi and contributors | `5304e3548c6e1ead42860a975b0d1900928ce53c` | Explicit token subset accounting and grouped detail remain useful. MIT applies to `apps/ccusage/LICENSE`; the root license is not labeled MIT by GitHub. No package incorporated. |
+| [Codex Overlay and Tracker](https://github.com/Glergini/codex-overlay-and-tracker), Glergini | `aaaec763531b4a5d0ef3e47c2887506613de1774` | Local per-chat/project accounting is a future comparison target; no code incorporated. |
+| [Codexometer](https://github.com/merefield/codexometer), merefield | `5c0fd8446f8c95ea6f9c4ed3c7bc7e6a05f0b379` | Honest quota estimates and reset/baseline checks remain useful for token mode; no quota changes in this editor release. |
+
+Code reuse policy: if code is copied later, record upstream URL, full commit, source and destination paths, local changes, copyright, and complete license in THIRD_PARTY_NOTICES.md. Preserve required notices in distributed source and binaries. Git commit trailers may add `Inspired-by:` / `Source:` links; do not name upstream authors as co-authors when they did not author the CTC commit.

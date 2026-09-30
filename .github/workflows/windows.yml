@@ -25,7 +25,9 @@ jobs:
       - name: Build Windows launchers
         run: .\Build\build.ps1
       - name: Test configuration helpers
-        run: .\Tests\test_settings.ps1
+        run: |
+          .\Tests\test_settings.ps1
+          .\Tests\test_context_editor.ps1
       - name: Test audit regressions
         run: .\Tests\test_regressions.ps1
       - name: Test usage accounting and quota parsing

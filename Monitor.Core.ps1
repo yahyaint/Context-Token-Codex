@@ -214,6 +214,61 @@ function ConvertTo-TokenLimit([string]$inputText, $window) {
     return [pscustomobject]@{ IsDefault = $false; Limit = $tokens }
 }
 
+# Editor baselines are scoped configuration or observed metadata, never a promise
+# that the provider supports the requested capacity. No model-name allowlist.
+function Get-LimitEditorBaseline([string]$path, $card) {
+    $saved = Get-TopLevelContextWindow $path
+    $compact = Get-TopLevelAutoCompactLimit $path
+    $model = if ($card) { [string]$card.Model } else { Get-TopLevelModel $path }
+    if (-not $model) { $model = Get-TopLevelModel $script:configPath }
+    $catalog = Get-ModelCatalogInfo $model
+    $base = $saved; $source = 'saved window'
+    if ($null -eq $base -and $path -ne $script:configPath) {
+        $base = Get-TopLevelContextWindow $script:configPath; $source = 'global fallback'
+    }
+    if ($null -eq $base -and $catalog -and $catalog.Window -gt 0) {
+        $base = $catalog.Window; $source = 'local model catalog'
+    }
+    if ($null -eq $base -and $card -and $card.Window -gt 0) {
+        $base = $card.Window; $source = 'live usable window'
+    }
+    return [pscustomobject]@{
+        SavedWindow=$saved; SavedCompact=$compact; Base=$base; Source=$source
+        Model=$model; Maximum=if ($catalog) { $catalog.Maximum } else { $null }
+        Live=if ($card) { $card.Window } else { $null }
+    }
+}
+
+function ConvertTo-ContextDraft([string]$windowText, [string]$compactText) {
+    $w = ConvertTo-TokenLimit $windowText $null
+    $c = ConvertTo-TokenLimit $compactText $w.Limit
+    if ($null -ne $w.Limit -and $null -ne $c.Limit -and $c.Limit -gt $w.Limit) {
+        throw 'Compact at must not exceed the entered context window.'
+    }
+    return [pscustomobject]@{Window=$w.Limit; Compact=$c.Limit}
+}
+
+function Get-ScaledContextDraft($base, [int]$multiplier, [string]$windowText, [string]$compactText) {
+    if ($null -eq $base -or $base -lt 1) { throw 'No window recorded. Enter a numeric context window first.' }
+    if ($multiplier -lt 1 -or $multiplier -gt 3) { throw 'Choose 1x, 2x or 3x.' }
+    $scaled = [decimal]$base * $multiplier
+    if ($scaled -gt [long]::MaxValue) { throw 'Scaled window is too large.' }
+    $previous = ConvertTo-TokenLimit $windowText $null
+    $denominator = if ($null -ne $previous.Limit) { $previous.Limit } else { $base }
+    $threshold = ConvertTo-TokenLimit $compactText $denominator
+    if ($null -ne $threshold.Limit -and $threshold.Limit -gt $denominator) {
+        throw 'Compact at must not exceed the current window before scaling.'
+    }
+    $nextCompact = 'default'
+    if ($null -ne $threshold.Limit) {
+        # Preserve an entered percentage exactly. Numeric thresholds preserve
+        # their ratio, so increasing the window does not leave an old threshold.
+        $nextCompact = if ($compactText.Trim().EndsWith('%')) { $compactText.Trim() }
+            else { [string][long][Math]::Max(1,[Math]::Round([decimal]$threshold.Limit * $scaled / $denominator)) }
+    }
+    return [pscustomobject]@{Window=[string][long]$scaled; Compact=$nextCompact}
+}
+
 function Get-TopLevelNumericSetting([string]$path, [string]$key) {
     if ($key -notin @('model_auto_compact_token_limit', 'model_context_window')) { throw 'Unsupported setting.' }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }

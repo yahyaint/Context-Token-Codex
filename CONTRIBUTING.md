@@ -40,3 +40,7 @@ The script rebuilds, packages an explicit list of public files, and writes the Z
 Use pull requests for changes. Explain the behavior change and the tests you ran. Keep compatibility fallbacks for Codex file formats, preserve existing user settings, and keep the MIT notice and attribution documents. Contributions are licensed under the repository's MIT license.
 
 Run Tests/test_theme.ps1 in an STA PowerShell process to verify the CTC scope dropdown. It opens a temporary window and tests scope selection.
+
+## Context editor checks
+
+Run `Tests/test_context_editor.ps1` in Windows PowerShell 5.1 and PowerShell 7. Run `Tests/test_overlay.ps1` on an interactive Windows desktop for compact/expanded editing, draft retention, scope changes, presets, reset controls, and warnings. The UI test writes only to a marked disposable fixture. Do not use real project settings as test data.

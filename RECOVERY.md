@@ -4,6 +4,15 @@ Paste this into Codex with this repository open:
 
 > Diagnose and repair Context-Token Codex using RECOVERY.md. Preserve the installed version, preferences and all Codex tasks. Inspect the current release and local errors. Run the relevant fixture tests before changing live files. Never delete, edit or replay Codex queued messages. Do not send a task to test monitoring. Show the cause, fix and test evidence. Ask before restarting Codex. Do not publish or push without my mark.
 
+## Context editor recovery (6.7)
+
+- Disabled Save: check the validation message. Percent needs an explicit numeric window; Compact at cannot exceed that window. Unchanged values also disable Save.
+- Disabled 1x/2x/3x: no saved, inherited, catalog or live baseline exists. Enter a numeric window first. Buttons use the labeled base and do not compound previous clicks.
+- Unexpected scale: inspect Saved and live values and the base source. A raw configured window can differ from a live usable window. Undo reads saved values again.
+- Catalog warning: compare the current model's local model cache with official provider information. Cached maximum is advisory and can be old. Never assume a larger saved number expands provider capacity.
+- Missing project: restore the existing project folder before saving; CTC does not recreate a deleted project. Global defaults remain separately editable.
+- Run test_context_editor.ps1 and test_overlay.ps1 against fixtures before repairing helpers or controls. Keep atomic writes, configuration backups and intervening-change checks.
+
 ## 6.4 recovery notes
 
 - Slow quota refresh: allow up to 45 seconds. Errors distinguish CLI initialization from the subscription response. Keep the newest available reading; do not edit live queues.

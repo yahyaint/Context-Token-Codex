@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.7.0 - context editor
+
+- Edit project/global limits inside the compact widget. Select the displayed chat's project directly; keep Save visible while details scroll.
+- Add anchored 1x/2x/3x window previews, preserving numeric compaction ratios and exact entered percentages. Unknown baselines require explicit numeric input.
+- Add 80%/90%/95% compaction presets, Undo, and Default previews. Only Save writes settings.
+- Share validation and controls across chat cards and the scope editor. Reject compaction above an entered window, disable invalid/no-change saves, and show known local catalog warnings without claiming model capacity increases.
+- Keep saved/live metadata and detailed guidance behind disclosure. Preserve older releases and configuration backups.
+- Record MIT design references with exact source revisions; no upstream code or binaries copied.
+
 ## 6.6.1 - simple wordmark
 
 - Replace the interlocking logo with lowercase ctc in Segoe UI Semibold, using the existing blue-grey palette.

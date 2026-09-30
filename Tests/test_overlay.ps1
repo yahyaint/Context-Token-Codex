@@ -2,6 +2,7 @@ $ErrorActionPreference='Stop'
 $folder=Split-Path $PSScriptRoot -Parent
 $fixture=Join-Path $env:TEMP ('context-overlay-test-'+[guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory((Join-Path $fixture 'sessions'))
+[void][IO.Directory]::CreateDirectory((Join-Path $fixture 'idle-project'))
 [IO.File]::WriteAllText((Join-Path $fixture '.codex-global-state.json'),(@{'local-projects'=@{idle=@{rootPaths=@((Join-Path $fixture 'idle-project'))}}}|ConvertTo-Json -Depth 5))
 [IO.File]::WriteAllText((Join-Path $fixture '.overlay-test-fixture'),'test')
 function Assert($condition,$message) { if (-not $condition) { throw $message } }

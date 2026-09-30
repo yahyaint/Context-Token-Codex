@@ -1,3 +1,9 @@
+# Context editor - 6.7.0
+
+Compact project editing, anchored multipliers, percentage presets, scoped saved/live values, preview-only reset controls and catalog warnings share the same helpers as the expanded editor. The release checks cover these controls in disposable fixtures; they do not alter real Codex limits. Source credits are in ACKNOWLEDGMENTS.md. Older verification below remains historical.
+
+Windows PowerShell 5.1 and PowerShell 7: context editor helpers, settings, regression, repository/isolated-install, local bootstrap checksum and WPF overlay suites passed. UI fixtures check anchored scaling, ratio retention, exact percentages, mini controls, expand/collapse draft retention, idle project writes, Undo/Default previews, invalid drafts and catalog warnings. Both layouts were rendered and inspected. Hosted CI, a separate clean machine and actual sign-in/reboot remain untested.
+
 # Compatibility and release checks — 6.6.0
 
 ## 30 September 2026 startup repair
@@ -59,6 +65,6 @@ GitHub Actions matrix: Windows Server 2022 and 2025, each with Windows PowerShel
 - The Android SDK SQLite executable on the test machine could not open Unicode paths. The file reader supports those paths and remains the fallback. SQLite schema tests therefore used a separate ASCII path.
 - Launchers are unsigned. Source ZIP requires building; the Windows release ZIP includes launchers.
 
-Publication requires a final source review, author email, repository URL and the owner's explicit push mark. No push is part of local preparation.
+Author identity and intended repository URL are configured. Hosted CI, remote installation and the owner's explicit push mark remain pending. No push is part of local preparation.
 
 6.1.0 rerun: usage, compatibility, repository/install manifest, live WPF append and installation wizard passed on Windows PowerShell 5.1 and PowerShell 7.6.5 on 18 September 2026. The live UI fixture advanced the total from 85,800 to 90,000 and verified reasoning and task detail. Hosted CI remains pending.

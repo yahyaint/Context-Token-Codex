@@ -1,6 +1,6 @@
 # Compiled version checks
 
-Version: 7.0.1.
+Version: 7.0.2.
 Runtime: .NET 10.0.12.
 SDK: .NET 10.0.401.
 The Windows release targets x64.
@@ -8,7 +8,11 @@ The Windows release targets x64.
 ## Local checks
 
 75 core fixture checks pass.
-26 actual WPF window checks pass.
+33 actual WPF window checks pass.
+7 visual reference checks pass.
+The main, parked, settings, and tool-call XAML match the preserved PowerShell 6.8.9 resources.
+The setup layout matches, with updated version and runtime text.
+The native app uses the same theme and icon files.
 The core checks include percentages, scalers, TOML preservation, stale saves, backups, and token subsets.
 They also include corrupt records, future records, resumed call deduplication, weekly quotas, account changes, and RPC timeouts.
 The window checks include compact limit saves, draft retention, corner return, scrolling, tray, setup updates, rollback, and normal close.
@@ -46,7 +50,7 @@ The download helper checks the ZIP SHA256, paths, size, and required files.
 It supports both the compiled release and the earlier PowerShell release.
 Native CI runs on Windows Server 2022 and Windows Server 2025.
 Check the GitHub Actions result for the exact published commit.
-Both 7.0.1 jobs passed: https://github.com/yahyaint/Context-Token-Codex/actions/runs/36902890843.
+The release notes identify the tested commit and hosted CI run.
 The anonymous latest-release helper passed with Windows PowerShell 5.1.
 The helper disables progress rendering and uses bounded request timeouts.
 

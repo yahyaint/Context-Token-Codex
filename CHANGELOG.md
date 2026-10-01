@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.0.2 - 1 October 2026
+
+- Restore the PowerShell 6.8.9 design in the C# app.
+- Use the original main, parked, settings, tool-call, and setup layouts.
+- Restore the compact summary, two-column limit fields, token grids, footer, and Corner menu.
+- Restore the setup wizard and inline project editor.
+- Keep hidden token detail controls unloaded until you expand them.
+- Add preserved-layout checks and actual window checks for the restored controls.
+
 ## 7.0.1 - 1 October 2026
 
 - Block automatic restart when lifecycle timestamps are missing or incorrect.

@@ -16,7 +16,7 @@ Run this command in PowerShell:
 & { $p=Join-Path $env:TEMP ('ctc-source-'+[guid]::NewGuid().ToString('N')); gh repo clone yahyaint/Context-Token-Codex $p; if ($LASTEXITCODE) { throw 'Clone failed' }; powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $p 'Install-FromGitHub.ps1') }
 ```
 
-To select the compiled release, add -Version v7.0.1 to the helper command.
+To select the compiled release, add -Version v7.0.2 to the helper command.
 To select PowerShell, add -Version v6.8.9.
 The helper checks the ZIP hash before it opens Setup.
 The hash detects changed files. It is not a publisher signature.

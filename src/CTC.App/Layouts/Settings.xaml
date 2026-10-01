@@ -1,0 +1,26 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <DockPanel><StackPanel x:Name="LimitActions" DockPanel.Dock="Bottom"><TextBlock Text="These settings apply to all models. A running chat needs a fresh session. Model capacity does not increase." FontSize="10" Foreground="#778DA9" TextWrapping="Wrap" Margin="0,6,0,6"/><DockPanel><Button x:Name="BackTasks" DockPanel.Dock="Left" Content="Back" Padding="10,5" Margin="0,0,6,0"/><Button x:Name="SaveLimits" Content="Save limits" Padding="12,5"/></DockPanel><TextBlock x:Name="LimitResult" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,0"/></StackPanel><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,10,0"><StackPanel x:Name="AppearanceSettings">
+  <TextBlock Text="Window and startup" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,14"/>
+  <TextBlock x:Name="OpacityLabel" Text="Background opacity"/>
+  <Slider x:Name="OpacitySlider" Minimum="40" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,8,0,8"/>
+  <TextBlock Text="40% shows more of the window below. 100% hides the window below. Text stays visible. CTC saves changes immediately." TextWrapping="Wrap" Foreground="#E0E1DD" Margin="0,0,0,12"/>
+  <TextBlock Text="Corner placement (current screen)"/>
+  <ComboBox x:Name="Corner" Margin="0,4,0,10"><ComboBoxItem Content="Free position"/><ComboBoxItem Content="Top left"/><ComboBoxItem Content="Top right"/><ComboBoxItem Content="Bottom left"/><ComboBoxItem Content="Bottom right"/></ComboBox>
+  <Expander Header="Move and resize" Margin="0,0,0,12"><TextBlock Text="Drag the header to move the widget. Release near a corner to set the position. Select Expand or Collapse to change size. Drag the lower right control to resize the expanded view." FontSize="11" TextWrapping="Wrap"/></Expander>
+  <CheckBox x:Name="StartParked" Content="Open in the small bar" Margin="0,0,0,10"/><CheckBox x:Name="Auto" Content="Auto-open with app" ToolTip="Start the app watcher at Windows sign-in." Margin="0,0,0,10"/>
+  <TextBlock Text="App to follow"/><ComboBox x:Name="Target" Margin="0,4,0,10"><ComboBoxItem Content="Codex"/><ComboBoxItem Content="ChatGPT"/><ComboBoxItem Content="Either"/></ComboBox>
+  <TextBlock TextWrapping="Wrap" Foreground="#E0E1DD" Text="The widget stays open after the app closes. Minimize shows a small bar at the same corner. Tray hides it beside the clock. Close stops CTC. Auto-open starts CTC when the app opens again."/>
+  <Button x:Name="SaveApp" Content="Save window preferences" Padding="10" Margin="0,12,0,20"/><Button x:Name="WidgetBack" Content="Back" Padding="10"/>
+  </StackPanel><StackPanel x:Name="ContextSettings">
+  <ComboBox x:Name="Scope" MinHeight="30" Margin="0,0,0,6" ToolTip="Select the scope. Project settings apply to all models in that project. Global settings apply across projects."/>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <StackPanel><TextBlock Text="Context window" FontSize="11"/><TextBox x:Name="Context" Padding="8,4" MinHeight="30" Margin="0,3,0,0" ToolTip="Enter 200000, 200k, or default. This value is a token count."/><StackPanel x:Name="ContextQuick" Margin="0,4,0,0"/></StackPanel>
+   <StackPanel Grid.Column="2"><TextBlock Text="Compact at" FontSize="11"/><TextBox x:Name="Compact" Padding="8,4" MinHeight="30" Margin="0,3,0,0" ToolTip="Enter 180k, 90%, or default. CTC converts the percentage to tokens when you select Save."/><WrapPanel x:Name="CompactQuick" Margin="0,4,0,0"/></StackPanel>
+  </Grid>
+  <WrapPanel x:Name="ResetQuick" Margin="0,4,0,0"/>
+  <TextBlock x:Name="CompactHint" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,6"/>
+  <Expander Header="Saved and live values" FontSize="11" Margin="0,0,0,4"><TextBlock x:Name="Current" FontSize="10" TextWrapping="Wrap"/></Expander>
+  <Expander Header="How limits work" FontSize="11" Foreground="#E0E1DD"><TextBlock Text="2x and 3x use the displayed base value. They do not multiply the previous result. Token thresholds keep their percentage. Default stays default. To remove both overrides, select Default. Then select Save. CTC saves percentages as tokens. They do not change with later window settings. The recorded chat window can be smaller than the saved value. Model catalog data can be old. Other models can have different limits. Move the pointer over the saved values to see the file path." FontSize="10" Margin="0,6,0,6" TextWrapping="Wrap"/></Expander>
+  </StackPanel><TextBlock x:Name="Result" TextWrapping="Wrap" Foreground="#778DA9"/>
+ </StackPanel></ScrollViewer></DockPanel>
+</UserControl>

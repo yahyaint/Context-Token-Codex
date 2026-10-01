@@ -15,7 +15,7 @@ public sealed class Preferences
     public string Corner {get;set;}="BottomRight";
     public double Opacity {get;set;}=.85;
     public double Width {get;set;}=460;
-    public double Height {get;set;}=650;
+    public double Height {get;set;}=620;
     public double Left {get;set;}=100;
     public double Top {get;set;}=100;
     public static Preferences Load(string path)
@@ -29,7 +29,7 @@ public sealed class Preferences
         if(p.Corner is not("Free" or "TopLeft" or "TopRight" or "BottomLeft" or "BottomRight")){p.Corner="BottomRight";invalid=true;}
         if(!double.IsFinite(p.Opacity)||p.Opacity<.4||p.Opacity>1){p.Opacity=.85;invalid=true;}
         if(!double.IsFinite(p.Width)||p.Width<360||p.Width>8192){p.Width=460;invalid=true;}
-        if(!double.IsFinite(p.Height)||p.Height<320||p.Height>8192){p.Height=650;invalid=true;}
+        if(!double.IsFinite(p.Height)||p.Height<320||p.Height>8192){p.Height=620;invalid=true;}
         p.Height=Math.Max(520,p.Height);
         if(!double.IsFinite(p.Left)||Math.Abs(p.Left)>100000){p.Left=100;invalid=true;}
         if(!double.IsFinite(p.Top)||Math.Abs(p.Top)>100000){p.Top=100;invalid=true;}

@@ -7,6 +7,7 @@ $config=Join-Path $root 'NuGet.Config'
 $app=Join-Path $root 'src/CTC.App/CTC.App.csproj'
 $tests=Join-Path $root 'tests/CTC.Tests/CTC.Tests.csproj'
 if(-not $SkipTests){
+ & (Join-Path $root 'Tests/test_native_visual_parity.ps1')
  & $Dotnet restore $tests --configfile $config
  if($LASTEXITCODE){throw 'Native test restore failed.'}
  & $Dotnet run --project $tests --configuration Release --no-restore

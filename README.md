@@ -1,4 +1,4 @@
-# Context-Token Codex 7.0.1
+# Context-Token Codex 7.0.2
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
@@ -8,6 +8,8 @@ The Windows release includes its runtime.
 The app, watcher, quota reader, setup, and restart helper do not start PowerShell.
 Only build and download helper scripts use PowerShell.
 Future app changes use C#.
+The widget uses the original PowerShell 6.8.9 design.
+The original layouts, theme, and icon remain the visual reference.
 Created by **Yahya Nabil** | [yahyanabil.com](https://yahyanabil.com).
 
 **Windows 10/11 | MIT | Independent community project**
@@ -197,7 +199,7 @@ See [UPDATE-RECOVERY.md](UPDATE-RECOVERY.md) for compiled repair steps.
 
 | Version | Source | Installation |
 |---|---|---|
-| C# and WPF 7.0.1 | src/CTC.Core and src/CTC.App | Default latest release and install prompt. |
+| C# and WPF 7.0.2 | src/CTC.Core and src/CTC.App | Default latest release and install prompt. |
 | PowerShell 6.8.9 | Root PowerShell modules and Build/build.ps1 | [Earlier Windows release](https://github.com/yahyaint/Context-Token-Codex/releases/tag/v6.8.9). |
 
 The earlier source and tag remain available.

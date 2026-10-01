@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using CTC.Core;
 using static CTC.App.Controls;
@@ -17,7 +18,7 @@ namespace CTC.App;
 public static class Installer
 {
     public static string DefaultFolder=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","Context-Token-Codex");
-    public static void Install(string destination,string source,string data,bool startup,bool shortcuts=true)
+    public static void Install(string destination,string source,string data,bool startup,bool shortcuts=true,bool desktop=true)
     {
         destination=Path.GetFullPath(destination);source=Path.GetFullPath(source);
         if(destination.TrimEnd(Path.DirectorySeparatorChar).Equals(Path.GetPathRoot(destination),StringComparison.OrdinalIgnoreCase))throw new IOException("Choose an app folder. Do not select a drive root.");
@@ -58,9 +59,9 @@ public static class Installer
             string executable=Path.Combine(target,"ContextTokenCodex.exe");
             if(shortcuts)
             {
-                string desktop=Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string desktopFolder=Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 string programs=Environment.GetFolderPath(Environment.SpecialFolder.Programs);
-                Shortcut(Path.Combine(desktop,"Context-Token Codex.lnk"),executable,"",target);
+                if(desktop)Shortcut(Path.Combine(desktopFolder,"Context-Token Codex.lnk"),executable,"",target);
                 Shortcut(Path.Combine(programs,"Context-Token Codex.lnk"),executable,"",target);
                 SetStartup(target,data,startup);
             }
@@ -141,29 +142,45 @@ public static class Installer
 }
 public sealed class SetupWindow:Window
 {
-    public SetupWindow(string data)
+    public SetupWindow(string data,bool fixture=false)
     {
-        Title="Context-Token Codex setup";Width=570;Height=460;WindowStartupLocation=WindowStartupLocation.CenterScreen;Background=Ink;FontFamily=new System.Windows.Media.FontFamily("Segoe UI");
+        var layout=LegacyLayouts.Load<Window>("Setup");T Find<T>(string name) where T:class=>(T)layout.FindName(name);
+        Title=layout.Title;Width=layout.Width;Height=layout.Height;ResizeMode=layout.ResizeMode;WindowStartupLocation=WindowStartupLocation.CenterScreen;
+        Background=Ink;Foreground=Text;FontFamily=new System.Windows.Media.FontFamily("Segoe UI");
+        Content=layout.Content;layout.Content=null;
         Icon=System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/ContextTokenCodex;component/Assets/Context.ico"));
-        var p=new StackPanel{Margin=new Thickness(24)};Content=p;
-        var logo=Label("ctc",36);logo.FontWeight=FontWeights.SemiBold;p.Children.Add(logo);p.Children.Add(Label("Install Context-Token Codex",22));
-        p.Children.Add(Label("C# and WPF · Version "+typeof(SetupWindow).Assembly.GetName().Version?.ToString(3),11,true));
-        p.Children.Add(Label("Earlier versions and settings remain available. This version requires Windows 10 or Windows 11.",12));
-        p.Children.Add(Label("App folder",11,true));
-        var folder=new TextBox{Text=Installer.DefaultFolder,Padding=new Thickness(8),Margin=new Thickness(0,4,0,8)};p.Children.Add(folder);
-        var startup=new CheckBox{Content="Auto-open with app at Windows sign-in",IsChecked=true,Margin=new Thickness(0,10,0,10)};p.Children.Add(startup);
-        var result=Label("",11);p.Children.Add(result);
-        var install=Button("Install",()=>
+        void Logo()
         {
+            var decoder=System.Windows.Media.Imaging.BitmapDecoder.Create(new Uri("pack://application:,,,/ContextTokenCodex;component/Assets/Context.ico"),System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+            var image=Find<System.Windows.Controls.Image>("Logo");double size=52*System.Windows.Media.VisualTreeHelper.GetDpi(this).DpiScaleX;
+            image.Source=decoder.Frames.OrderBy(x=>x.PixelWidth).FirstOrDefault(x=>x.PixelWidth>=size)??decoder.Frames.OrderBy(x=>x.PixelWidth).Last();
+            System.Windows.Media.RenderOptions.SetBitmapScalingMode(image,System.Windows.Media.BitmapScalingMode.HighQuality);
+        }
+        Logo();DpiChanged+=(_,_)=>Logo();
+        Find<TextBlock>("SetupVersion").Text="Setup "+typeof(SetupWindow).Assembly.GetName().Version?.ToString(3)+"  /  Windows";
+        Find<TextBlock>("Size").Text="The release includes .NET 10. Earlier versions and preferences remain available.";
+        var folder=Find<TextBox>("Destination");folder.Text=fixture?Path.Combine(data,"setup fixture"):Installer.DefaultFolder;
+        AutomationProperties.SetAutomationId(folder,"SetupFolder");
+        var next=Find<Button>("Next");var back=Find<Button>("Back");int page=0;
+        AutomationProperties.SetAutomationId(next,"SetupNext");AutomationProperties.SetAutomationId(back,"SetupBack");
+        Find<Button>("Browse").Click+=(_,_)=>{using var picker=new System.Windows.Forms.FolderBrowserDialog{Description="Select the Context-Token Codex installation folder."};if(picker.ShowDialog()==System.Windows.Forms.DialogResult.OK)folder.Text=Path.Combine(picker.SelectedPath,"Context-Token-Codex");};
+        back.Click+=(_,_)=>{Find<StackPanel>("Options").Visibility=Visibility.Collapsed;Find<StackPanel>("Welcome").Visibility=Visibility.Visible;back.Visibility=Visibility.Collapsed;next.Content="Next";page=0;};
+        next.Click+=(_,_)=>
+        {
+            var error=Find<TextBlock>("ErrorLabel");error.Text="";
+            if(page==0){Find<StackPanel>("Welcome").Visibility=Visibility.Collapsed;Find<StackPanel>("Options").Visibility=Visibility.Visible;back.Visibility=Visibility.Visible;next.Content="Install";page=1;return;}
+            if(page==2){Close();return;}
+            next.IsEnabled=false;
             try
             {
-                Installer.Install(folder.Text,AppContext.BaseDirectory,data,startup.IsChecked==true);
+                Installer.Install(folder.Text,AppContext.BaseDirectory,data,Find<CheckBox>("Startup").IsChecked==true,!fixture,Find<CheckBox>("Desktop").IsChecked==true);
                 var record=Installer.ReadInstallation(folder.Text)!;
-                if(startup.IsChecked==true)Installer.StartWatcher(record.Current,data);
-                Installer.Launch(folder.Text);result.Text="Installation complete. CTC is open.";Close();
+                Find<StackPanel>("Options").Visibility=Visibility.Collapsed;Find<StackPanel>("Done").Visibility=Visibility.Visible;back.Visibility=Visibility.Collapsed;next.Content="Finish";page=2;
+                Find<TextBlock>("Summary").Text="Installed in "+folder.Text+"\nVersion "+record.Version+"\nAuto-open: "+Find<CheckBox>("Startup").IsChecked;
+                if(!fixture){if(Find<CheckBox>("Startup").IsChecked==true)Installer.StartWatcher(record.Current,data);if(Find<CheckBox>("Launch").IsChecked==true)Installer.Launch(folder.Text);}
             }
-            catch(Exception e) when(e is IOException or UnauthorizedAccessException or COMException){result.Text=e.Message;}
-        },"Install the compiled widget.");
-        p.Children.Add(install);p.Children.Add(Button("Cancel",Close));p.Children.Add(Label("Yahya Nabil · MIT License",10,true));
+            catch(Exception e) when(e is IOException or UnauthorizedAccessException or COMException or ArgumentException){error.Text="Installation stopped: "+e.Message;}
+            finally{next.IsEnabled=true;}
+        };
     }
 }

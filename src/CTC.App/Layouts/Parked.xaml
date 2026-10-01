@@ -1,0 +1,12 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Context-Token Codex bar" Width="370" Height="88" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" Foreground="#E0E1DD">
+ <Border CornerRadius="10" Background="#0D1B2A" BorderBrush="#415A77" BorderThickness="1" Padding="10,7">
+  <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBlock x:Name="ParkTitle" Text="No active chats" FontSize="11" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" VerticalAlignment="Center" Margin="0,0,8,0"/>
+    <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="ParkPrevious" Content="&#x2039;" ToolTip="Previous chat"/><Button x:Name="ParkNext" Content="&#x203A;" ToolTip="Next chat"/><Button x:Name="ParkRestore" Content="&#x2197;" ToolTip="Restore the widget"/></StackPanel>
+   </Grid>
+   <Grid Grid.Row="1" Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock x:Name="ParkContext" FontSize="14" Text="Context --"/><TextBlock x:Name="ParkTokens" Grid.Column="1" FontSize="14" Text="Tokens --" HorizontalAlignment="Right"/></Grid>
+   <TextBlock x:Name="ParkQuota" Grid.Row="2" FontSize="10" Foreground="#778DA9" Margin="0,4,0,0" Text="Quota --"/>
+  </Grid>
+ </Border>
+</Window>

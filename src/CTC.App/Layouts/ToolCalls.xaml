@@ -1,0 +1,9 @@
+<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="Expander">
+ <StackPanel>
+  <ToggleButton x:Name="HeaderToggle" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Tool calls. Show details.">
+   <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border x:Name="HeaderBorder" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="4" Padding="0,3"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/></Grid.ColumnDefinitions><ContentPresenter/><Path x:Name="Arrow" Grid.Column="1" Data="M0,0 L4,4 L0,8" Stroke="#778DA9" StrokeThickness="2" Width="10" Height="10" VerticalAlignment="Center"/></Grid></Border><ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="Arrow" Property="Data" Value="M0,2 L4,6 L8,2"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeaderBorder" Property="BorderBrush" Value="#778DA9"/></Trigger></ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template>
+   <ContentPresenter ContentSource="Header"/>
+  </ToggleButton>
+  <ContentPresenter x:Name="Body" Visibility="Collapsed" Margin="0,8,0,0"/>
+ </StackPanel><ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="Body" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
+</ControlTemplate>

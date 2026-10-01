@@ -17,7 +17,7 @@ while ($line=[Console]::ReadLine()) {
 }
 '@ | Set-Content -LiteralPath $fixture -Encoding UTF8
 $exe=(Get-Process -Id $PID).Path
-$q=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" old') -TimeoutSeconds 8
+$q=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" old') -TimeoutSeconds 30
 if ($q.Windows[0].Remaining -ne 75) { throw 'Legacy RPC retry failed.' }
 $slow=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" slow')
 if ($slow.Windows[0].Remaining -ne 75) {throw 'Slow initialization failed.'}

@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 6.8.9 - 1 October 2026
+
+- Resolve the test TEMP folder to its long Windows path. Keep fixture keys consistent on hosted runners.
+- Allow 30 seconds for normal fake CLI startup on clean Windows images. Keep the two-second hang tests.
+- Retain the 6.8.8 tag as a preparation snapshot. Publish the checked 6.8.9 package after hosted CI passes.
+
 ## 6.8.8 - 1 October 2026
 
 - Request a normal close on visible app windows by process ID. Avoid selecting only an untitled auxiliary window.

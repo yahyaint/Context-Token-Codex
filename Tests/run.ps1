@@ -5,6 +5,21 @@ $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 if(-not [IO.File]::Exists((Join-Path $root 'ContextWidget.exe'))){throw 'Run Build/build.ps1 before the tests.'}
 $shell=(Get-Process -Id $PID).Path
+# Hosted Windows runners can expose TEMP through an 8.3 path alias. FileInfo
+# and GetFullPath can expand it differently, which breaks raw fixture keys.
+if(-not ('CtcTestTempPath' -as [type])){Add-Type -TypeDefinition @'
+using System.Text;
+using System.Runtime.InteropServices;
+public static class CtcTestTempPath {
+ [DllImport("kernel32.dll",CharSet=CharSet.Unicode)]
+ public static extern uint GetLongPathName(string path,StringBuilder result,uint capacity);
+}
+'@}
+$tempBuffer=[Text.StringBuilder]::new(32768)
+if([CtcTestTempPath]::GetLongPathName($env:TEMP,$tempBuffer,32768) -eq 0){throw 'The test TEMP folder is unavailable.'}
+$previousTemp=$env:TEMP; $previousTmp=$env:TMP
+$env:TEMP=$tempBuffer.ToString(); $env:TMP=$env:TEMP
+try {
 $names=@('settings','context_editor','limits_matrix','limits_queue','account_quota','usage','activity','exec_activity','estimator','compatibility','startup','watcher','restart','regressions','repository','branding','transport')
 if($Desktop){$names+=@('theme','overlay','install','restart_flow')}
 if($Archive){$Archive=[IO.Path]::GetFullPath($Archive);$names+='bootstrap'}
@@ -27,3 +42,4 @@ if($Report){
 }
 if(@($results|Where-Object {-not $_.Passed}).Count){throw 'One or more CTC checks failed.'}
 Write-Output "PASS: $($results.Count) CTC checks in PowerShell $($PSVersionTable.PSVersion)."
+}finally{$env:TEMP=$previousTemp; $env:TMP=$previousTmp}

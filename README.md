@@ -1,4 +1,4 @@
-﻿# Context-Token Codex 6.8.8
+﻿# Context-Token Codex 6.8.9
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
@@ -24,7 +24,7 @@ Installation does not need administrator access.
 Windows supplies PowerShell and .NET.
 The executables are unsigned.
 
-After publication, this command downloads the release through GitHub CLI and opens setup:
+This command downloads the release through GitHub CLI and opens setup:
 
 ```powershell
 & { $p=Join-Path $env:TEMP ('ctc-source-'+[guid]::NewGuid().ToString('N')); gh repo clone yahyaint/Context-Token-Codex $p; if ($LASTEXITCODE) { throw 'Clone failed' }; powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $p 'Install-FromGitHub.ps1') }
@@ -32,7 +32,6 @@ After publication, this command downloads the release through GitHub CLI and ope
 
 See [INSTALL.md](INSTALL.md) for the Codex installation prompt and manual steps.
 These methods need a public repository and release.
-Publication waits for the owner's approval.
 
 If you use source files, build the executables first:
 

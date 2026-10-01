@@ -1,6 +1,11 @@
-﻿# Context-Token Codex 6.8.8
+﻿# Context-Token Codex 6.8.9
 
 Created by Yahya Nabil | [yahyanabil.com](https://yahyanabil.com)
+
+## Clean Windows verification
+
+- Normalize Windows short-path aliases before test fixtures are created.
+- Allow normal fake CLI startup time on clean runners. Keep bounded hang checks.
 
 ## Publication checks
 

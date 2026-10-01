@@ -96,7 +96,7 @@ Do not force-close running chats.
 
 Working source: `work/context-widget`.
 The canonical publication checkout and installed runtime are recorded in the private workspace resume file.
-Version 6.8.8 is the current repair. The latest widget is restored after tested UI changes.
+Version 6.8.9 is the current repair. The latest widget is restored after tested UI changes.
 Weekly-only WPF fixtures pass in PowerShell 5.1 and 7 after the array repair.
 Weekly-only quota, parked startup, Queue, token layout, tool tile, Exec results, command types and script references are implemented.
 Final package, runtime alignment, local commit and source archive are prepared. Publication remains held.

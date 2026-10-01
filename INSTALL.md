@@ -1,7 +1,6 @@
 ﻿# Install CTC
 
 The GitHub method needs a public repository and Windows release.
-Publication waits for the owner's approval.
 
 ## Prompt for Codex
 
@@ -17,7 +16,7 @@ Run this command in PowerShell:
 & { $p=Join-Path $env:TEMP ('ctc-source-'+[guid]::NewGuid().ToString('N')); gh repo clone yahyaint/Context-Token-Codex $p; if ($LASTEXITCODE) { throw 'Clone failed' }; powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $p 'Install-FromGitHub.ps1') }
 ```
 
-To select a fixed release, add `-Version v6.8.8` to the helper command.
+To select a fixed release, add `-Version v6.8.9` to the helper command.
 The helper checks the ZIP hash before it opens Setup.
 The hash detects changed files. It is not a publisher signature.
 

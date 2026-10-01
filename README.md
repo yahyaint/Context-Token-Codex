@@ -56,6 +56,41 @@ Use **Queue** to check changes and request a restart after all chats stop.
 
 **Larger values do not increase model capacity.** Codex can reject or reduce a requested value.
 
+<img src="docs/images/limits-native.png" alt="Context limits with window multipliers and percentage presets; sample data" width="460">
+
+## Tokens
+
+Select **Tokens** to see totals for active and recorded chats.
+Open **Breakdown** for input, output, cache, and reasoning counts.
+Open **Tool calls** for Exec, command types, script references, and shell results.
+
+<img src="docs/images/tokens-native.png" alt="Tokens view with a sample active chat and expandable details" width="460">
+
+<details>
+<summary>Token breakdown</summary>
+
+<img src="docs/images/tokens-breakdown-native.png" alt="Sample token breakdown with six token categories and the Tool calls row" width="460">
+
+</details>
+
+Token counts update when Codex writes records.
+Tool calls are counts; they are not exact token costs.
+Per-chat quota shares are estimates.
+
+## Queue
+
+Select **Queue** to see saved limit changes and restart status.
+Loaded chats need a fresh Codex session to load saved limits.
+
+<img src="docs/images/queue-native.png" alt="Queue with a saved project limit and restart controls; sample running chat" width="370">
+
+Use **Restart after all chats stop** to request one normal restart.
+Busy, unknown, or incomplete records block automatic restart.
+Use **Cancel restart** to cancel a waiting request.
+A restart closes open Codex windows.
+
+All screenshots use sample data.
+
 [User guide](docs/USER-GUIDE.md) · [Data and measurement limits](docs/DATA.md)
 
 ## Data and privacy

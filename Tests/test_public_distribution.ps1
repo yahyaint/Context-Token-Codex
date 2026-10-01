@@ -4,7 +4,7 @@ param([string]$Archive='', [string]$SourceRoot='')
 $ErrorActionPreference='Stop'
 if(-not $SourceRoot){$SourceRoot=Split-Path $PSScriptRoot -Parent}
 $SourceRoot=[IO.Path]::GetFullPath($SourceRoot).TrimEnd('\','/')
-$internal=@('AGENTS.md','ARCHITECTURE-REVIEW.md','AUDIT.md','BRANDING.md','ERROR-AUDIT.md','LIMITS-VERIFICATION.md','METHODS.md','MIGRATION.md','NATIVE-VERIFICATION.md','NEXT-TASKS.md','PUBLISHING.md','QUEUE-VERIFICATION.md','QUOTA-RESEARCH.md','RELEASE-NOTES.md','USAGE-METHODS.md','VISUAL-PARITY.md','WORK-QUEUE.md')
+$internal=@('AGENTS.md','ARCHITECTURE-REVIEW.md','AUDIT.md','BRANDING.md','ERROR-AUDIT.md','LIMITS-VERIFICATION.md','METHODS.md','MIGRATION.md','NATIVE-VERIFICATION.md','NEXT-TASKS.md','PUBLISHING.md','QUEUE-VERIFICATION.md','QUOTA-RESEARCH.md','RELEASE-NOTES.md','USAGE-METHODS.md','VISUAL-PARITY.md','WORK-QUEUE.md','UI-WRITING.md')
 $privatePattern='(?i)(^|/)(memory|outputs|tools|diagnostics|\.codex|\.aws|\.vs|\.vscode|Versions|bin|obj)/|(^|/)(auth\.json|config\.toml|overlay\.json|installation\.json|limits-queue[^/]*\.json|restart-request[^/]*\.json|\.env(?:\.[^/]*)?)$|\.(jsonl|sqlite[^/]*|log|bak(?:-[^/]*)?)$'
 function Assert-PublicPath([string]$Path){
  $path=$Path.Replace('\','/').TrimStart('/')
@@ -65,7 +65,7 @@ if($Archive){
   }
  }
  $files=@(Get-ChildItem -LiteralPath $SourceRoot -File -Recurse | Where-Object FullName -NotMatch '[\\/](dist|\.git|\.packages|bin|obj)[\\/]' | ForEach-Object {$_.FullName.Substring($SourceRoot.Length+1).Replace('\','/')})
- foreach($guide in $guides+@('CONTRIBUTING.md','UI-WRITING.md','RECOVERY.md')){
+ foreach($guide in @($guides+@('CONTRIBUTING.md','RECOVERY.md')+@($tracked|Where-Object {$_ -like '*.md'})|Select-Object -Unique)){
   if($files -notcontains $guide){throw "Missing public guide: $guide"}
   Assert-GuideLinks ([IO.File]::ReadAllText((Join-Path $SourceRoot $guide))) $guide $files
  }

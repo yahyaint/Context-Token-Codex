@@ -1,6 +1,6 @@
 ﻿# SPDX-License-Identifier: MIT
 function Get-CtcLegacyInstallFiles {
- return @('ContextWidget.exe','Context.ico','Branding.ps1','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Restart.Core.ps1','Restart-Codex.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','UPDATE-RECOVERY.md','COMPATIBILITY.md','SECURITY.md','CHANGELOG.md','docs/USER-GUIDE.md','docs/DATA.md','docs/images/context.png','docs/images/limits-native.png','docs/images/parked-native.png','Build/ctc-logo.png')
+ return @('ContextWidget.exe','Context.ico','Branding.ps1','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Restart.Core.ps1','Restart-Codex.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','INSTALL.md','RECOVERY.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','UPDATE-RECOVERY.md','COMPATIBILITY.md','SECURITY.md','CHANGELOG.md','docs/USER-GUIDE.md','docs/DATA.md','docs/images/context.png','docs/images/limits-native.png','docs/images/parked-native.png','docs/images/tokens-native.png','docs/images/tokens-breakdown-native.png','docs/images/queue-native.png','Build/ctc-logo.png')
 }
 function Invoke-ContextWidgetInstall {
  param([string]$Source,[string]$Destination,[bool]$AutoOpen=$true,[bool]$DesktopShortcut=$true,[string]$TestRoot='')

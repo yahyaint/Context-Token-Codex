@@ -39,12 +39,8 @@ CTC's context editor, settings writes, and quota estimator are original implemen
 Design credit does not imply code ownership.
 Keep these credits and [third-party notices](THIRD_PARTY_NOTICES.md) in distributions.
 
-## Identity and text
+## Identity
 
 Yahya Nabil selected the current five-color palette.
 The lowercase CTC logo is original.
 An earlier palette used [Nord](https://www.nordtheme.com/docs/colors-and-palettes/) as a reference.
-
-App text follows [ASD-STE100 writing principles](https://www.asd-ste100.org/about_STE.html)
-and [Microsoft Windows writing guidance](https://learn.microsoft.com/en-us/windows/apps/design/style/writing-style).
-CTC does not claim certification or a complete dictionary audit.

@@ -92,7 +92,7 @@ Version files and user settings remain available.
 
 Paste this prompt into Codex:
 
-> Repair Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read UPDATE-RECOVERY.md and CONTRIBUTING.md. Check the installed version, native-errors.log, app identity, session schema, account quota RPC, and context settings. Keep preferences, queues, backups, and earlier versions. Use isolated fixtures for settings and restart tests. Do not change real chat records or submit chat messages. Keep STE for changed app text. Run the relevant checks. Explain the cause, fix, and remaining limits.
+> Repair Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read UPDATE-RECOVERY.md and CONTRIBUTING.md. Check the installed version, native-errors.log, app identity, session schema, account quota RPC, and context settings. Keep preferences, queues, backups, and earlier versions. Use isolated fixtures for settings and restart tests. Do not change real chat records or submit chat messages. Run the relevant checks. Explain the cause, fix, and remaining limits.
 
 ## Report a fault
 

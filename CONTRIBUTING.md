@@ -53,7 +53,6 @@ Keep the ZIP checksum and all runtime notices.
 
 ## Review
 
-Use [STE](UI-WRITING.md) for app text and user guides.
 Keep the original layout resources, theme, and icon.
 Explain changed behavior and the checks you ran.
 

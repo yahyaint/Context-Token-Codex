@@ -61,6 +61,12 @@ public static class UiChecks
             await Task.Delay(100);window.UpdateLayout();
             Check(Math.Abs(scroll.VerticalOffset-offset-24)<2,"Wheel uses 24 pixel steps");
             await Click(window,"Expand");Capture(window,Path.Combine(output,"tokens-expanded.png"));
+            // Capture user-guide examples with the title visible and secondary details closed.
+            Id<Expander>(window,"breakdown").IsExpanded=false;scroll.ScrollToTop();await Task.Delay(100);
+            Capture(window,Path.Combine(output,"tokens-overview.png"));
+            Id<Expander>(window,"breakdown").IsExpanded=true;Id<Expander>(window,"tools").IsExpanded=false;
+            double screenshotHeight=window.Height;window.Height=840;scroll.ScrollToTop();await Task.Delay(100);
+            Capture(window,Path.Combine(output,"tokens-breakdown.png"));window.Height=screenshotHeight;
             await Click(window,"ContextMode");Id<Slider>(window,"BackgroundOpacity").Value=85;Capture(window,Path.Combine(output,"context.png"));
             var inline=Id<Expander>(window,"fixture-chatedit");inline.IsExpanded=true;window.UpdateLayout();
             Check(Id<TextBox>(window,"WindowInput").IsVisible,"Original inline project editor");Capture(window,Path.Combine(output,"context-inline.png"));

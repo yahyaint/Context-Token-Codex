@@ -18,8 +18,8 @@ foreach ($name in @('ContextWidget.exe','Setup.exe')) { Assert (Test-Path (Join-
 $fixture=Join-Path $env:TEMP ('context-repository-test-'+[guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory($fixture)
 $result=Install-ContextWidget -Source $root -Destination (Join-Path $fixture 'installed') -TestRoot $fixture
-Assert ($result.Files -eq 32) 'Unexpected runtime manifest.'
-foreach ($name in @('ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md')) {
+Assert ($result.Files -eq 34) 'Unexpected runtime manifest.'
+foreach ($name in @('ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md')) {
  Assert (Test-Path (Join-Path $fixture "installed/$name")) "Installed distribution missing $name."
 }
 foreach ($name in @('docs/USER-GUIDE.md','docs/DATA.md','docs/images/context.png','Build/ctc-logo.png')) {

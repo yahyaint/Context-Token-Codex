@@ -4,7 +4,7 @@ The GitHub method needs a public repository and Windows release.
 
 ## Prompt for Codex
 
-> Install Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read INSTALL.md, RECOVERY.md, and UI-WRITING.md first. Download the latest Windows release and SHA256 file. Check the hash. Open Setup.exe. Keep existing preferences and a backup. Check local chat data after installation. Do not change Codex limits or message queues. If no release is available, stop and report the cause.
+> Install the C# and WPF version of Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read INSTALL.md, UPDATE-RECOVERY.md, and UI-WRITING.md first. Download the latest Windows release and SHA256 file. Check the hash. Extract the ZIP. Open Setup.exe. Keep existing preferences, queues, and earlier versions. Check local chat data after installation. Do not change Codex limits or message queues. If no compiled release is available, stop and report the cause.
 
 ## GitHub command
 
@@ -16,7 +16,8 @@ Run this command in PowerShell:
 & { $p=Join-Path $env:TEMP ('ctc-source-'+[guid]::NewGuid().ToString('N')); gh repo clone yahyaint/Context-Token-Codex $p; if ($LASTEXITCODE) { throw 'Clone failed' }; powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $p 'Install-FromGitHub.ps1') }
 ```
 
-To select a fixed release, add `-Version v6.8.9` to the helper command.
+To select the compiled release, add -Version v7.0.0 to the helper command.
+To select PowerShell, add -Version v6.8.9.
 The helper checks the ZIP hash before it opens Setup.
 The hash detects changed files. It is not a publisher signature.
 
@@ -36,5 +37,19 @@ Installation does not need administrator access.
 ## Source files
 
 Source ZIPs do not contain the executables.
-Run `Build/build.ps1` before you open Setup.exe.
+Install the .NET 10 SDK.
+Run Build/build-native.ps1 before you open dist/native-win-x64/Setup.exe.
 The Windows release ZIP contains the executables.
+It includes the .NET runtime.
+The compiled app does not require PowerShell.
+
+## Unattended installation
+
+After the download and hash check, run:
+
+    .\ContextWidget\ContextTokenCodex.exe --install "C:\Users\YOUR-NAME\AppData\Local\Programs\Context-Token-Codex"
+
+Use your user folder in the command.
+Add --no-startup to disable the Startup shortcut.
+The installation keeps earlier versions and preferences.
+Open the new desktop shortcut when installation finishes.

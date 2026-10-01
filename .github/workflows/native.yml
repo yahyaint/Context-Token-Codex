@@ -1,0 +1,46 @@
+name: Native Windows build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.401
+      - name: Build and run native core fixtures
+        shell: pwsh
+        run: ./Build/build-native.ps1
+      - name: Check actual WPF windows and compiled setup
+        shell: pwsh
+        run: ./Tests/test_native_ui.ps1 -Executable "$PWD/dist/native-win-x64/ContextTokenCodex.exe" -Output "$PWD/dist/native-test-output"
+      - name: Package the compiled default
+        shell: pwsh
+        run: ./Build/package-native.ps1
+      - name: Verify release helper
+        shell: powershell
+        run: ./Install-FromGitHub.ps1 -Archive "$PWD/dist/Context-Token-Codex-Windows-v7.0.0.zip" -VerifyOnly
+      - name: Save checks and release
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: CTC-native-${{ matrix.os }}
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/native-test-output/*.png
+            dist/native-test-output/checks.json
+          if-no-files-found: error
+          retention-days: 14

@@ -2,6 +2,15 @@
 
 These MIT projects were consulted for design ideas. Their code and binaries are not bundled. The notices below identify upstream copyright holders; they do not relicense this widget or imply endorsement. See ACKNOWLEDGMENTS.md for project links and scope.
 
+## Bundled .NET runtime
+
+The compiled Windows release includes .NET 10 and Windows Desktop runtime files.
+Microsoft publishes these runtime packages under the .NET Foundation MIT License.
+The release contains DOTNET-LICENSE.txt and DOTNET-THIRD-PARTY-NOTICES.txt from the runtime package.
+These notices identify components with additional licenses.
+CTC's license does not replace those component licenses.
+Sources: https://github.com/dotnet/runtime and https://github.com/dotnet/wpf.
+
 ## ccusage
 
 MIT License

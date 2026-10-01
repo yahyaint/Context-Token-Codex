@@ -1,5 +1,15 @@
 # Changelog
 
+## 7.0.0 - 1 October 2026
+
+- Replace the app runtime with C#, .NET 10, and WPF.
+- Keep PowerShell 6.8.9 and its release as the earlier version.
+- Make compiled setup and the latest release the default installation.
+- Port session monitoring, account quotas, context editing, queued changes, and safe restart.
+- Port parked, compact, and expanded views, tray controls, corner return, and live background opacity.
+- Add native fixture checks, actual WPF window checks, and update recovery guidance.
+- Include the .NET runtime in the Windows release.
+
 ## 6.8.9 - 1 October 2026
 
 - Send JSON-RPC as UTF-8 without a BOM. Prevent inherited PowerShell console encoding from breaking subscription refresh.

@@ -18,3 +18,7 @@ installation.json
 auth.json
 config.toml
 resource-samples*.json
+**/bin/
+**/obj/
+native-test-output/
+.packages/

@@ -1,51 +1,61 @@
-﻿# Contributing
+# Contributing
 
-Use Windows 10/11 and Windows PowerShell 5.1. The .NET Framework compiler is supplied by Windows; the build does not download a runtime. `sqlite3.exe` is optional for development and improves live Codex data discovery.
+New app changes use C# and WPF.
+Keep the PowerShell 6.8.9 source and release.
+Use Windows and the .NET 10 SDK for builds.
+The release includes the runtime.
 
-## Build from a clone
+## Build
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Build\build.ps1
-```
+Run:
 
-This generates ContextWidget.exe, Setup.exe and the multi-resolution Context.ico. Executables and distribution ZIPs are not committed. The icon is tracked as a previewable application asset and can be regenerated from the original drawing code.
+    .\Build\build-native.ps1
 
-## Verify
+The script runs the native core fixtures and publishes dist/native-win-x64.
+Open ContextTokenCodex.exe to run the widget.
+Open Setup.exe to run compiled setup.
+No PowerShell process runs either app.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\run.ps1 -Desktop
-pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .\Tests\run.ps1 -Desktop
-```
+## Test
 
-Without `-Desktop`, the runner checks the noninteractive tests.
-Each test runs in a separate STA process. A failed check makes the runner fail.
-Add `-Report <path>` to save the results as JSON.
-Build a package first to check the installation helper. Then add `-Archive <ZIP path>`.
-Tests need built launchers. Run Build/build.ps1 first.
-The native-engine limits check is optional. See LIMITS-VERIFICATION.md.
+Run:
 
+    dotnet run --project tests/CTC.Tests/CTC.Tests.csproj
+    .\Tests\test_native_ui.ps1 -Executable "$PWD/dist/native-win-x64/ContextTokenCodex.exe"
 
-The overlay, installer and theme tests open temporary Windows UI and need a desktop session. Repeat with pwsh.exe to test PowerShell 7, including its own WPF child processes. Tests use disposable fixtures and leave diagnostic results in the temporary directory. Do not use real conversation transcripts as test fixtures. CI runs all noninteractive tests on Windows 2022/2025 with both shells; desktop UI tests remain a local release check. See COMPATIBILITY.md for actual coverage and limitations.
+The core tests use temporary profiles.
+The UI tests use marked fixture folders and actual WPF windows.
+They test percentage saves, draft retention, corner return, tray, scrolling, setup updates, and normal close.
+The UI test cannot use a real Codex profile.
+Do not add real chat arguments, outputs, or account credentials to fixtures.
 
-## Make a release package
+The startup watcher test requires an open Codex app:
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Build\package.ps1
-```
+    .\Tests\test_native_watcher.ps1 -Executable "$PWD/dist/native-win-x64/ContextTokenCodex.exe" -FixtureHome "FIXTURE-HOME" -Output "FIXTURE-OUTPUT"
 
-The script rebuilds, packages an explicit list of public files, and writes the ZIP and SHA256 checksum in `dist`. It never packages `.git`, local preferences, Codex data, backups or arbitrary working-directory files. Release binaries are unsigned.
+It opens a fixture widget and checks recovery after a fixture process stops.
+It does not close Codex.
 
-Use pull requests for changes. Explain the behavior change and the tests you ran. Keep compatibility fallbacks for Codex file formats, preserve existing user settings, and keep the MIT notice and attribution documents. Contributions are licensed under the repository's MIT license.
+## Package
 
-Run Tests/test_theme.ps1 in an STA PowerShell process to verify the CTC scope dropdown. It opens a temporary window and tests scope selection.
+Run:
 
-## Context editor checks
+    .\Build\package-native.ps1
 
-Run `Tests/test_context_editor.ps1` in Windows PowerShell 5.1 and PowerShell 7. Run `Tests/test_overlay.ps1` on an interactive Windows desktop for compact/expanded editing, draft retention, scope changes, presets, reset controls, and warnings. The UI test writes only to a marked disposable fixture. Do not use real project settings as test data.
+The ZIP contains only the published app folder.
+The package includes the runtime, licenses, notices, and guides.
+Executables, packages, user data, backups, and caches are not committed.
+The executables are unsigned.
 
-## Activity and queue checks
+## Review
 
-Run test_limits_matrix.ps1, test_limits_queue.ps1, test_account_quota.ps1 and test_exec_activity.ps1 in both shells.
-Run test_overlay.ps1 for the full-width tool tile, nested Exec details and Queue controls.
-See LIMITS-VERIFICATION.md for the optional local native-engine tests.
-Use synthetic input_text blocks for new parser tests. Keep real tool arguments and output out of fixtures.
+Explain the changed behavior and the checks you ran.
+Use STE for app text.
+Keep conservative settings writes and schema fallbacks.
+Unknown lifecycle data must block automatic restart.
+Keep account identity and reset boundaries in quota estimates.
+Keep MIT attribution and all bundled runtime notices.
+See MIGRATION.md and UPDATE-RECOVERY.md.
+
+The legacy build and tests remain available for PowerShell 6.8.9.
+Use its tag for a fixed legacy source tree.

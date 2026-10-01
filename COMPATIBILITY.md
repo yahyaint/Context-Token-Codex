@@ -1,3 +1,7 @@
+# Compiled 7.0.0
+
+See NATIVE-VERIFICATION.md for compiled checks. The sections below describe the retained PowerShell versions.
+
 # Version 6.8.9 publication verification - 1 October 2026
 
 Public source: [Context-Token-Codex](https://github.com/yahyaint/Context-Token-Codex).

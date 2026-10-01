@@ -1,8 +1,13 @@
-﻿# Context-Token Codex 6.8.9
+# Context-Token Codex 7.0.0
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
 CTC is a Windows widget for Codex context, token counts, and account quotas.
+The default version uses C# and WPF with .NET 10.
+The Windows release includes its runtime.
+The app, watcher, quota reader, setup, and restart helper do not start PowerShell.
+Only build and download helper scripts use PowerShell.
+Future app changes use C#.
 Created by **Yahya Nabil** | [yahyanabil.com](https://yahyanabil.com).
 
 **Windows 10/11 | MIT | Independent community project**
@@ -21,7 +26,7 @@ Example view. Uses sample data.
 Setup creates shortcuts and keeps your settings.
 When you install an update, CTC keeps the previous files in a backup.
 Installation does not need administrator access.
-Windows supplies PowerShell and .NET.
+No separate .NET runtime installation is required.
 The executables are unsigned.
 
 This command downloads the release through GitHub CLI and opens setup:
@@ -36,10 +41,11 @@ These methods need a public repository and release.
 If you use source files, build the executables first:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Build\build.ps1
+.\Build\build-native.ps1
 ```
 
-Then open **Setup.exe** or **ContextWidget.exe**.
+Install the .NET 10 SDK before building.
+Then open **Setup.exe** or **ContextTokenCodex.exe** from dist/native-win-x64.
 You can run CTC from an extracted folder.
 Auto-open creates a Startup shortcut to that folder.
 Before you move the folder, disable Auto-open.
@@ -57,7 +63,7 @@ After the move, enable Auto-open from the new location.
 | Parked bar | Selected chat context, tokens, navigation, and account quotas. |
 
 The quota bars appear in every view.
-They show the remaining account quota.
+They show used account quota.
 Move the pointer over a bar to see used percentage, plan, record time, and reset time.
 Select **Refresh** to read the newest account quota.
 
@@ -131,11 +137,11 @@ Before Save, CTC does not change the settings file.
 An incorrect value disables Save and shows the reason.
 
 Larger values do not increase model capacity.
-CTC shows a warning if a value exceeds the limit in the local model catalog.
+CTC shows the local model capacity in the limit editor.
 Model catalog data can be old. Other models can have different limits.
 Codex can reject or reduce the requested value.
 
-Open **Saved and live values** to compare saved and recorded data.
+Compare the saved and recorded values above the input fields.
 Move the pointer over these values to see the file path.
 CTC writes both limits together and keeps a backup.
 It checks for file changes before the final write.
@@ -145,33 +151,33 @@ If CTC cannot use the file syntax, it stops before writing.
 ## Window controls
 
 Drag the header to move the widget.
-Release near a corner to set the position.
+Select Corner to set the position.
 Expand shows more detail. Collapse returns to the compact view at its original corner.
 Drag the lower right control to resize the expanded view.
 
 | Control | Action |
 |---|---|
 | Background | Changes background opacity. Text stays visible. CTC saves changes immediately. |
-| Pinned | Keeps CTC above other windows. |
+| On top | Keeps CTC above other windows. Set this option in App settings. |
 | Corner | Selects a screen corner. |
 | Tray | Hides CTC beside the Windows clock. Select the ctc icon to restore it. |
 | Minus | Shows context, tokens, navigation, and small quotas in a bar at the same corner. Select its restore button to open CTC. |
 | Close | Stops CTC. |
 
-If the widget is hidden, open ContextWidget.exe again to restore it.
+If the widget is hidden, open ContextTokenCodex.exe again to restore it.
 The icon can be in the tray's ^ menu.
 
 ## Startup and data
 
 Auto-open is on by default.
 New installations open in the small bar. Background is 85%.
-Change **Open in the small bar** in Window and startup to open the full widget.
+Change **Open in the small bar** in App settings to open the full widget.
 Manual restore opens the widget. Automatic app launches use the startup preference.
 Widget settings can follow Codex, ChatGPT, or Either.
 The watcher starts at Windows sign-in.
-It checks app windows every 1.5 seconds without a fixed app version.
+It checks app paths every 2 seconds without a fixed app version.
 If the first launch fails, it tries again every 15 seconds.
-After CTC is ready, Close stops it until another app launch or manual launch.
+After a manual close, CTC waits for the next selected app launch.
 CTC stays open after the selected app closes.
 
 Local data appear before detailed quota estimates.
@@ -183,7 +189,20 @@ CTC does not read chat text for quota calculation or change the Codex message qu
 Codex data formats can change.
 Some changes need a CTC update.
 See [COMPATIBILITY.md](COMPATIBILITY.md) for tested environments and remaining checks.
-See [RECOVERY.md](RECOVERY.md) for repair steps.
+See [UPDATE-RECOVERY.md](UPDATE-RECOVERY.md) for compiled repair steps.
+
+## Two versions
+
+| Version | Source | Installation |
+|---|---|---|
+| C# and WPF 7.0.0 | src/CTC.Core and src/CTC.App | Default latest release and install prompt. |
+| PowerShell 6.8.9 | Root PowerShell modules and Build/build.ps1 | [Earlier Windows release](https://github.com/yahyaint/Context-Token-Codex/releases/tag/v6.8.9). |
+
+The earlier source and tag remain available.
+New app features use C# only.
+Compiled updates keep earlier compiled files in Versions.
+Both versions use the same preferences and saved limit queue.
+Run one widget at a time.
 
 ## Writing and credits
 

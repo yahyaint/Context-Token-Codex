@@ -7,6 +7,8 @@ $fixture=Join-Path $folder 'host.ps1'
 [IO.File]::WriteAllText($PSCommandPath+'.trace','started')
 while($line=[Console]::ReadLine()){
  [IO.File]::AppendAllText($PSCommandPath+'.trace',' received')
+ $message=$line|ConvertFrom-Json
+ [IO.File]::AppendAllText($PSCommandPath+'.trace',' parsed')
  [Console]::WriteLine('probe-ok')
 }
 '@)
@@ -19,7 +21,7 @@ $process=[Diagnostics.Process]::new();$process.StartInfo=$info
 try{
  [void]$process.Start()
  $err=$process.StandardError.ReadToEndAsync();$out=$process.StandardOutput.ReadLineAsync()
- $process.StandardInput.WriteLine('probe');$process.StandardInput.Flush()
+ $process.StandardInput.WriteLine('{"id":1}');$process.StandardInput.Flush()
  $responded=$out.Wait(8000)
  $process.StandardInput.Close()
  if(-not $process.WaitForExit(8000)){$process.Kill();[void]$process.WaitForExit(2000)}

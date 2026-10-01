@@ -1,4 +1,4 @@
-﻿# Context-Token Codex 6.8.9
+# Context-Token Codex 6.8.9
 
 Created by Yahya Nabil | [yahyanabil.com](https://yahyanabil.com)
 
@@ -51,7 +51,7 @@ Updates keep previous runtime files and user settings.
 Backend, context editor, widget, and installer checks pass in Windows PowerShell 5.1 and PowerShell 7.
 The context matrix passes 85 cases per shell. Native Sol and Astra fixtures passed 24 checks.
 The actual-window stability result is recorded in AUDIT.md.
-Hosted CI, another Windows machine, ARM, and real Windows sign-in remain unverified.
+See the repository Actions page for hosted Windows results. Another physical Windows machine, ARM, and real Windows sign-in remain unverified.
 No eligible Codex update was available for an actual update-cycle test.
 
 ## License and credit

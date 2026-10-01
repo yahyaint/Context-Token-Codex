@@ -8,13 +8,14 @@ param(
  [switch]$VerifyOnly
 )
 $ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
 if ($Repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { throw 'Use an owner/repository name.' }
 $stage=Join-Path $env:TEMP ('ctc-install-'+[guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory($stage)
 if (-not $Archive) {
  [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
  $endpoint=if ($Version -eq 'latest') {'latest'} else {'tags/'+[Uri]::EscapeDataString($Version)}
- $release=Invoke-RestMethod "https://api.github.com/repos/$Repository/releases/$endpoint" -Headers @{'User-Agent'='Context-Token-Codex-Installer'}
+ $release=Invoke-RestMethod "https://api.github.com/repos/$Repository/releases/$endpoint" -Headers @{'User-Agent'='Context-Token-Codex-Installer'} -TimeoutSec 30
  if ($release.tag_name -notmatch '^v\d+\.\d+\.\d+$') { throw 'CTC cannot use this release tag format.' }
  $name='Context-Token-Codex-Windows-'+$release.tag_name+'.zip'
  foreach ($file in @($name,($name+'.sha256'))) {
@@ -22,7 +23,7 @@ if (-not $Archive) {
   if ($asset.Count -ne 1) { throw "Release is missing $file." }
   $expected="https://github.com/$Repository/releases/download/$($release.tag_name)/$file"
   if ($asset[0].browser_download_url -cne $expected) { throw 'The release file URL is incorrect. Installation stopped.' }
-  Invoke-WebRequest $expected -OutFile (Join-Path $stage $file) -UseBasicParsing
+  Invoke-WebRequest $expected -OutFile (Join-Path $stage $file) -UseBasicParsing -TimeoutSec 180
  }
  $Archive=Join-Path $stage $name; $Checksum=$Archive+'.sha256'
 }

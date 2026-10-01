@@ -18,6 +18,8 @@ Example view. Uses sample data.
 
 ## Install
 
+Get the [latest Windows release](https://github.com/yahyaint/Context-Token-Codex/releases/latest).
+
 1. Download the Windows release ZIP and its SHA256 file.
 2. Check the ZIP hash.
 3. Extract the ZIP.

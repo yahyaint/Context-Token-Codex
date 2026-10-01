@@ -46,6 +46,9 @@ The download helper checks the ZIP SHA256, paths, size, and required files.
 It supports both the compiled release and the earlier PowerShell release.
 Native CI runs on Windows Server 2022 and Windows Server 2025.
 Check the GitHub Actions result for the exact published commit.
+Both 7.0.1 jobs passed: https://github.com/yahyaint/Context-Token-Codex/actions/runs/36902890843.
+The anonymous latest-release helper passed with Windows PowerShell 5.1.
+The helper disables progress rendering and uses bounded request timeouts.
 
 ## Remaining environment limits
 

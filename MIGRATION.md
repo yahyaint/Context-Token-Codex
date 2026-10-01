@@ -19,8 +19,16 @@ The compiled version becomes the default download and prompt installation after 
 - [x] Test core parity, corrupt/future records, locales, paths, accounts, errors and limits.
 - [x] Test actual windows, installer, tray, startup, restart fixture and resource use.
 - [x] Add compiled CI, package, MIT notices, attribution, recovery and installation guides.
-- [ ] Install and open compiled CTC. Keep legacy files and settings.
-- [ ] Publish compiled release as latest. Verify public downloads and prompt installation.
+- [x] Install and open compiled CTC. Keep legacy files and settings.
+- [x] Publish compiled release as latest. Verify public downloads and prompt installation.
+
+## Completion
+
+C# and WPF 7.0.1 is the latest release.
+The exact Windows 2025 CI package is installed and open.
+Both Windows CI jobs passed 75 core checks and 26 WPF checks.
+The public download helper passed on Windows PowerShell 5.1.
+The earlier PowerShell source, release, preferences, and queues remain available.
 
 ## Invariants
 

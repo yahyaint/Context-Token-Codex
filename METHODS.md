@@ -38,3 +38,14 @@ It posts [WM_CLOSE](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-cl
 An app can reject that request or ask for confirmation. CTC does not force-stop it.
 CTC waits for all processes at the selected app path to exit before it reopens the app.
 These are Windows API references. The CTC implementation is original.
+
+## JSON-RPC input encoding - 6.8.9
+
+CTC prevents a UTF-8 BOM in CLI requests.
+On newer .NET, CTC sets StandardInputEncoding before it starts the helper.
+.NET Framework lacks that property. Its Process implementation creates an input writer from Console.InputEncoding during Start.
+If that encoding has a preamble, CTC selects UTF-8 without a BOM for Start and restores the original encoding immediately.
+The transport test sets a BOM encoding and verifies the response and restored encoding.
+No Microsoft source code is copied into CTC.
+
+References: [Microsoft StandardInputEncoding documentation](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.standardinputencoding), [Microsoft .NET Framework Process reference source](https://github.com/microsoft/referencesource/blob/main/System/services/monitoring/system/diagnosticts/Process.cs).

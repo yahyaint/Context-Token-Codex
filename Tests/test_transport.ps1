@@ -20,10 +20,15 @@ while ($line=[Console]::ReadLine()) {
 }
 '@ | Set-Content -LiteralPath $fixture -Encoding UTF8
 $exe=(Get-Process -Id $PID).Path
-try{$q=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$fixture+'" old') -TimeoutSeconds 30}catch{
+$originalEncoding=[Console]::InputEncoding
+try{
+ [Console]::InputEncoding=[Text.UTF8Encoding]::new($true)
+ $q=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$fixture+'" old') -TimeoutSeconds 30
+ if([Console]::InputEncoding.GetPreamble().Length -ne 3){throw 'The provider did not restore the original console encoding.'}
+}catch{
  if(Test-Path -LiteralPath ($fixture+'.trace')){Write-Output ('RPC fixture: '+[IO.File]::ReadAllText($fixture+'.trace'))}
  throw
-}
+}finally{[Console]::InputEncoding=$originalEncoding}
 if ($q.Windows[0].Remaining -ne 75) { throw 'Legacy RPC retry failed.' }
 $slow=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$fixture+'" slow')
 if ($slow.Windows[0].Remaining -ne 75) {throw 'Slow initialization failed.'}
@@ -32,4 +37,4 @@ foreach ($scenario in @('error','exit','hang')) {
  try { $null=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$fixture+'" '+$scenario) -TimeoutSeconds 2 } catch { $failed=$true }
  if (-not $failed) { throw "Transport $scenario incorrectly succeeded." }
 }
-'PASS: legacy RPC parameters, noisy stdout, account error, early exit, bounded timeout and helper cleanup.'
+'PASS: UTF-8 without a BOM under inherited BOM encoding, legacy RPC parameters, noisy stdout, account error, early exit, bounded timeout and helper cleanup.'

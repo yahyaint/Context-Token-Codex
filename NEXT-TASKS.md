@@ -1,7 +1,7 @@
-﻿# CTC ordered task list - 30 September 2026
+# CTC ordered task list - 30 September 2026
 
 Use this list to continue work after an interruption. Complete one item before the next item.
-Use STE for app text. Preserve earlier versions and settings. Keep GitHub publication on hold.
+Use STE for app text. Preserve earlier versions and settings. The owner approved publication on 1 October 2026.
 
 ## Completed verification
 
@@ -99,7 +99,7 @@ The canonical publication checkout and installed runtime are recorded in the pri
 Version 6.8.9 is the current repair. The latest widget is restored after tested UI changes.
 Weekly-only WPF fixtures pass in PowerShell 5.1 and 7 after the array repair.
 Weekly-only quota, parked startup, Queue, token layout, tool tile, Exec results, command types and script references are implemented.
-Final package, runtime alignment, local commit and source archive are prepared. Publication remains held.
+Final package, runtime alignment, local commit and source archive are prepared. Publication is approved. See the release page for current status.
 See AUDIT.md for full scan time, memory samples and unverified environments.
 Do not repeat a completed item. Update each checkbox with test evidence.
 
@@ -132,4 +132,5 @@ See AUDIT.md for the test scope and platform limits.
 - [x] Clean the README. Include a sample-data screenshot and the one-command installation steps.
 - [x] Fix the PowerShell 7 normal-close selection failure found in the fresh-export check.
 - [x] Prepare the tested source archive, Windows ZIP, checksum, local commit, and release tag.
-- [ ] After the owner's mark: create the public repository, push, check hosted CI, publish, and test public downloads.
+- [x] Receive the owner's mark. Create and push the public repository.
+  - Check hosted CI before the release. Record publication and public-download results in the release receipt.

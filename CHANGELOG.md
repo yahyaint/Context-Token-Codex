@@ -2,6 +2,8 @@
 
 ## 6.8.9 - 1 October 2026
 
+- Send JSON-RPC as UTF-8 without a BOM. Prevent inherited PowerShell console encoding from breaking subscription refresh.
+
 - Resolve the test TEMP folder to its long Windows path. Keep fixture keys consistent on hosted runners.
 - Start fake PowerShell CLI servers with an explicit script policy and no interactive prompts. Allow 30 seconds for normal startup. Keep the two-second hang tests.
 - Retain the 6.8.8 tag as a preparation snapshot. Publish the checked 6.8.9 package after hosted CI passes.

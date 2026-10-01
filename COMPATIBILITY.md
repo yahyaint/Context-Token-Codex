@@ -1,4 +1,21 @@
-﻿# 6.8.8 publication preparation - 1 October 2026
+# Version 6.8.9 publication verification - 1 October 2026
+
+Public source: [Context-Token-Codex](https://github.com/yahyaint/Context-Token-Codex).
+See [Windows CI](https://github.com/yahyaint/Context-Token-Codex/actions) for hosted job results.
+See [Releases](https://github.com/yahyaint/Context-Token-Codex/releases) for packages and checksums.
+
+Hosted checks found inconsistent short-path fixture keys and an inherited UTF-8 BOM in PowerShell 5 RPC input.
+The short-path failure and BOM failure were reproduced locally.
+The test runner now resolves TEMP to its long path.
+The RPC provider sends UTF-8 without a BOM. The transport regression sets a BOM input encoding before the request.
+Normal fake CLI startup has an explicit script policy. Error and hang checks remain bounded.
+Real Codex was not restarted to check this release. Current settings and previous runtime versions are retained.
+Another physical PC, Windows ARM, physical mixed-DPI moves and a real Windows sign-in remain unverified.
+
+The sections below are historical records. Their publication holds and unverified CI statements describe their original version.
+
+---
+# 6.8.8 publication preparation - 1 October 2026
 
 The fresh-export check found a PowerShell 7 normal-close selection failure.
 The repair enumerates visible unowned windows by process ID and rechecks ownership before each request.

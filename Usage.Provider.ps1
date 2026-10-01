@@ -46,7 +46,22 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
     $process=New-Object Diagnostics.Process; $process.StartInfo=$info
     $startedProcess=$false
     try {
-        [void]$process.Start()
+        $utf8=[Text.UTF8Encoding]::new($false)
+        if($info.PSObject.Properties['StandardInputEncoding']){
+            $info.StandardInputEncoding=$utf8
+            [void]$process.Start()
+            $startedProcess=$true
+        }else{
+            # .NET Framework creates and flushes its stdin writer during Start.
+            # Its console encoding can include a BOM, which JSON-RPC rejects.
+            $previousEncoding=[Console]::InputEncoding
+            $changeEncoding=$previousEncoding.GetPreamble().Length -gt 0
+            try{
+                if($changeEncoding){[Console]::InputEncoding=$utf8}
+                [void]$process.Start()
+                $startedProcess=$true
+            }finally{if($changeEncoding){[Console]::InputEncoding=$previousEncoding}}
+        }
         $startedProcess=$true
         # Drain diagnostics but never display them: CLI output can contain local paths.
         $stderr=$process.StandardError.ReadToEndAsync()
@@ -68,7 +83,8 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
             }
             if ($message.id -eq 2 -and $message.error.code -eq -32602) {
                 $process.StandardInput.WriteLine('{"id":3,"method":"account/rateLimits/read","params":{}}')
-                $process.StandardInput.Flush(); continue
+                $process.StandardInput.Flush()
+                continue
             }
             if ($message.id -in @(2,3)) {
                 if ($message.error) { throw 'Account quota data are unavailable. Check your Codex sign-in and network connection.' }
@@ -80,7 +96,10 @@ function Get-CodexRateLimits([string]$HomePath,[string]$Executable='', [string]$
         }
         throw 'The account quota request timed out.'
     } finally {
-        if ($startedProcess) { try { if (-not $process.HasExited) { $process.StandardInput.Close(); if (-not $process.WaitForExit(1000)) { $process.Kill(); [void]$process.WaitForExit(1500) } } } catch {} }
+        if ($startedProcess) {
+            try {$process.StandardInput.Close()} catch {}
+            try {if (-not $process.HasExited -and -not $process.WaitForExit(1000)) {$process.Kill();[void]$process.WaitForExit(1500)}} catch {}
+        }
         $process.Dispose()
     }
 }

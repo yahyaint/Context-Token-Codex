@@ -4,6 +4,8 @@ Created by Yahya Nabil | [yahyanabil.com](https://yahyanabil.com)
 
 ## Clean Windows verification
 
+- Send JSON-RPC as UTF-8 without a BOM. Keep subscription refresh independent of the inherited console encoding.
+
 - Normalize Windows short-path aliases before test fixtures are created.
 - Allow normal fake CLI startup time on clean runners. Keep bounded hang checks.
 

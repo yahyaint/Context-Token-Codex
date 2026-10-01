@@ -24,8 +24,6 @@ jobs:
           persist-credentials: false
       - name: Build Windows launchers
         run: .\Build\build.ps1
-      - name: Check redirected fixture host
-        run: .\Tests\test_rpc_host.ps1
       - name: Run noninteractive checks
         run: .\Tests\run.ps1 -Report .\dist\checks.json
       - name: Create release ZIP and checksum

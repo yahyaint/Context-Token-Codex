@@ -1,23 +1,34 @@
-# Security reports
+# Security
 
-Use GitHub's private vulnerability reporting control when it is available.
-If it is unavailable, open an issue that requests a private reporting channel.
-Do not post the vulnerability details in that issue.
-Do not post credentials, auth.json, private chat records, or account tokens.
+## Report a vulnerability
+
+Use GitHub's private vulnerability reporting control when available.
+Otherwise, open an issue that requests a private reporting channel.
+Do not post vulnerability details in that issue.
 
 Include the CTC version, Windows version, affected component, and reproduction steps in the private report.
-Use sample data for reproduction when possible.
+Use sample data.
+Do not upload credentials, `auth.json`, private chat records, or account tokens.
 
-## Installation checks
+## Installation
 
-Release launchers are unsigned. The SHA256 file detects changed files; it does not prove the publisher's identity.
-Use the repository and release named in INSTALL.md.
-The installer checks the release hash before it opens setup.
-CTC reads local Codex records. Save can change selected context settings.
-The restart controls request a normal Codex restart after recorded idle checks.
-See README.md and RECOVERY.md for their operating limits.
+The release executables are unsigned.
+The SHA256 file detects changed files; it does not prove publisher identity.
+Use the repository and release linked in [INSTALL.md](INSTALL.md).
+
+The download helper checks the archive hash and paths.
+Compiled setup checks its file manifest before installation.
+
+## Data and settings
+
+CTC reads local Codex records and opens SQLite databases read-only.
+Save can change selected context settings.
+Restart controls request a normal restart after recorded idle checks.
+
+See [Data](docs/DATA.md) and [Troubleshooting](UPDATE-RECOVERY.md) for operating limits.
 
 ## Updates
 
-Use the latest CTC release for fixes. Older runtime backups support recovery.
-This project does not promise a response time or a fixed support period.
+Use the latest CTC release for fixes.
+Earlier installed versions support rollback.
+No fixed response time or support period is promised.

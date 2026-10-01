@@ -45,7 +45,7 @@ try {
  }
  if ($bytes -gt 256MB) { throw 'The release is larger than 256 MB. Installation stopped.' }
 } finally { $zip.Dispose() }
-Expand-Archive -LiteralPath $Archive -DestinationPath $stage
+[IO.Compression.ZipFile]::ExtractToDirectory([IO.Path]::GetFullPath($Archive),$stage)
 $payload=Join-Path $stage 'ContextWidget'
 $required=@('Setup.exe','LICENSE','THIRD_PARTY_NOTICES.md')
 if(Test-Path -LiteralPath (Join-Path $payload 'ContextTokenCodex.exe')){$required+=@('ContextTokenCodex.dll','CTC.Core.dll','hostfxr.dll','coreclr.dll','PresentationFramework.dll','Quota.Rates.json','native-files.json','DOTNET-LICENSE.txt','DOTNET-THIRD-PARTY-NOTICES.txt')}

@@ -16,6 +16,7 @@ try{
  $name='Context-Token-Codex-Windows-v'+$Version+'.zip'
  $archive=Join-Path $dist $name
  Compress-Archive -LiteralPath $payload -DestinationPath $archive -Force
+ & (Join-Path $root 'Tests/test_public_distribution.ps1') -Archive $archive
  $hash=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
  [IO.File]::WriteAllText($archive+'.sha256',($hash+'  '+$name+[Environment]::NewLine),[Text.UTF8Encoding]::new($false))
  [pscustomobject]@{Version=$Version;Runtime=$Runtime;Bytes=(Get-Item -LiteralPath $archive).Length;SHA256=$hash;File=$archive}|ConvertTo-Json

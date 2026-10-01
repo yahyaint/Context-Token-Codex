@@ -1,143 +1,44 @@
-# Compiled 7.0.0
+# Compatibility
 
-See NATIVE-VERIFICATION.md for compiled checks. The sections below describe the retained PowerShell versions.
+## Requirements
 
-# Version 6.8.9 publication verification - 1 October 2026
+| Component | Requirement |
+|---|---|
+| Operating system | Windows 10 or Windows 11. |
+| Architecture | x64. |
+| App runtime | Included in the Windows release. |
+| Codex records | A local Codex installation and readable chat records. |
+| Account quotas | Codex sign-in and a compatible Codex CLI. |
 
-Public source: [Context-Token-Codex](https://github.com/yahyaint/Context-Token-Codex).
-See [Windows CI](https://github.com/yahyaint/Context-Token-Codex/actions) for hosted job results.
-See [Releases](https://github.com/yahyaint/Context-Token-Codex/releases) for packages and checksums.
+ChatGPT can trigger Auto-open.
+CTC reads Codex records; it does not measure ordinary ChatGPT conversations.
 
-Hosted checks found inconsistent short-path fixture keys and an inherited UTF-8 BOM in PowerShell 5 RPC input.
-The short-path failure and BOM failure were reproduced locally.
-The test runner now resolves TEMP to its long path.
-The RPC provider sends UTF-8 without a BOM. The transport regression sets a BOM input encoding before the request.
-Normal fake CLI startup has an explicit script policy. Error and hang checks remain bounded.
-Real Codex was not restarted to check this release. Current settings and previous runtime versions are retained.
-Another physical PC, Windows ARM, physical mixed-DPI moves and a real Windows sign-in remain unverified.
+## Verified behavior
 
-The sections below are historical records. Their publication holds and unverified CI statements describe their original version.
+Tests cover context percentages, input formats, settings backups, stale saves, token subsets, and queue rules.
+They cover unknown events, incomplete records, weekly-only quotas, account changes, and bounded RPC failures.
 
----
-# 6.8.8 publication preparation - 1 October 2026
+Actual WPF window tests cover compact limits, drafts, corner return, tray restore, setup, update, rollback, and removal.
+Visual checks compare the original PowerShell layouts, theme, and icon.
+The CI matrix runs on Windows Server 2022 and Windows Server 2025.
 
-The fresh-export check found a PowerShell 7 normal-close selection failure.
-The repair enumerates visible unowned windows by process ID and rechecks ownership before each request.
-Restart tests use a marked application fixture with main and untitled auxiliary windows.
-All 22 fresh-export checks pass in PowerShell 5.1.26100.9444 and PowerShell 7.6.5 on this host.
-Real Codex, Windows sign-in, another device, hosted CI, and public downloads were not tested by this preparation.
-Previous measured results below retain their version labels.
+See [GitHub Actions](https://github.com/yahyaint/Context-Token-Codex/actions) for the results for each commit.
+See [Releases](https://github.com/yahyaint/Context-Token-Codex/releases) for tested packages and SHA256 files.
 
----
+## Limits
 
-# 6.8.7 verification - 1 October 2026
+Physical Windows sign-in, a separate physical PC, and physical mixed-DPI monitor moves remain unverified.
+Windows ARM is not supported by the published x64 package.
+CTC does not promise compatibility with future private Codex data schemas.
 
-The actual widget and setup wizard pass in PowerShell 5.1 and 7 on this Windows host.
-Corner return, free placement, resize, mode changes, logo frame selection, icon resources, and isolated upgrades pass.
-WPF logo renders use simulated display scales. A physical mixed-DPI monitor move remains unverified.
-Current shortcuts use the launcher icon. Earlier releases remain in version backups.
-See AUDIT.md for the test scope. Earlier results retain their original version labels.
+Busy, unknown, or incomplete records block automatic restart.
+Saved settings cannot increase model capacity.
+Exact per-tool token costs and exact per-chat subscription charges are unavailable.
 
----
+Use [Troubleshooting](UPDATE-RECOVERY.md) if a Codex update changes data or app identity.
 
-# 6.8.6 verification - 1 October 2026
+## Earlier version
 
-Queue scope, external edits, malformed entries, actual rendering, and restart expiry pass in both shells.
-Normal close/reopen and expired-request handling use marked fixtures. Real Codex was not closed for verification.
-The old waiting helper was replaced without extending its existing request.
-Its ten-minute resource check passed. The 30-minute widget test below belongs to version 6.8.5.
-Public installation, hosted CI, another Windows machine, ARM, and actual sign-in remain unverified.
-See QUEUE-VERIFICATION.md for the complete matrix.
-
----
-
-# 6.8.5 checks - 30 September 2026
-
-Fifteen backend suites pass in PowerShell 5.1 and 7 on this Windows host.
-The WPF controls pass in both shells. The quota-polling and editor checks keep cached type metadata unchanged.
-The desktop selector supports changed package versions and primary file names.
-Normal close/reopen uses a marked fixture. Real Codex was not closed.
-The actual-window 30-minute test passed in one installed process. See AUDIT.md for measured memory and CPU.
-Hosted CI, ARM, another Windows machine, and real Windows sign-in remain unverified.
-No eligible desktop update was available for an actual update-cycle test.
-
----
-
-# STE text - 6.7.1
-
-The app uses short instructions and defined software terms.
-The writing rules apply to future changes.
-User content, source error details, license notices, and historical evidence stay exact.
-The context editor behavior does not change.
-See UI-WRITING.md and AGENTS.md for the rules.
-
-# Context editor - 6.7.0
-
-Compact project editing, anchored multipliers, percentage presets, scoped saved/live values, preview-only reset controls and catalog warnings share the same helpers as the expanded editor. The release checks cover these controls in disposable fixtures; they do not alter real Codex limits. Source credits are in ACKNOWLEDGMENTS.md. Older verification below remains historical.
-
-Windows PowerShell 5.1 and PowerShell 7: context editor helpers, settings, regression, repository/isolated-install, local bootstrap checksum and WPF overlay suites passed. UI fixtures check anchored scaling, ratio retention, exact percentages, mini controls, expand/collapse draft retention, idle project writes, Undo/Default previews, invalid drafts and catalog warnings. Both layouts were rendered and inspected. Hosted CI, a separate clean machine and actual sign-in/reboot remain untested.
-
-# Compatibility and release checks — 6.6.0
-
-## 30 September 2026 startup repair
-
-Relevant reader, watcher, estimator, install and release tests passed under Windows PowerShell 5.1 and PowerShell 7. WPF overlay tests passed under both shells, including the precompiled taskbar identity bridge and shared quotas. Quick/full state parity includes large reordered records and partial appends. ZIP paths are canonical across both packaging runtimes.
-
-The installed updated Codex package (OpenAI.Codex 26.928.2636.0) was detected, and starting the watcher opened CTC with local data and live account quotas. Changed package versions and replaced process/window identities are also fixture-tested. Actual Windows sign-in/reboot and a future unknown app schema are not claimed. See AUDIT.md for timings and test limits.
-
----
-# Compatibility and release checks — 6.4.0
-
-## 22 September 2026 repair status
-
-The 6.3.7 audit findings are covered by new regression fixtures: TOML strings/quoted keys, one-transaction limit saves, locked writes, Unicode saved roots, blank-name fallback, changed context windows, stale indexed paths, quota freshness and bucket retention, invalid preferences, installer rollback, empty-folder discovery and resumed-chat lifecycle retention.
-
-Real read-only subscription refresh succeeded during diagnosis with CLI 0.155.0-alpha.9.2 (two windows). A follow-up completed in 1.06 seconds. Earlier timeouts remain historical evidence; their intermittent environmental cause is not proven. The request budget is now 45 seconds, with phase-specific errors and a delayed-initialization regression test.
-
-The previous audit and measurements below are historical. See AUDIT.md for current verification receipts and limitations. No hosted CI, separate-machine, ARM, mixed-DPI or long soak result is implied by local tests.
-
----
-# Compatibility and release checks — 6.0.1
-
-## 6.3.0 / 20 September 2026
-
-Windows PowerShell 5.1 and PowerShell 7: settings, usage, compatibility, transport, repository, WPF overlay, dropdown and installer tests passed. Overlay checks include live counters, a 40-chat list, 24-pixel wheel steps, stable offset, inline project setting saves and idle saved-project discovery.
-
-Codex Desktop was already updated to 26.915.4065.0; CLI reports 0.155.0-alpha.9.2. Read-only local monitoring found active chats and saved/idle projects successfully. The real subscription request timed out at both 12 and 30 seconds. This remains an unresolved live provider check, not a passed integration test. Recorded fallback, timeout handling and private helper database isolation are retained. No queued messages were changed.
-
-## 6.1.0 additions
-
-The token UI now watches active session records every second and displays six metrics plus per-task detail. The WPF fixture appends a new record during execution and checks that the UI receives its total, reasoning count and task row. Unknown cache/reasoning fields are tested separately from known zero. Earlier platform coverage below describes the 6.0.1 baseline; see release verification for reruns.
-
-Codex session files and SQLite tables are private implementation details. This widget tolerates the changes listed below; it cannot guarantee compatibility with every future Codex release. Unknown data stays unavailable rather than being presented as zero usage.
-
-## Tested locally
-
-On Windows build 26200, using Windows PowerShell 5.1 and PowerShell 7.6.5:
-
-- Settings, usage accounting, syntax and isolated runtime installation.
-- Actual WPF overlay: expand/collapse, corner snap, opacity persistence, minimize, tray hide/restore, embedded settings and mode switching.
-- Actual installation wizard: first installation, upgrade backup, preference retention and startup shortcuts in isolated test directories.
-- Missing profile, later session creation, missing SQLite, reordered JSON properties, malformed/unknown records, partial appends and truncated files.
-- Task rename through the session index; Unicode/spaced paths; en-US and de-DE quota parsing.
-- Real SQLite with incompatible tables: session-folder fallback, completion-only log status and discovery of a future numbered database.
-- Mock CLI transport: old request parameters, noisy output, account errors, early exit and bounded timeout.
-
-The installed Codex CLI also returned a real subscription reading through the read-only provider. Authentication data is not copied into this repository.
-
-## Automated hosted coverage prepared
-
-GitHub Actions matrix: Windows Server 2022 and 2025, each with Windows PowerShell and PowerShell 7. Hosted checks cover build, configuration, usage, compatibility, RPC failure handling, isolated installation and packaging. These hosted jobs have not run yet; desktop UI checks require a local interactive desktop.
-
-## Remaining limits
-
-- No separate physical machine, Windows ARM, Windows 10 VM or long-duration soak test performed.
-- Locales and format changes are fixtures, not additional operating systems or actual old Codex installations.
-- Private log schema changes disable the live compaction-start signal; completed compactions can still be read from session events.
-- A complete session-format replacement needs a reader update. Subscription endpoint removal needs a provider update; the last available reading remains labeled with its observation time.
-- The Android SDK SQLite executable on the test machine could not open Unicode paths. The file reader supports those paths and remains the fallback. SQLite schema tests therefore used a separate ASCII path.
-- Launchers are unsigned. Source ZIP requires building; the Windows release ZIP includes launchers.
-
-Author identity and intended repository URL are configured. Hosted CI, remote installation and the owner's explicit push mark remain pending. No push is part of local preparation.
-
-6.1.0 rerun: usage, compatibility, repository/install manifest, live WPF append and installation wizard passed on Windows PowerShell 5.1 and PowerShell 7.6.5 on 18 September 2026. The live UI fixture advanced the total from 85,800 to 90,000 and verified reasoning and task detail. Hosted CI remains pending.
+[PowerShell 6.8.9](https://github.com/yahyaint/Context-Token-Codex/releases/tag/v6.8.9) remains available.
+The current C# version keeps its layout.
+Future feature work uses C# and WPF.

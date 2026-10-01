@@ -18,10 +18,20 @@ foreach ($name in @('ContextWidget.exe','Setup.exe')) { Assert (Test-Path (Join-
 $fixture=Join-Path $env:TEMP ('context-repository-test-'+[guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory($fixture)
 $result=Install-ContextWidget -Source $root -Destination (Join-Path $fixture 'installed') -TestRoot $fixture
-Assert ($result.Files -eq 27) 'Unexpected runtime manifest.'
+Assert ($result.Files -eq 32) 'Unexpected runtime manifest.'
 foreach ($name in @('ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md')) {
  Assert (Test-Path (Join-Path $fixture "installed/$name")) "Installed distribution missing $name."
 }
+foreach ($name in @('docs/USER-GUIDE.md','docs/DATA.md','docs/images/context.png','Build/ctc-logo.png')) {
+ Assert (Test-Path (Join-Path $fixture "installed/$name")) "Installed guide or image missing: $name."
+}
+$guidePath=Join-Path $fixture 'installed/docs/DATA.md'
+$oldGuide='Previous fixture guide.'
+[IO.File]::WriteAllText($guidePath,$oldGuide)
+$lock=[IO.File]::Open($guidePath,'Open','Read','Read')
+$failed=$false
+try {try {$null=Install-ContextWidget -Source $root -Destination (Join-Path $fixture 'installed') -TestRoot $fixture} catch {$failed=$true}} finally {$lock.Dispose()}
+Assert ($failed -and [IO.File]::ReadAllText($guidePath) -ceq $oldGuide) 'Nested guide update did not roll back.'
 $credits=Get-Content (Join-Path $root 'THIRD_PARTY_NOTICES.md') -Raw
 foreach ($author in @('ryoppippi','Peter Steinberger','Codex Monitor HUD Contributors','Craig Constable')) {
  Assert ($credits.Contains($author)) "Missing upstream copyright: $author"

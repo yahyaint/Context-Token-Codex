@@ -1,11 +1,14 @@
 ﻿# SPDX-License-Identifier: MIT
+function Get-CtcLegacyInstallFiles {
+ return @('ContextWidget.exe','Context.ico','Branding.ps1','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Restart.Core.ps1','Restart-Codex.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','UPDATE-RECOVERY.md','COMPATIBILITY.md','SECURITY.md','CHANGELOG.md','docs/USER-GUIDE.md','docs/DATA.md','docs/images/context.png','docs/images/limits-native.png','docs/images/parked-native.png','Build/ctc-logo.png')
+}
 function Invoke-ContextWidgetInstall {
  param([string]$Source,[string]$Destination,[bool]$AutoOpen=$true,[bool]$DesktopShortcut=$true,[string]$TestRoot='')
  $ErrorActionPreference='Stop'
  if (-not [IO.Path]::IsPathRooted($Destination)) { throw 'Enter a full path for the installation folder.' }
  $destinationPath=[IO.Path]::GetFullPath($Destination).TrimEnd('\')
  if ($destinationPath -eq [IO.Path]::GetPathRoot($destinationPath).TrimEnd('\')) { throw 'Select a subfolder for CTC. Do not select the drive root.' }
- $files=@('ContextWidget.exe','Context.ico','Branding.ps1','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Restart.Core.ps1','Restart-Codex.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','USAGE-METHODS.md','QUOTA-RESEARCH.md','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','ERROR-AUDIT.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','METHODS.md','BRANDING.md')
+ $files=Get-CtcLegacyInstallFiles
  foreach ($file in $files) { if (-not (Test-Path -LiteralPath (Join-Path $Source $file) -PathType Leaf)) { throw "The installation file is missing: $file." } }
  if ($TestRoot) {
   $localRoot=[IO.Path]::GetFullPath($TestRoot).TrimEnd('\')+'\'
@@ -21,10 +24,10 @@ function Invoke-ContextWidgetInstall {
  if (-not $sameSource -and (Test-Path -LiteralPath (Join-Path $destinationPath 'Overlay.ps1'))) {
   $backup=Join-Path $destinationPath ('Versions\before-6.8.9-'+[guid]::NewGuid().ToString('N').Substring(0,8))
   [void][IO.Directory]::CreateDirectory($backup)
-  foreach ($file in $files) { $old=Join-Path $destinationPath $file; if (Test-Path -LiteralPath $old) { Copy-Item -LiteralPath $old -Destination $backup } }
+  foreach ($file in $files) { $old=Join-Path $destinationPath $file; if (Test-Path -LiteralPath $old) { [void][IO.Directory]::CreateDirectory((Split-Path (Join-Path $backup $file) -Parent)); Copy-Item -LiteralPath $old -Destination (Join-Path $backup $file) } }
  }
  [void][IO.Directory]::CreateDirectory($destinationPath)
- if (-not $sameSource) { foreach ($file in $files) { Copy-Item -LiteralPath (Join-Path $Source $file) -Destination (Join-Path $destinationPath $file) -Force } }
+ if (-not $sameSource) { foreach ($file in $files) { [void][IO.Directory]::CreateDirectory((Split-Path (Join-Path $destinationPath $file) -Parent)); Copy-Item -LiteralPath (Join-Path $Source $file) -Destination (Join-Path $destinationPath $file) -Force } }
  $prefs=@{AutoOpen=$AutoOpen;Target='Either';Mode='Context';Compact=$true;StartParked=$true;Topmost=$true;Opacity=0.85;Width=460;Height=620;Left=-1;Top=-1;Corner='BottomRight'}
  . (Join-Path $Source 'Monitor.Data.ps1')
  $prefs=Read-WidgetPreferences $preferences $prefs
@@ -72,7 +75,7 @@ function Install-ContextWidget {
  }
  # Snapshot every file the installation may replace/remove before touching the runtime.
  $targets=@($preferences,(Join-Path $destinationPath 'installation.json'))
- foreach($file in @(Get-ChildItem -LiteralPath $Source -File)) {$targets+=Join-Path $destinationPath $file.Name}
+ foreach($file in @(Get-CtcLegacyInstallFiles)) {$targets+=Join-Path $destinationPath $file}
  foreach($folder in @($startup,$desktop,$menu)) {foreach($name in @('Context-Token Codex.lnk','Context Widget.lnk','Codex Context Overlay.lnk')){$targets+=Join-Path $folder $name}}
  if(-not $TestRoot){$targets+=Join-Path ([Environment]::GetFolderPath('Programs')) 'Context Widget/Context Widget.lnk'}
  $original=@{}

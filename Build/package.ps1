@@ -5,19 +5,15 @@ $root=Split-Path $PSScriptRoot -Parent
 if (-not $OutputDirectory) { $OutputDirectory=Join-Path $root 'dist' }
 & (Join-Path $PSScriptRoot 'build.ps1')
 if ($LASTEXITCODE) { throw 'Build failed.' }
-$files=@('SECURITY.md','QUEUE-VERIFICATION.md','RELEASE-NOTES.md','NEXT-TASKS.md','LIMITS-VERIFICATION.md','WORK-QUEUE.md','ARCHITECTURE-REVIEW.md','AGENTS.md','Install-FromGitHub.ps1','Setup.exe','ContextWidget.exe','Context.ico','Branding.ps1','Install.ps1','Install.Core.ps1','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Restart.Core.ps1','Restart-Codex.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','USAGE-METHODS.md','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','ERROR-AUDIT.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','METHODS.md','BRANDING.md','AUDIT.md','QUOTA-RESEARCH.md','CHANGELOG.md')
+$files=@('ContextWidget.exe','Context.ico','Branding.ps1','Overlay.ps1','Monitor.Core.ps1','Monitor.Data.ps1','Restart.Core.ps1','Restart-Codex.ps1','Usage.Provider.ps1','Quota.Estimator.ps1','Quota.Rates.json','ACKNOWLEDGMENTS.md','THIRD_PARTY_NOTICES.md','UI-WRITING.md','INSTALL.md','RECOVERY.md','Watch-App.ps1','Theme.xaml','Open-Overlay.vbs','Open-Overlay.cmd','README.md','LICENSE','UPDATE-RECOVERY.md','COMPATIBILITY.md','SECURITY.md','CHANGELOG.md','docs/USER-GUIDE.md','docs/DATA.md','docs/images/context.png','docs/images/limits-native.png','docs/images/parked-native.png','Build/ctc-logo.png','Install-FromGitHub.ps1','Setup.exe','Install.ps1','Install.Core.ps1')
 $stage=Join-Path $env:TEMP ('context-release-'+[guid]::NewGuid().ToString('N'))
 $payload=Join-Path $stage 'ContextWidget'
 [void][IO.Directory]::CreateDirectory($payload)
-foreach ($name in $files) { Copy-Item -LiteralPath (Join-Path $root $name) -Destination $payload }
-# Keep the README's sample screenshot in the binary package.
-[void][IO.Directory]::CreateDirectory((Join-Path $payload 'docs/images'))
-Copy-Item -LiteralPath (Join-Path $root 'docs/images/context.png') -Destination (Join-Path $payload 'docs/images/context.png')
-# Include build source to keep the binary package auditable and reproducible.
-Copy-Item -LiteralPath (Join-Path $root 'Build') -Destination $payload -Recurse
-Copy-Item -LiteralPath (Join-Path $root 'Tests') -Destination $payload -Recurse
-Copy-Item -LiteralPath (Join-Path $root 'CONTRIBUTING.md') -Destination $payload
-Copy-Item -LiteralPath (Join-Path $root 'COMPATIBILITY.md') -Destination $payload
+foreach ($name in $files) {
+ $target=Join-Path $payload $name
+ [void][IO.Directory]::CreateDirectory((Split-Path $target -Parent))
+ Copy-Item -LiteralPath (Join-Path $root $name) -Destination $target
+}
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
 $zip=Join-Path $OutputDirectory 'Context-Token-Codex-Windows-v6.8.9.zip'
 # Windows PowerShell 5.1 Compress-Archive can emit backslash paths. Use
@@ -34,6 +30,7 @@ try {
         try {$inputStream.CopyTo($outputStream)} finally {$outputStream.Dispose();$inputStream.Dispose()}
     }
 } finally {$archive.Dispose();$zipStream.Dispose()}
+& (Join-Path $root 'Tests/test_public_distribution.ps1') -Archive $zip
 $hash=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText(($zip+'.sha256'),$hash+'  '+[IO.Path]::GetFileName($zip)+"`n",[Text.UTF8Encoding]::new($false))
 Write-Output "Package: $zip"

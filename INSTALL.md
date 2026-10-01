@@ -1,55 +1,73 @@
-# Install CTC
+# Install Context-Token Codex
 
-The GitHub method needs a public repository and Windows release.
+Use Windows 10 or Windows 11 on an x64 PC.
+The Windows release includes .NET.
 
-## Prompt for Codex
+## Install with a prompt
 
-> Install the C# and WPF version of Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read INSTALL.md, UPDATE-RECOVERY.md, and UI-WRITING.md first. Download the latest Windows release and SHA256 file. Check the hash. Extract the ZIP. Open Setup.exe. Keep existing preferences, queues, and earlier versions. Check local chat data after installation. Do not change Codex limits or message queues. If no compiled release is available, stop and report the cause.
+Paste this prompt into Codex:
 
-## GitHub command
+> Install Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read INSTALL.md and UPDATE-RECOVERY.md. Download the latest Windows release and its SHA256 file. Check the hash. Extract the ZIP and open Setup.exe. Keep preferences, queues, and earlier versions. Verify local chat data after installation. Do not change Codex limits or submit chat messages. If the compiled release is unavailable, report the cause.
 
-Install GitHub CLI first.
-Sign in with `gh auth login` if required.
+## Install with GitHub CLI
+
+Install GitHub CLI.
 Run this command in PowerShell:
 
 ```powershell
 & { $p=Join-Path $env:TEMP ('ctc-source-'+[guid]::NewGuid().ToString('N')); gh repo clone yahyaint/Context-Token-Codex $p; if ($LASTEXITCODE) { throw 'Clone failed' }; powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $p 'Install-FromGitHub.ps1') }
 ```
 
-To select the compiled release, add -Version v7.0.2 to the helper command.
-To select PowerShell, add -Version v6.8.9.
-The helper checks the ZIP hash before it opens Setup.
-The hash detects changed files. It is not a publisher signature.
+The helper downloads the latest release, checks the ZIP hash, and opens setup.
+The helper downloads public release files without a GitHub sign-in.
+GitHub CLI can require a sign-in before it runs the clone command.
 
-## Manual installation
+## Install manually
 
-1. Download the Windows release ZIP and SHA256 file.
-2. Use `Get-FileHash` to check the ZIP hash.
-3. Extract the ZIP.
-4. Open Setup.exe.
-5. Select the installation folder.
-6. Select Install.
+1. Open the [latest release](https://github.com/yahyaint/Context-Token-Codex/releases/latest).
+2. Download the Windows ZIP and its `.sha256` file.
+3. Run `Get-FileHash "PATH-TO-ZIP" -Algorithm SHA256` in PowerShell.
+4. Compare the result with the hash in the `.sha256` file.
+5. Extract the ZIP.
+6. Open `ContextWidget\Setup.exe`.
+7. Select **Next**.
+8. Select the installation folder and options.
+9. Select **Install**, then **Finish**.
 
-Auto-open is on by default.
-CTC keeps previous files and settings when you install an update.
-Installation does not need administrator access.
+CTC installs for your Windows account. Administrator access is not required.
+Auto-open and the desktop shortcut are on by default.
+The executables are unsigned. The hash detects file changes; it is not a publisher signature.
 
-## Source files
+## After installation
 
-Source ZIPs do not contain the executables.
-Install the .NET 10 SDK.
-Run Build/build-native.ps1 before you open dist/native-win-x64/Setup.exe.
-The Windows release ZIP contains the executables.
-It includes the .NET runtime.
-The compiled app does not require PowerShell.
+Open the desktop shortcut.
+CTC starts in the small bar with 85% background opacity.
+Select the restore arrow to open the widget.
+
+The watcher follows Codex or ChatGPT after Windows sign-in.
+Change this option in **Widget settings**.
+The watcher reads Codex data even when ChatGPT triggers the launch.
+
+## Update or restore
+
+Install the latest release in the same app folder.
+Setup keeps earlier compiled files in `Versions`.
+It keeps preferences and the saved limits queue.
+
+See [Troubleshooting](UPDATE-RECOVERY.md) for rollback and removal.
+The [PowerShell 6.8.9 release](https://github.com/yahyaint/Context-Token-Codex/releases/tag/v6.8.9) remains available.
+Use its release files to install that version.
 
 ## Unattended installation
 
-After the download and hash check, run:
+After extraction and the hash check, run:
 
-    .\ContextWidget\ContextTokenCodex.exe --install "C:\Users\YOUR-NAME\AppData\Local\Programs\Context-Token-Codex"
+```powershell
+.\ContextWidget\ContextTokenCodex.exe --install "$env:LOCALAPPDATA\Programs\Context-Token-Codex"
+```
 
-Use your user folder in the command.
-Add --no-startup to disable the Startup shortcut.
-The installation keeps earlier versions and preferences.
-Open the new desktop shortcut when installation finishes.
+Add `--no-startup` to disable Auto-open.
+Open the new desktop shortcut after installation.
+
+Source archives do not contain built executables.
+See [Build and test](https://github.com/yahyaint/Context-Token-Codex/blob/main/CONTRIBUTING.md) to build from source.

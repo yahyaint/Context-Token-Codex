@@ -1,87 +1,102 @@
-# Repair CTC after a Codex update
+# Troubleshooting
 
-Use this guide for the compiled C# and WPF version.
-Keep the PowerShell 6.8.9 release as an earlier version.
-See RECOVERY.md for that version.
-
-## Prompt for Codex
-
-> Repair Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read UPDATE-RECOVERY.md and UI-WRITING.md. Check the installed version, native-errors.log, session schema, app paths, account quota RPC, and context settings. Use isolated fixtures. Do not change real chat records or message queues. Keep settings and backups. Run the native core and UI checks. Explain each remaining limitation.
+Use this guide for the current C# and WPF version.
+For PowerShell 6.8.9, use the [legacy guide](RECOVERY.md).
 
 ## First checks
 
-1. Open the newest Context-Token Codex shortcut.
-2. Check the executable path in Task Manager.
-3. Check native-errors.log in %LOCALAPPDATA%\CodexContextMonitor.
-4. Check the next Codex model request for a new context record.
-5. Select Refresh to read account quotas.
+1. Open the newest CTC desktop shortcut.
+2. Check its executable path in Task Manager.
+3. Check `%LOCALAPPDATA%\CodexContextMonitor\native-errors.log` if that file exists.
+4. Check for a new Codex usage record after a model request.
+5. Select the quota refresh button.
 
-The compiled app does not require PowerShell or an installed .NET runtime.
-The release includes its .NET runtime.
-The quota reader requires the Codex CLI supplied with Codex.
-CTC uses a separate SQLite folder for its quota helper.
-It does not submit chat messages.
+Keep preferences, queues, and backups while you diagnose a fault.
+Do not delete Codex chat records.
 
-## Startup failure
+## CTC does not open with the app
 
-Check the Startup shortcut named Context-Token Codex.
-Its target must be the installed ContextTokenCodex.exe.
-Its arguments must include --watch.
-Check the Auto-open with app setting.
-Check the Codex package path in DesktopIdentity.IsCodex.
-Codex updates can change the executable name from Codex.exe to ChatGPT.exe.
-The package path identifies the app.
+Open Widget settings.
+Check **Auto-open with app** and **App to follow**.
+Check the Windows Startup shortcut named **Context-Token Codex**.
+Its target must be the installed `ContextTokenCodex.exe`.
+Its arguments must include `--watch`.
 
-## Missing quota data
+If a shortcut points to an earlier version, install the latest CTC release in the same folder.
+If CTC was closed manually, launch the selected app again.
+An updated Codex executable can be named `Codex.exe` or `ChatGPT.exe`.
+The package path identifies Codex.
 
-Check Codex sign-in and network connection.
-A plan can supply only a weekly quota.
-CTC must not create a missing 5-hour quota.
-Check account/rateLimits/read through an isolated CLI helper.
-Check rateLimitsByLimitId before the older rateLimits property.
-Check usedPercent, windowDurationMins, and resetsAt.
-Null values must remain unknown.
-After sign-in changes, discard earlier live quotas and estimate baselines.
+## Quotas are missing
 
-## Missing chat data
+Check Codex sign-in and the network connection.
+Select Refresh and allow up to 45 seconds.
+A weekly-only account shows one bar.
+CTC does not add a missing 5-hour window.
 
-Check CODEX_HOME and sqlite_home.
-Find the newest numeric state_*.sqlite and logs_*.sqlite versions.
-Check threads.rollout_path, session_index.jsonl, and sessions JSONL records.
-CTC opens SQLite databases for reading only.
-If a table changes, keep the JSONL fallback.
-Unknown event types must not stop the reader.
-An incomplete JSONL line must wait for its newline.
-Keep unknown lifecycle data out of automatic restart decisions.
+If you changed accounts, wait for a new account reading.
+Per-chat estimates require a baseline and a later observation.
+
+## Chat data are missing
+
+Check `CODEX_HOME` if you use a custom Codex folder.
+Check the local `sessions` files and configured `sqlite_home` folder.
+Current readers use the newest numeric `state_*.sqlite` and `logs_*.sqlite` files.
+
+An incomplete JSONL line waits for its newline.
+An unsupported data schema can require a CTC update.
+Use the repair prompt below if the newest release still cannot read records.
 
 ## Saved limits do not appear live
 
-Check model_context_window and model_auto_compact_token_limit in the selected config.toml.
-Check project overrides before global settings.
-Check model catalog capacity and effective_context_window_percent.
-Do not replace recorded context values with saved values.
-Select Queue to inspect saved changes.
-Select Restart after all chats stop for one normal restart.
-Unknown or busy records block the restart.
-Open Codex windows close during a restart.
-A larger saved window cannot increase provider model capacity.
+Open **Queue** and check the selected scope.
+A project override takes priority over global settings.
+A loaded chat needs a fresh Codex session.
 
-## Build and test
+Select **Restart after all chats stop** to request one normal restart.
+Unknown or busy records block it.
+A restart closes open Codex windows.
 
-Install the .NET 10 SDK on Windows.
-Run Build/build-native.ps1.
-Run Tests/test_native_ui.ps1 with the published ContextTokenCodex.exe.
-The core checks use temporary profiles.
-The UI checks use fixture accounts and projects.
-Do not use real context settings for tests.
+After Codex reopens, resume the chat.
+Check the next usage record.
+The recorded usable window can be smaller than the saved number.
+A larger saved value cannot increase model capacity.
 
-## Restore an earlier version
+## Restore the previous compiled version
 
-Keep the installation Versions folder and installation.json backups.
-Compiled updates retain the earlier compiled version.
-The PowerShell release remains available at tag v6.8.9.
-To switch to the previous compiled version, run ContextTokenCodex.exe --rollback with the installation folder.
-To remove CTC shortcuts, run the installed ContextTokenCodex.exe --uninstall.
-Uninstall keeps version files and user settings.
-Do not delete preferences, limits-queue.json, or restart.json to repair startup.
-Keep a waiting restart request and its original expiry.
+Close CTC.
+Open PowerShell and run:
+
+```powershell
+& "PATH-TO-INSTALLED\ContextTokenCodex.exe" --rollback "PATH-TO-APP-FOLDER"
+```
+
+Use the installation folder that contains `installation.json` and `Versions`.
+Rollback updates the version pointer and shortcuts.
+Open the desktop shortcut again.
+Earlier version files and preferences remain available.
+
+## Remove shortcuts and Auto-open
+
+Close CTC.
+Run:
+
+```powershell
+& "PATH-TO-INSTALLED\ContextTokenCodex.exe" --uninstall
+```
+
+This removes CTC-owned shortcuts and stops Auto-open.
+Version files and user settings remain available.
+
+## Repair with Codex
+
+Paste this prompt into Codex:
+
+> Repair Context-Token Codex from https://github.com/yahyaint/Context-Token-Codex. Read UPDATE-RECOVERY.md and CONTRIBUTING.md. Check the installed version, native-errors.log, app identity, session schema, account quota RPC, and context settings. Keep preferences, queues, backups, and earlier versions. Use isolated fixtures for settings and restart tests. Do not change real chat records or submit chat messages. Keep STE for changed app text. Run the relevant checks. Explain the cause, fix, and remaining limits.
+
+## Report a fault
+
+Open a [GitHub issue](https://github.com/yahyaint/Context-Token-Codex/issues/new/choose).
+Include CTC and Windows versions, steps, and a cropped screenshot.
+Remove chat names, file paths, and account details that you do not want to share.
+Do not upload `auth.json`, raw chat records, or account tokens.

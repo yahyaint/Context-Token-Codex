@@ -7,6 +7,7 @@ $config=Join-Path $root 'NuGet.Config'
 $app=Join-Path $root 'src/CTC.App/CTC.App.csproj'
 $tests=Join-Path $root 'tests/CTC.Tests/CTC.Tests.csproj'
 if(-not $SkipTests){
+ & (Join-Path $root 'Tests/test_public_distribution.ps1')
  & (Join-Path $root 'Tests/test_native_visual_parity.ps1')
  & $Dotnet restore $tests --configfile $config
  if($LASTEXITCODE){throw 'Native test restore failed.'}
@@ -24,9 +25,12 @@ if(Test-Path -LiteralPath $output){
 if($LASTEXITCODE){throw 'WPF restore failed.'}
 & $Dotnet publish $app --configuration Release --runtime $Runtime --self-contained true --no-restore -p:PublishSingleFile=false -p:DebugType=None -p:DebugSymbols=false --output $output
 if($LASTEXITCODE){throw 'WPF publish failed.'}
-foreach($file in @('LICENSE','THIRD_PARTY_NOTICES.md','ACKNOWLEDGMENTS.md','UI-WRITING.md','UPDATE-RECOVERY.md','NATIVE-VERIFICATION.md','INSTALL.md','Quota.Rates.json')){
+foreach($file in @('LICENSE','THIRD_PARTY_NOTICES.md','ACKNOWLEDGMENTS.md','README.md','UPDATE-RECOVERY.md','RECOVERY.md','INSTALL.md','COMPATIBILITY.md','SECURITY.md','CHANGELOG.md','Quota.Rates.json')){
  Copy-Item -LiteralPath (Join-Path $root $file) -Destination $output
 }
+Copy-Item -LiteralPath (Join-Path $root 'docs') -Destination $output -Recurse
+[void][IO.Directory]::CreateDirectory((Join-Path $output 'Build'))
+Copy-Item -LiteralPath (Join-Path $root 'Build/ctc-logo.png') -Destination (Join-Path $output 'Build/ctc-logo.png')
 Copy-Item -LiteralPath (Join-Path $output 'ContextTokenCodex.exe') -Destination (Join-Path $output 'Setup.exe')
 $runtimePack=Get-ChildItem -LiteralPath (Join-Path $root ('.packages/microsoft.netcore.app.runtime.'+$Runtime)) -Directory | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 Copy-Item -LiteralPath (Join-Path $runtimePack.FullName 'LICENSE.TXT') -Destination (Join-Path $output 'DOTNET-LICENSE.txt')

@@ -1,249 +1,87 @@
-# Context-Token Codex 7.0.2
+# Context-Token Codex
 
-<img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
+<img src="Build/ctc-logo.png" alt="ctc logo" width="72" height="72">
 
-CTC is a Windows widget for Codex context, token counts, and account quotas.
-The default version uses C# and WPF with .NET 10.
-The Windows release includes its runtime.
-The app, watcher, quota reader, setup, and restart helper do not start PowerShell.
-Only build and download helper scripts use PowerShell.
-Future app changes use C#.
-The widget uses the original PowerShell 6.8.9 design.
-The original layouts, theme, and icon remain the visual reference.
-Created by **Yahya Nabil** | [yahyanabil.com](https://yahyanabil.com).
+A Windows widget for Codex context, tokens, and account quotas.
 
-**Windows 10/11 | MIT | Independent community project**
+**Windows 10/11 x64 · MIT · C# and WPF**
 
-<img src="docs/images/context.png" alt="CTC compact context view with sample chat data" width="370">
+Created by [Yahya Nabil](https://yahyanabil.com). Independent community software.
 
-Example view. Uses sample data.
+## Download
 
-## Install
+[**Download the latest Windows release**](https://github.com/yahyaint/Context-Token-Codex/releases/latest)
 
-Get the [latest Windows release](https://github.com/yahyaint/Context-Token-Codex/releases/latest).
-
-1. Download the Windows release ZIP and its SHA256 file.
+1. Download the Windows ZIP and its SHA256 file.
 2. Check the ZIP hash.
 3. Extract the ZIP.
 4. Open **Setup.exe**.
 
-Setup creates shortcuts and keeps your settings.
-When you install an update, CTC keeps the previous files in a backup.
-Installation does not need administrator access.
-No separate .NET runtime installation is required.
+Setup creates shortcuts and keeps earlier versions and preferences.
+The release includes .NET. A separate runtime installation is not required.
 The executables are unsigned.
 
-This command downloads the release through GitHub CLI and opens setup:
+[Installation steps and one-prompt installation](INSTALL.md)
 
-```powershell
-& { $p=Join-Path $env:TEMP ('ctc-source-'+[guid]::NewGuid().ToString('N')); gh repo clone yahyaint/Context-Token-Codex $p; if ($LASTEXITCODE) { throw 'Clone failed' }; powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $p 'Install-FromGitHub.ps1') }
-```
+## Features
 
-See [INSTALL.md](INSTALL.md) for the Codex installation prompt and manual steps.
-These methods need a public repository and release.
+- **Context:** Recorded context use and compaction status for active chats.
+- **Tokens:** Chat totals, token subsets, tool calls, and Exec details.
+- **Limits:** Global and project settings, including idle projects.
+- **Queue:** Saved limit changes and controls for a normal Codex restart.
+- **Widget:** Compact, expanded, and parked views, tray restore, corner placement, and live background opacity.
 
-If you use source files, build the executables first:
+<img src="docs/images/context.png" alt="Compact context view with sample data" width="370">
 
-```powershell
-.\Build\build-native.ps1
-```
-
-Install the .NET 10 SDK before building.
-Then open **Setup.exe** or **ContextTokenCodex.exe** from dist/native-win-x64.
-You can run CTC from an extracted folder.
-Auto-open creates a Startup shortcut to that folder.
-Before you move the folder, disable Auto-open.
-After the move, enable Auto-open from the new location.
-
-## Views
-
-| View | Data and controls |
-|---|---|
-| Context | Active chats, recorded context percentage, and compaction status. |
-| Tokens | Recorded chat totals, input, output, cached input, and reasoning. |
-| Limits | Global and project context settings. Includes saved idle projects. |
-| Queue | Saved limit changes, recorded confirmation, and safe restart controls. |
-| Compact | One selected active chat. Use the arrows to select another chat. |
-| Parked bar | Selected chat context, tokens, navigation, and account quotas. |
-
-The quota bars appear in every view.
-They show used account quota.
-Move the pointer over a bar to see used percentage, plan, record time, and reset time.
-Select **Refresh** to read the newest account quota.
-
-CTC reads local records.
-Context is the last recorded request, not a continuous model measurement.
-Token counts change when Codex writes new records.
-Input includes cached input. Output includes reasoning.
-The total equals input plus output.
-Chat totals can include previous models.
-Local totals are not account totals.
-
-Quota estimates use recorded changes and local token data.
-Other devices can affect the result.
-The estimate does not measure exact quota use for one chat.
-Old or unknown readings stay marked.
-Compaction completion comes from session events.
-The live compaction indicator needs compatible local logs.
+Sample data.
 
 ## Edit context limits
 
-Select **Edit context limits** in the compact view.
-CTC opens the project for the displayed chat.
-You can edit values at the compact size.
-Save stays visible while details scroll.
-Expand and Collapse keep your unsaved values.
+Select **Edit context limits** or **Limits**.
+Select a project or **Global - all projects**.
 
-Select a project or global scope from the list.
-These settings apply to all models in that scope.
-CTC does not store separate limits for each chat or model.
-Saving does not change the window of a loaded chat.
-CTC shows **Saved - waiting for reload** while the recorded window differs.
-After all chats stop, quit Codex fully. Open Codex again. Resume the chat.
-Closing one window can leave Codex running in the background.
-Check for a new usage record. CTC confirms the setting only when the recorded window matches.
-The usable window can be smaller than the saved value. Codex can reserve space.
-**Queue**, beside **Limits**, shows saved changes and restart controls.
-If a file changes outside CTC, Queue shows the original queued values and current file values.
-Project overrides cannot confirm a global queue entry.
-The controls stay visible while the change list scrolls.
-CTC keeps the latest saved change for each settings file after it closes.
-Recorded windows are per chat. Confirmation of a window does not confirm the compaction threshold.
-**Restart now safely** is disabled while CTC records running chats.
-**Restart after all chats stop** queues one restart. **Cancel restart** removes the waiting request.
-The helper scans recent user and agent records. It waits for ten seconds of recorded idle state.
-Unknown lifecycle data, incomplete records, read errors, and scan limits block the restart.
-The helper requests a normal close. It does not force-stop Codex.
-If Codex stays open, quit it manually. The request expires after 24 h.
-The helper reopens Codex. Resume the chat. Check its next context record.
-Helper maintenance preserves the request expiry. It does not create a new 24-hour request.
-CTC writes settings at Save. It queues the restart, not a separate per-chat configuration.
-
-Enter `200000`, `200k`, or `default` for the context window.
-Enter tokens or a percentage for **Compact at**.
-Example: `90%` of `200k` equals `180000` tokens.
-A percentage needs an entered numeric window.
-CTC saves the percentage as tokens.
-It does not change automatically with later window settings.
-
-Use **x1 / x2 / x3** to multiply the displayed base value.
-If you select x2 then x3, the results are twice then three times the same base.
-Numeric compaction thresholds keep their percentage.
-Percentage input stays a percentage. `default` stays `default`.
-If no base value is available, enter a numeric window first.
-The base label identifies saved, inherited, catalog, or recorded data.
-
-**80% / 90% / 95%** set a compaction percentage.
-**Undo** reads the saved values again.
-**Default** sets both fields to `default`.
-**Save** writes the values.
-Before Save, CTC does not change the settings file.
-An incorrect value disables Save and shows the reason.
-
-Larger values do not increase model capacity.
-CTC shows the local model capacity in the limit editor.
-Model catalog data can be old. Other models can have different limits.
-Codex can reject or reduce the requested value.
-
-Compare the saved and recorded values above the input fields.
-Move the pointer over these values to see the file path.
-CTC writes both limits together and keeps a backup.
-It checks for file changes before the final write.
-It preserves normal TOML strings and quoted keys.
-If CTC cannot use the file syntax, it stops before writing.
-
-## Window controls
-
-Drag the header to move the widget.
-Select Corner to set the position.
-Expand shows more detail. Collapse returns to the compact view at its original corner.
-Drag the lower right control to resize the expanded view.
-
-| Control | Action |
+| Field | Example |
 |---|---|
-| Background | Changes background opacity. Text stays visible. CTC saves changes immediately. |
-| On top | Keeps CTC above other windows. Set this option in App settings. |
-| Corner | Selects a screen corner. |
-| Tray | Hides CTC beside the Windows clock. Select the ctc icon to restore it. |
-| Minus | Shows context, tokens, navigation, and small quotas in a bar at the same corner. Select its restore button to open CTC. |
-| Close | Stops CTC. |
+| Context window | `200000` or `200k` |
+| Compact at | `180k` or `90%` |
+| Remove an override | `default` |
 
-If the widget is hidden, open ContextTokenCodex.exe again to restore it.
-The icon can be in the tray's ^ menu.
+Use **×1 / ×2 / ×3** to scale the displayed base.
+Use **80% / 90% / 95%** to set a compaction threshold.
+Select **Save limits** to store the values.
 
-## Startup and data
+Settings apply to all models in the selected scope.
+Loaded chats need a fresh Codex session.
+Use **Queue** to check changes and request a restart after all chats stop.
 
-Auto-open is on by default.
-New installations open in the small bar. Background is 85%.
-Change **Open in the small bar** in App settings to open the full widget.
-Manual restore opens the widget. Automatic app launches use the startup preference.
-Widget settings can follow Codex, ChatGPT, or Either.
-The watcher starts at Windows sign-in.
-It checks app paths every 2 seconds without a fixed app version.
-If the first launch fails, it tries again every 15 seconds.
-After a manual close, CTC waits for the next selected app launch.
-CTC stays open after the selected app closes.
+**Larger values do not increase model capacity.** Codex can reject or reduce a requested value.
 
-Local data appear before detailed quota estimates.
-An account quota request can take up to 45 seconds.
-CTC uses a separate helper database for that request.
-It sends only initialization and account quota requests.
-CTC does not read chat text for quota calculation or change the Codex message queue.
+[User guide](docs/USER-GUIDE.md) · [Data and measurement limits](docs/DATA.md)
 
-Codex data formats can change.
-Some changes need a CTC update.
-See [COMPATIBILITY.md](COMPATIBILITY.md) for tested environments and remaining checks.
-See [UPDATE-RECOVERY.md](UPDATE-RECOVERY.md) for compiled repair steps.
+## Data and privacy
 
-## Two versions
+CTC reads local Codex records.
+Counts change when Codex writes a record.
+Account quota bars show the remaining allowance.
+Per-chat quota shares are estimates.
 
-| Version | Source | Installation |
-|---|---|---|
-| C# and WPF 7.0.2 | src/CTC.Core and src/CTC.App | Default latest release and install prompt. |
-| PowerShell 6.8.9 | Root PowerShell modules and Build/build.ps1 | [Earlier Windows release](https://github.com/yahyaint/Context-Token-Codex/releases/tag/v6.8.9). |
+CTC does not submit chat messages.
+Settings change only when you select Save.
+Automatic restart is blocked by busy, unknown, or incomplete chat records.
 
-The earlier source and tag remain available.
-New app features use C# only.
-Compiled updates keep earlier compiled files in Versions.
-Both versions use the same preferences and saved limit queue.
+[Compatibility](COMPATIBILITY.md) · [Troubleshooting](UPDATE-RECOVERY.md) · [Security](SECURITY.md)
+
+## Versions
+
+The current app uses C# and WPF.
+It keeps the PowerShell version's layout.
+
+[PowerShell 6.8.9](https://github.com/yahyaint/Context-Token-Codex/releases/tag/v6.8.9) remains available.
+Future app changes use C#.
 Run one widget at a time.
 
-## Writing and credits
+## Contribute and credits
 
-Use STE for all new app text. See [UI-WRITING.md](UI-WRITING.md) and [AGENTS.md](AGENTS.md).
-Keep the [MIT license](LICENSE) and [reference notices](THIRD_PARTY_NOTICES.md).
-See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for source credits and exact revisions.
+[Build and test](https://github.com/yahyaint/Context-Token-Codex/blob/main/CONTRIBUTING.md) · [Changes](CHANGELOG.md) · [Credits](ACKNOWLEDGMENTS.md)
 
-## Tool activity
-
-Open a chat's **Breakdown** to see token cards. Move the pointer over a count to see its exact value.
-Open **Latest request**, **Tool calls**, or **Data and estimate** for more details.
-Tool calls count unique call IDs in the selected rollout record. Resumed records can cover different periods.
-CTC does not keep tool arguments or results in this activity view.
-Call counts do not measure token cost. Separate tool and automation token costs remain `--`.
-See [USAGE-METHODS.md](USAGE-METHODS.md) for the data rules and design sources.
-
-The source package includes [ARCHITECTURE-REVIEW.md](ARCHITECTURE-REVIEW.md) and [WORK-QUEUE.md](WORK-QUEUE.md).
-
-Context limit tests and reload checks: [LIMITS-VERIFICATION.md](LIMITS-VERIFICATION.md).
-
-Tool calls has one full-width tile in Breakdown.
-Open Exec for call results, status, time, and command types.
-Open Script tools for nested tool references.
-Open Shell results for reported helper results and exit codes.
-
-A script reference does not prove execution. Loops and branches can change call counts.
-Command types describe recorded requests. One request can have more than one type.
-A missing result does not prove that a call is running.
-Nonzero exit codes can have normal meanings. For example, search can return 1 for no match.
-Reported shell results are separate from wrapper results.
-CTC does not add shell results to the number of recorded tool calls.
-Recorded time uses available wall times, or call-to-result spans when wall time is unavailable.
-Spans include waiting. Concurrent calls can overlap. These totals are not active work hours.
-CTC cannot read exact token costs for a tool or automation.
-
-## Contribute or report a fault
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for build and test steps.
-Use the issue templates for faults and feature requests.
-For a security report, follow [SECURITY.md](SECURITY.md).
+Use the [MIT license](LICENSE) and keep the [third-party notices](THIRD_PARTY_NOTICES.md).

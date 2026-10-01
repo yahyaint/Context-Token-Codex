@@ -1,53 +1,50 @@
-# Acknowledgments
+# Credits
 
 Created by **Yahya Nabil** — [yahyanabil.com](https://yahyanabil.com).
 
-Thanks to these projects and their contributors. They informed the methods below. This application is an independent implementation, not a fork or an official integration endorsed by those authors.
+These projects informed CTC's design and methods.
+CTC does not include their source code or binaries.
+They do not endorse CTC.
 
-| Project and author | License | Contribution to this design |
+| Project and author | License | Design reference |
 |---|---|---|
-| [ccusage](https://github.com/ccusage/ccusage), ryoppippi and contributors | [MIT](https://github.com/ccusage/ccusage/blob/main/apps/ccusage/LICENSE) | Detailed input, cache, output and reasoning views; session reports; cache and reasoning subset accounting. |
-| [CodexBar](https://github.com/steipete/CodexBar), Peter Steinberger and contributors | [MIT](https://github.com/steipete/CodexBar/blob/main/LICENSE) | Subscription windows, freshness, reset times and a Codex CLI RPC provider. |
-| [Codex Monitor HUD](https://github.com/LH-03/codex-monitor-hud), Codex Monitor HUD Contributors | [MIT](https://github.com/LH-03/codex-monitor-hud/blob/main/LICENSE) | Bounded task discovery, session-index names and visible fallback states. |
-| [Codex Usage](https://github.com/upstream-ray/codex-usage-monitor), Craig Constable and contributors | [MIT](https://github.com/upstream-ray/codex-usage-monitor/blob/main/LICENSE) | Windows subscription-monitor comparison; no implementation incorporated. |
+| [ccusage](https://github.com/ccusage/ccusage), ryoppippi and contributors | [MIT](https://github.com/ccusage/ccusage/blob/main/apps/ccusage/LICENSE) | Token subsets, cache accounting, and grouped reports. |
+| [CodexBar](https://github.com/steipete/CodexBar), Peter Steinberger and contributors | [MIT](https://github.com/steipete/CodexBar/blob/main/LICENSE) | Account quota windows, reset times, and CLI quota requests. |
+| [Codex Monitor HUD](https://github.com/LH-03/codex-monitor-hud), Codex Monitor HUD Contributors | [MIT](https://github.com/LH-03/codex-monitor-hud/blob/main/LICENSE) | Bounded discovery, current chat names, and visible fallback states. |
+| [Codex Usage](https://github.com/upstream-ray/codex-usage-monitor), Craig Constable and contributors | [MIT](https://github.com/upstream-ray/codex-usage-monitor/blob/main/LICENSE) | Windows quota-monitor comparison. |
+| [Codexometer](https://github.com/merefield/codexometer), merefield and contributors | [MIT](https://github.com/merefield/codexometer/blob/main/LICENSE) | Estimate baselines, reset checks, and precision limits. |
+| [CPA Quota Estimator](https://github.com/Autsunset/cpa-quota-estimator), Autsunset and contributors | [MIT](https://github.com/Autsunset/cpa-quota-estimator/blob/main/LICENSE) | Model and cache weights for quota estimates. |
+| [How Much I Get From Codex](https://github.com/bigbobro/how-much-i-get-from-codex), bigbobro and contributors | [MIT](https://github.com/bigbobro/how-much-i-get-from-codex/blob/main/LICENSE) | Allowance-calibration comparison. CTC does not use its website endpoints. |
+| [Codex Token Overlay](https://github.com/soleillevant0125/codex-token-overlay), soleillevant0125 and contributors | [MIT](https://github.com/soleillevant0125/codex-token-overlay/blob/main/LICENSE) | Compact controls, expanded details, and reset controls. |
+| [CodexBar Windows](https://github.com/dontcallmejames/CodexBar-Windows), Peter Steinberger and contributors | [MIT](https://github.com/dontcallmejames/CodexBar-Windows/blob/main/LICENSE) | Compact quota views and provider retry patterns. |
+| [Codex Overlay and Tracker](https://github.com/Glergini/codex-overlay-and-tracker), Glergini and contributors | [MIT](https://github.com/Glergini/codex-overlay-and-tracker/blob/main/LICENSE) | Local chat and project accounting comparison. |
+| [ClaudeCodeUsage](https://github.com/ClaudeCodeUsage/ClaudeCodeUsage), GrowthJack and contributors | [MIT](https://github.com/ClaudeCodeUsage/ClaudeCodeUsage/blob/a871da2b970433cc42a56185f32428c21d0c4e36/LICENSE) | Compact token values and grouped details. |
 
-No source code or binaries from these projects are copied or bundled. Credit describes ideas and research, not code ownership. Reference copyright and license notices are included in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[AI Usage Tracker](https://github.com/Danielw412/AI-usage-tracker), Danielw412, informed interval-allocation comparisons.
+Its license was not confirmed. No code is included.
 
-The previous palette was inspired by [Nord](https://www.nordtheme.com/docs/colors-and-palettes/). The current Ink Black/Prussian Blue/Dusk Blue/Dusty Denim/Alabaster Grey palette was selected by Yahya Nabil. The CTC logo is original. See [BRANDING.md](BRANDING.md).
+## Reviewed revisions
 
-UI wording follows principles from [ASD-STE100](https://www.asd-ste100.org/about_STE.html) and [Microsoft Windows writing guidance](https://learn.microsoft.com/en-us/windows/apps/design/style/writing-style). See [UI-WRITING.md](UI-WRITING.md). These references do not imply certification or endorsement.
+| Project | Revision |
+|---|---|
+| ccusage | `5304e3548c6e1ead42860a975b0d1900928ce53c` |
+| Codex Monitor HUD | `d9ac8537e1763fac470ffb55d6abdf7aa83a0f44` |
+| Codex Token Overlay | `b3a38d727fb2e0cf8e8c92ffff3f65da9a592dc5` |
+| CodexBar Windows | `1bdf1ffe2453997539bbcf13aaa184769d2e0ad0` |
+| Codex Overlay and Tracker | `aaaec763531b4a5d0ef3e47c2887506613de1774` |
+| Codexometer | `5c0fd8446f8c95ea6f9c4ed3c7bc7e6a05f0b379` |
+| ClaudeCodeUsage | `a871da2b970433cc42a56185f32428c21d0c4e36` |
 
-License links checked on 18 September 2026. Keep this file and the notices in source and binary distributions. If a future change copies upstream code, record its path and revision, retain its copyright and license, and identify modifications.
+CTC's context editor, settings writes, and quota estimator are original implementations.
+Design credit does not imply code ownership.
+Keep these credits and [third-party notices](THIRD_PARTY_NOTICES.md) in distributions.
 
-### Quota attribution research (24 September 2026)
+## Identity and text
 
-- [Codexometer](https://github.com/merefield/codexometer), merefield and contributors, [MIT](https://github.com/merefield/codexometer/blob/main/LICENSE): local-only estimate wording, baseline/reset checks and honest precision.
-- [CPA Quota Estimator](https://github.com/Autsunset/cpa-quota-estimator), Autsunset and contributors, [MIT](https://github.com/Autsunset/cpa-quota-estimator/blob/main/LICENSE): separate model/cache weights and window research.
-- [How Much I Get From Codex](https://github.com/bigbobro/how-much-i-get-from-codex), bigbobro and contributors, [MIT](https://github.com/bigbobro/how-much-i-get-from-codex/blob/main/LICENSE): allowance-calibration comparison; its website endpoints are not used.
-- [AI Usage Tracker](https://github.com/Danielw412/AI-usage-tracker), Danielw412: interval-allocation comparison. License not confirmed; no source incorporated.
+Yahya Nabil selected the current five-color palette.
+The lowercase CTC logo is original.
+An earlier palette used [Nord](https://www.nordtheme.com/docs/colors-and-palettes/) as a reference.
 
-CTC's implementation is independently written. These are method/research acknowledgments, not copied-code notices or endorsements. See QUOTA-RESEARCH.md.
-
-## Context editor design review - 30 September 2026
-
-The following sources informed this review. Their source and license were checked at the revisions below. These are design references, not copied code. CTC's multiplier, percentage, validation and TOML save code is original. No listed monitor documents this exact context-writing feature; CTC does not attribute its editor implementation to them.
-
-| Upstream (MIT) | Reviewed revision | Useful pattern / application |
-|---|---|---|
-| [Codex Token Overlay](https://github.com/soleillevant0125/codex-token-overlay), soleillevant0125 | `b3a38d727fb2e0cf8e8c92ffff3f65da9a592dc5` | Compact controls, expanded details, explicit reset/commit interaction. CTC adopts compact editing and hides secondary readings behind disclosure. Focus-following IPC remains a possible later enhancement. |
-| [Codex Monitor HUD](https://github.com/LH-03/codex-monitor-hud), contributors | `d9ac8537e1763fac470ffb55d6abdf7aa83a0f44` | Compact projections, bounded discovery and model-agnostic fallbacks. CTC labels unknown/catalog/live baselines and avoids model-name assumptions in editor controls. |
-| [CodexBar Windows](https://github.com/dontcallmejames/CodexBar-Windows), Peter Steinberger and contributors | `1bdf1ffe2453997539bbcf13aaa184769d2e0ad0` | Compact usage surfaces and per-provider backoff. Structured settings and quota retry improvements are later candidates, not added by this editor change. |
-| [ccusage](https://github.com/ccusage/ccusage), ryoppippi and contributors | `5304e3548c6e1ead42860a975b0d1900928ce53c` | Explicit token subset accounting and grouped detail remain useful. MIT applies to `apps/ccusage/LICENSE`; the root license is not labeled MIT by GitHub. No package incorporated. |
-| [Codex Overlay and Tracker](https://github.com/Glergini/codex-overlay-and-tracker), Glergini | `aaaec763531b4a5d0ef3e47c2887506613de1774` | Local per-chat/project accounting is a future comparison target; no code incorporated. |
-| [Codexometer](https://github.com/merefield/codexometer), merefield | `5c0fd8446f8c95ea6f9c4ed3c7bc7e6a05f0b379` | Honest quota estimates and reset/baseline checks remain useful for token mode; no quota changes in this editor release. |
-
-Code reuse policy: if code is copied later, record upstream URL, full commit, source and destination paths, local changes, copyright, and complete license in THIRD_PARTY_NOTICES.md. Preserve required notices in distributed source and binaries. Git commit trailers may add `Inspired-by:` / `Source:` links; do not name upstream authors as co-authors when they did not author the CTC commit.
-
-## Token detail design - 30 September 2026
-
-[ClaudeCodeUsage](https://github.com/ClaudeCodeUsage/ClaudeCodeUsage/tree/a871da2b970433cc42a56185f32428c21d0c4e36),
-GrowthJack and contributors, informed the compact values and grouped detail view.
-Reviewed revision: `a871da2b970433cc42a56185f32428c21d0c4e36`.
-License: [MIT](https://github.com/ClaudeCodeUsage/ClaudeCodeUsage/blob/a871da2b970433cc42a56185f32428c21d0c4e36/LICENSE).
-CTC's code is original. No upstream code, images, or tokenizer are included.
-CTC shows recorded call counts. It does not present content estimates as exact tool token charges.
+App text follows [ASD-STE100 writing principles](https://www.asd-ste100.org/about_STE.html)
+and [Microsoft Windows writing guidance](https://learn.microsoft.com/en-us/windows/apps/design/style/writing-style).
+CTC does not claim certification or a complete dictionary audit.

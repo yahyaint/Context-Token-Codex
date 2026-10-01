@@ -1,5 +1,5 @@
 ﻿# SPDX-License-Identifier: MIT
-# Independent measured-interval attribution. Research references in QUOTA-RESEARCH.md.
+# Independent measured-interval attribution. Data limits are described in docs/DATA.md.
 function Get-QuotaEventWeight($event,$rates) {
     if (([DateTimeOffset]::Now-[DateTimeOffset]::Parse($rates.checked)).TotalDays -gt 90) {return $null}
     $r=$rates.models.($event.Model)

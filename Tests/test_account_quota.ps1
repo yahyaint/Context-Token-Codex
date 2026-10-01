@@ -42,7 +42,7 @@ while($line=[Console]::ReadLine()){
 }
 '@)
 $blocked=$false
-try{$null=Get-CodexRateLimits -HomePath $fixture -Executable (Get-Process -Id $PID).Path -Arguments ('-NoProfile -File "'+$loginTest+'"') -TimeoutSeconds 30}catch{$blocked=$_.Exception.Message -match 'sign-in changed'}
+try{$null=Get-CodexRateLimits -HomePath $fixture -Executable (Get-Process -Id $PID).Path -Arguments ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$loginTest+'"') -TimeoutSeconds 30}catch{$blocked=$_.Exception.Message -match 'sign-in changed'}
 Assert $blocked 'An in-flight quota response survived a sign-in change.'
 $script:rollouts=@{};$ledgerFixture=Join-Path $fixture 'ledger';[void][IO.Directory]::CreateDirectory($ledgerFixture)
 [IO.File]::WriteAllText((Join-Path $ledgerFixture '.overlay-test-fixture'),'test')

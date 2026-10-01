@@ -17,13 +17,13 @@ while ($line=[Console]::ReadLine()) {
 }
 '@ | Set-Content -LiteralPath $fixture -Encoding UTF8
 $exe=(Get-Process -Id $PID).Path
-$q=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" old') -TimeoutSeconds 30
+$q=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$fixture+'" old') -TimeoutSeconds 30
 if ($q.Windows[0].Remaining -ne 75) { throw 'Legacy RPC retry failed.' }
-$slow=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" slow')
+$slow=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$fixture+'" slow')
 if ($slow.Windows[0].Remaining -ne 75) {throw 'Slow initialization failed.'}
 foreach ($scenario in @('error','exit','hang')) {
  $failed=$false
- try { $null=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -File "'+$fixture+'" '+$scenario) -TimeoutSeconds 2 } catch { $failed=$true }
+ try { $null=Get-CodexRateLimits -Executable $exe -Arguments ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$fixture+'" '+$scenario) -TimeoutSeconds 2 } catch { $failed=$true }
  if (-not $failed) { throw "Transport $scenario incorrectly succeeded." }
 }
 'PASS: legacy RPC parameters, noisy stdout, account error, early exit, bounded timeout and helper cleanup.'

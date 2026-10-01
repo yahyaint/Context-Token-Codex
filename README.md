@@ -1,4 +1,4 @@
-# Context-Token Codex 7.0.0
+# Context-Token Codex 7.0.1
 
 <img src="Build/ctc-logo.png" alt="ctc logo" width="80" height="80">
 
@@ -195,7 +195,7 @@ See [UPDATE-RECOVERY.md](UPDATE-RECOVERY.md) for compiled repair steps.
 
 | Version | Source | Installation |
 |---|---|---|
-| C# and WPF 7.0.0 | src/CTC.Core and src/CTC.App | Default latest release and install prompt. |
+| C# and WPF 7.0.1 | src/CTC.Core and src/CTC.App | Default latest release and install prompt. |
 | PowerShell 6.8.9 | Root PowerShell modules and Build/build.ps1 | [Earlier Windows release](https://github.com/yahyaint/Context-Token-Codex/releases/tag/v6.8.9). |
 
 The earlier source and tag remain available.

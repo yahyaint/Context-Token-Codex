@@ -32,7 +32,7 @@ jobs:
         run: ./Build/package-native.ps1
       - name: Verify release helper
         shell: powershell
-        run: ./Install-FromGitHub.ps1 -Archive "$PWD/dist/Context-Token-Codex-Windows-v7.0.0.zip" -VerifyOnly
+        run: ./Install-FromGitHub.ps1 -Archive (Get-ChildItem "$PWD/dist" -Filter "Context-Token-Codex-Windows-v*.zip" | Select-Object -First 1).FullName -VerifyOnly
       - name: Save checks and release
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

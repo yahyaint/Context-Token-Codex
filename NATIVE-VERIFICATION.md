@@ -1,13 +1,13 @@
 # Compiled version checks
 
-Version: 7.0.0.
+Version: 7.0.1.
 Runtime: .NET 10.0.12.
 SDK: .NET 10.0.401.
 The Windows release targets x64.
 
 ## Local checks
 
-73 core fixture checks pass.
+75 core fixture checks pass.
 26 actual WPF window checks pass.
 The core checks include percentages, scalers, TOML preservation, stale saves, backups, and token subsets.
 They also include corrupt records, future records, resumed call deduplication, weekly quotas, account changes, and RPC timeouts.

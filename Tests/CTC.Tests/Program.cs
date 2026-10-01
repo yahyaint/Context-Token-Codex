@@ -82,6 +82,8 @@ try
     Check(!state.Active&&state.Compactions==1&&state.Latest.Input==null,"Idle and compaction clears numerator");
     state.Parse(Record("event_msg",new{type="task_started",model_context_window=380000}));
     Check(state.Latest.Input==null&&state.Window==380000,"New window clears old numerator");
+    state.Parse(Record("event_msg",new{type="task_complete"},DateTimeOffset.UtcNow.AddMinutes(-1)));
+    Check(state.Active,"Older completion cannot stop a newer turn");
     string tailPath=Path.Combine(root,"tail.jsonl");string text=Record("session_meta",new{id="utf8",cwd="العربية"});
     byte[] all=Encoding.UTF8.GetBytes(text+"\n");
     File.WriteAllBytes(tailPath,all[..(all.Length-2)]);using var tail=new SessionTail();tail.Read(tailPath);
@@ -167,6 +169,8 @@ try
     Check(NativeSqlite.Query(database,"SELECT name FROM threads;").Single()["name"]=="UI name","Native SQLite read");
     Check(File.GetLastWriteTimeUtc(database)==dbStamp,"Native SQLite does not write source");
     using(var monitor=new MonitorService(root))Check(monitor.Read().Chats.Single().Title=="UI name","Desktop name wins over initial index");
+    File.AppendAllText(Path.Combine(sessions,"fixture.jsonl"),"{\"type\":\"event_msg\",\"payload\":{\"type\":\"task_complete\"}}\n");
+    using(var monitor=new MonitorService(root))Check(!monitor.Read().LifecycleComplete,"Missing lifecycle timestamp blocks restart");
     Console.WriteLine($"PASS {count} native checks");return 0;
 }
 finally{Directory.Delete(root,true);}

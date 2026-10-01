@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.0.1 - 1 October 2026
+
+- Block automatic restart when lifecycle timestamps are missing or incorrect.
+- Ignore an older completion record after a newer turn starts.
+- Add regression checks for both conditions.
+
 ## 7.0.0 - 1 October 2026
 
 - Replace the app runtime with C#, .NET 10, and WPF.

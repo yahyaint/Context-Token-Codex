@@ -1,6 +1,14 @@
 # Context-Token Codex instructions
 
-## App writing
+## App platform
+
+Use C#, .NET 10, and WPF for all new app work.
+Keep the PowerShell 6.8.9 source and release as the earlier version.
+The compiled app is the default release and prompt installation.
+Use tests/CTC.Tests and Tests/test_native_ui.ps1 for native checks.
+Keep root PowerShell modules unchanged except for download and build helpers.
+
+## App writing rules
 
 Use ASD-STE100 Simplified Technical English (STE) for all new or changed app text.
 Apply this rule to labels, tooltips, help, status, errors, setup, and user guides.

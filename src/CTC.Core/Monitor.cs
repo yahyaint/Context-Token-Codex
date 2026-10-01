@@ -65,7 +65,7 @@ public sealed class MonitorService(string home):IDisposable
             })
             .OrderByDescending(x=>x.Active).ThenByDescending(x=>x.LastEvent).ToArray();
         var quota=tracks.Values.Select(x=>x.Tail.State.RecordedQuota).Where(x=>x!=null).OrderByDescending(x=>x!.Observed).FirstOrDefault();
-        bool complete=discoveryComplete&&tracks.Count>0&&tracks.Values.All(x=>x.Initialized&&x.Backfill==null&&!x.Tail.PartialRecord&&!x.Tail.PartialHistory&&x.Tail.State.LifecycleKnown&&x.Tail.State.Error.Length==0&&x.Tail.State.Id.Length>0);
+        bool complete=discoveryComplete&&tracks.Count>0&&tracks.Values.All(x=>x.Initialized&&x.Backfill==null&&!x.Tail.PartialRecord&&!x.Tail.PartialHistory&&x.Tail.State.LifecycleKnown&&x.Tail.State.LifecycleAt!=DateTimeOffset.MinValue&&x.Tail.State.LifecycleAt<=DateTimeOffset.Now.AddMinutes(5)&&x.Tail.State.Error.Length==0&&x.Tail.State.Id.Length>0);
         if(warning.Length==0&&tracks.Values.Any(x=>!x.Initialized||x.Backfill!=null))warning="CTC reads earlier records.";
         return new(DateTimeOffset.Now,chats,projects.OrderBy(x=>x,StringComparer.OrdinalIgnoreCase).ToArray(),
             tracks.Values.SelectMany(x=>x.Tail.State.Events).DistinctBy(x=>(x.Id,x.At,x.Total)).ToArray(),quota,discoveryComplete,complete,warning,logsDb.Length>0?"Live log and rollout records":"Rollout records");

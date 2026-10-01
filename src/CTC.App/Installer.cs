@@ -147,7 +147,7 @@ public sealed class SetupWindow:Window
         Icon=System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/ContextTokenCodex;component/Assets/Context.ico"));
         var p=new StackPanel{Margin=new Thickness(24)};Content=p;
         var logo=Label("ctc",36);logo.FontWeight=FontWeights.SemiBold;p.Children.Add(logo);p.Children.Add(Label("Install Context-Token Codex",22));
-        p.Children.Add(Label("C# and WPF · Version 7.0.0",11,true));
+        p.Children.Add(Label("C# and WPF · Version "+typeof(SetupWindow).Assembly.GetName().Version?.ToString(3),11,true));
         p.Children.Add(Label("Earlier versions and settings remain available. This version requires Windows 10 or Windows 11.",12));
         p.Children.Add(Label("App folder",11,true));
         var folder=new TextBox{Text=Installer.DefaultFolder,Padding=new Thickness(8),Margin=new Thickness(0,4,0,8)};p.Children.Add(folder);

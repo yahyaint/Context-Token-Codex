@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: MIT
 [CmdletBinding()]
-param([string]$Runtime='win-x64',[string]$Version='7.0.0')
+param([string]$Runtime='win-x64',[string]$Version='')
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
+if(-not $Version){$Version=([xml](Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version}
+if($Version -notmatch '^\d+\.\d+\.\d+$'){throw 'The package version is incorrect.'}
 $dist=Join-Path $root 'dist'
 $source=Join-Path $dist ('native-'+$Runtime)
 if(-not (Test-Path -LiteralPath (Join-Path $source 'ContextTokenCodex.exe'))){throw 'Build the compiled release first.'}

@@ -53,9 +53,11 @@ public sealed class SessionState
                 switch(p.Text("type"))
                 {
                     case "task_started":
+                        if(at!=DateTimeOffset.MinValue&&at<LifecycleAt)break;
                         LifecycleKnown=true;Active=true;LifecycleAt=at;CompactingAt=DateTimeOffset.MinValue;
                         ChangeWindow(p.Count("model_context_window"));break;
                     case "task_complete":case "turn_aborted":case "task_aborted":
+                        if(at!=DateTimeOffset.MinValue&&at<LifecycleAt)break;
                         LifecycleKnown=true;Active=false;LifecycleAt=at;CompactingAt=DateTimeOffset.MinValue;break;
                     case "user_message":
                         // Older sessions can start a turn without task_started.
